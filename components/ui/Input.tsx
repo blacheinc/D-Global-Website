@@ -1,4 +1,10 @@
-import { forwardRef, type InputHTMLAttributes, type TextareaHTMLAttributes } from 'react';
+import {
+  forwardRef,
+  type HTMLAttributes,
+  type InputHTMLAttributes,
+  type LabelHTMLAttributes,
+  type TextareaHTMLAttributes,
+} from 'react';
 import { cn } from '@/lib/utils';
 
 const baseField =
@@ -20,10 +26,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaHTMLAttributes<H
 );
 Textarea.displayName = 'Textarea';
 
-export function Label({
-  className,
-  ...props
-}: React.LabelHTMLAttributes<HTMLLabelElement>) {
+export function Label({ className, ...props }: LabelHTMLAttributes<HTMLLabelElement>) {
   return (
     <label
       className={cn(
@@ -35,10 +38,14 @@ export function Label({
   );
 }
 
-export function FieldError({ children }: { children?: React.ReactNode }) {
+export function FieldError({
+  children,
+  className,
+  ...props
+}: HTMLAttributes<HTMLParagraphElement>) {
   if (!children) return null;
   return (
-    <p role="alert" className="mt-1.5 text-xs text-accent-hot">
+    <p role="alert" className={cn('mt-1.5 text-xs text-accent-hot', className)} {...props}>
       {children}
     </p>
   );
