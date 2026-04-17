@@ -35,26 +35,38 @@ export async function createBooking(
     return { ok: false, error: 'Please check the form and try again.', fieldErrors };
   }
 
-  const pkg = await db.package.findUnique({
-    where: { tier: parsed.data.packageTier },
-  });
-  if (!pkg) return { ok: false, error: 'Selected package is no longer available.' };
+  let bookingCode: string;
+  try {
+    const pkg = await db.package.findUnique({
+      where: { tier: parsed.data.packageTier },
+    });
+    if (!pkg) return { ok: false, error: 'Selected package is no longer available.' };
 
-  const event = parsed.data.eventId
-    ? await db.event.findUnique({ where: { id: parsed.data.eventId } })
-    : null;
+    const event = parsed.data.eventId
+      ? await db.event.findUnique({ where: { id: parsed.data.eventId } })
+      : null;
 
-  const booking = await db.booking.create({
-    data: {
-      packageId: pkg.id,
-      eventId: event?.id ?? null,
-      guestName: parsed.data.guestName,
-      guestPhone: parsed.data.guestPhone,
-      guestEmail: parsed.data.guestEmail || null,
-      partySize: parsed.data.partySize,
-      notes: parsed.data.notes || null,
-    },
-  });
+    const booking = await db.booking.create({
+      data: {
+        packageId: pkg.id,
+        eventId: event?.id ?? null,
+        guestName: parsed.data.guestName,
+        guestPhone: parsed.data.guestPhone,
+        guestEmail: parsed.data.guestEmail || null,
+        partySize: parsed.data.partySize,
+        notes: parsed.data.notes || null,
+      },
+    });
+    bookingCode = booking.code;
+  } catch (err) {
+    console.error('[createBooking] DB error:', err);
+    return {
+      ok: false,
+      error: "Something went wrong on our side. Try again, or message us on WhatsApp.",
+    };
+  }
 
-  redirect(`/bookings/confirmation?code=${booking.code}`);
+  // redirect() throws NEXT_REDIRECT by design — keep it OUTSIDE the try/catch
+  // so the framework can intercept it.
+  redirect(`/bookings/confirmation?code=${bookingCode}`);
 }
