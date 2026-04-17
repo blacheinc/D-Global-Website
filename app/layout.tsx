@@ -72,9 +72,17 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`dark ${atypDisplay.variable} ${atypText.variable}`}>
-      <body className="min-h-screen bg-background text-foreground font-sans selection:bg-accent">
+      <body className="min-h-screen">
+        <a
+          href="#main"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:rounded-full focus:bg-accent focus:px-5 focus:py-3 focus:text-sm focus:text-white focus:shadow-glow-sm"
+        >
+          Skip to main content
+        </a>
         <Header />
-        <main className="pt-16 md:pt-20">{children}</main>
+        <main id="main" tabIndex={-1} className="pt-16 md:pt-20 pb-20 md:pb-0 outline-none">
+          {children}
+        </main>
         <Footer />
         <StickyMobileBar />
       </body>
