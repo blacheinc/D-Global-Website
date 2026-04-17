@@ -34,6 +34,7 @@
     @apply antialiased;
     scroll-behavior: smooth;
     color-scheme: dark;
+    -webkit-tap-highlight-color: transparent;
   }
 
   body {
@@ -41,6 +42,7 @@
     font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
     font-feature-settings: 'ss01', 'cv01';
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   h1, h2, h3, h4 {
@@ -62,7 +64,7 @@
 
 @layer components {
   .container-px {
-    @apply px-4 sm:px-6 lg:px-10;
+    @apply px-4 sm:px-6 lg:px-8;
   }
 
   .section-y {
