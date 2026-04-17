@@ -19,6 +19,23 @@ const schema = z
     PAYSTACK_SECRET_KEY: z.string().optional(),
     QR_SECRET: z.string().min(8).default(DEV_QR_SECRET),
   })
+  // Cross-field validation that applies in any environment: if
+  // PAYSTACK_MODE=api is selected, the secret key must be set or every
+  // checkout request will 502 at runtime. Better to fail startup so the
+  // operator catches it before any user clicks "Pay with Paystack".
+  //
+  // Like the production refine below, this is server-only so the client
+  // bundle (which never sees PAYSTACK_SECRET_KEY) doesn't crash.
+  .superRefine((val, ctx) => {
+    if (typeof window !== 'undefined') return;
+    if (val.PAYSTACK_MODE === 'api' && !val.PAYSTACK_SECRET_KEY) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['PAYSTACK_SECRET_KEY'],
+        message: 'PAYSTACK_SECRET_KEY is required when PAYSTACK_MODE=api.',
+      });
+    }
+  })
   // Production safety net: refuse to start if any of the placeholder dev
   // defaults survived into a production build. The QR check in particular
   // is security-critical — the dev secret is in source, so tickets signed
