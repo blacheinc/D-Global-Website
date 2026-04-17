@@ -31,7 +31,7 @@ export function ArtistCard({ artist }: ArtistCardProps) {
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/30 to-transparent" />
         <div className="absolute inset-x-0 bottom-0 p-5">
           <p className="text-[10px] uppercase tracking-[0.3em] text-accent">Artist</p>
-          <p className="mt-1 font-display text-2xl leading-tight">{artist.stageName}</p>
+          <h3 className="mt-1 font-display text-2xl leading-tight">{artist.stageName}</h3>
           {latest && <p className="mt-1 text-xs text-muted truncate">Latest: {latest.title}</p>}
         </div>
       </div>
