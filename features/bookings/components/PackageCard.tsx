@@ -49,7 +49,7 @@ export function PackageCard({ pkg, selected, onClick }: PackageCardProps) {
           </div>
         )}
         <div className="absolute inset-x-0 bottom-0 p-5">
-          <h3 className="font-display text-2xl">{pkg.name}</h3>
+          <p className="font-display text-2xl">{pkg.name}</p>
           {pkg.tagline && <p className="text-sm text-muted mt-1">{pkg.tagline}</p>}
         </div>
       </div>
