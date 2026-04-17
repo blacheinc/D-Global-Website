@@ -9,7 +9,7 @@ export function AudiomackEmbed({ url, height = 252 }: AudiomackEmbedProps) {
   const src = url.replace('audiomack.com', 'audiomack.com/embed');
   return (
     <iframe
-      title="Audiomack"
+      title="Audiomack player"
       src={src}
       width="100%"
       height={height}

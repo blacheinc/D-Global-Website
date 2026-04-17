@@ -37,9 +37,8 @@ export default async function ArtistDetailPage({
   const artist = await getArtistBySlug(slug);
   if (!artist) notFound();
 
-  const upcomingLineup = artist.lineupSlots.filter(
-    (slot) => slot.event && new Date(slot.event.startsAt) >= new Date(),
-  );
+  // lineupSlots is already filtered to upcoming at the DB layer.
+  const upcomingLineup = artist.lineupSlots;
 
   return (
     <article>
