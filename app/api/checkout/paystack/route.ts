@@ -107,10 +107,16 @@ export async function POST(req: Request) {
       reference,
     });
   } catch (err) {
-    await db.order.update({
-      where: { id: orderId },
-      data: { status: 'FAILED' },
-    });
+    // Best-effort: try to mark the order FAILED, but don't let a secondary
+    // DB failure mask the original Paystack error in the response.
+    try {
+      await db.order.update({
+        where: { id: orderId },
+        data: { status: 'FAILED' },
+      });
+    } catch (updateErr) {
+      console.error('[checkout] failed to mark order FAILED after init error:', updateErr);
+    }
     console.error('[checkout] paystack initialize failed:', err);
     return NextResponse.json(
       { error: 'Payment provider is unreachable. Try again or message us on WhatsApp.' },
