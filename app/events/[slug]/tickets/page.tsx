@@ -27,7 +27,7 @@ export default async function TicketsPage({
           href={`/events/${event.slug}`}
           className="inline-flex items-center gap-2 text-sm text-muted hover:text-foreground"
         >
-          <ArrowLeft className="h-4 w-4" /> Back to event
+          <ArrowLeft aria-hidden className="h-4 w-4" /> Back to event
         </Link>
 
         <div className="mt-6">
@@ -41,7 +41,6 @@ export default async function TicketsPage({
         <div className="mt-10">
           <TicketCheckout
             eventId={event.id}
-            eventSlug={event.slug}
             ticketTypes={event.ticketTypes}
             paystackMode={env.PAYSTACK_MODE}
           />

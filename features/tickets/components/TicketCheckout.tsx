@@ -10,12 +10,11 @@ import type { TicketType } from '@prisma/client';
 
 interface TicketCheckoutProps {
   eventId: string;
-  eventSlug: string;
   ticketTypes: TicketType[];
   paystackMode: 'link' | 'api';
 }
 
-export function TicketCheckout({ eventId, eventSlug, ticketTypes, paystackMode }: TicketCheckoutProps) {
+export function TicketCheckout({ eventId, ticketTypes, paystackMode }: TicketCheckoutProps) {
   const [qty, setQty] = useState<Record<string, number>>({});
   const [buyer, setBuyer] = useState({ name: '', email: '', phone: '' });
   const [submitting, setSubmitting] = useState(false);
@@ -113,19 +112,21 @@ export function TicketCheckout({ eventId, eventSlug, ticketTypes, paystackMode }
                     onClick={() => setQ(t.id, q - 1)}
                     disabled={q === 0 || soldOut}
                     className="grid h-7 w-7 place-items-center rounded-full bg-white/10 disabled:opacity-40 hover:bg-white/15"
-                    aria-label="Decrease quantity"
+                    aria-label={`Decrease ${t.name} quantity`}
                   >
-                    <Minus className="h-3.5 w-3.5" />
+                    <Minus aria-hidden className="h-3.5 w-3.5" />
                   </button>
-                  <span className="w-6 text-center tabular-nums">{q}</span>
+                  <span className="w-6 text-center tabular-nums" aria-live="polite">
+                    {q}
+                  </span>
                   <button
                     type="button"
                     onClick={() => setQ(t.id, q + 1)}
                     disabled={soldOut || q >= t.quota - t.sold}
                     className="grid h-7 w-7 place-items-center rounded-full bg-accent text-white disabled:opacity-40 hover:bg-accent-hot"
-                    aria-label="Increase quantity"
+                    aria-label={`Increase ${t.name} quantity`}
                   >
-                    <Plus className="h-3.5 w-3.5" />
+                    <Plus aria-hidden className="h-3.5 w-3.5" />
                   </button>
                 </div>
               </div>
@@ -163,6 +164,9 @@ export function TicketCheckout({ eventId, eventSlug, ticketTypes, paystackMode }
               <Label htmlFor="buyer-phone">Phone</Label>
               <Input
                 id="buyer-phone"
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
                 required
                 value={buyer.phone}
                 onChange={(e) => setBuyer((b) => ({ ...b, phone: e.target.value }))}
@@ -181,7 +185,7 @@ export function TicketCheckout({ eventId, eventSlug, ticketTypes, paystackMode }
         <Button type="submit" variant="primary" size="lg" disabled={totalQty === 0 || submitting}>
           {submitting ? (
             <>
-              <Loader2 className="h-4 w-4 animate-spin" /> Redirecting…
+              <Loader2 aria-hidden className="h-4 w-4 animate-spin" /> Redirecting…
             </>
           ) : paystackMode === 'link' ? (
             `Pay with Paystack`
@@ -197,8 +201,6 @@ export function TicketCheckout({ eventId, eventSlug, ticketTypes, paystackMode }
         By continuing you agree to our terms. Tickets are delivered instantly after payment — you'll
         get a QR code valid at the door. Need help? Message D-Global on WhatsApp.
       </p>
-
-      <input type="hidden" name="event_slug" value={eventSlug} />
     </form>
   );
 }

@@ -33,7 +33,10 @@ export function EventCard({ event, priority }: EventCardProps) {
           {event.genre[0] && <Badge tone="accent">{event.genre[0]}</Badge>}
         </div>
         <div className="absolute top-4 right-4">
-          <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-accent/90 text-white transition-transform group-hover:scale-110 group-hover:rotate-45">
+          <span
+            aria-hidden
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-accent/90 text-white transition-transform group-hover:scale-110 group-hover:rotate-45"
+          >
             <ArrowUpRight className="h-4 w-4" />
           </span>
         </div>
@@ -50,7 +53,7 @@ export function EventCard({ event, priority }: EventCardProps) {
           )}
           <div className="mt-4 flex items-center justify-between text-sm">
             <span className="inline-flex items-center gap-1.5 text-muted">
-              <MapPin className="h-3.5 w-3.5" />
+              <MapPin aria-hidden className="h-3.5 w-3.5" />
               {event.venueName}, {event.venueCity}
             </span>
             {cheapest && (

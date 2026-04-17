@@ -116,7 +116,7 @@ export default async function EventDetailPage({
                 address={event.venueAddress}
               />
               <div className="mt-4 flex items-start gap-3 text-sm text-muted">
-                <MapPin className="h-4 w-4 mt-0.5 text-accent shrink-0" />
+                <MapPin aria-hidden className="h-4 w-4 mt-0.5 text-accent shrink-0" />
                 <div>
                   <p className="text-foreground">{event.venueName}</p>
                   <p>
@@ -133,17 +133,17 @@ export default async function EventDetailPage({
           <div className="rounded-2xl border border-white/10 bg-surface p-6 space-y-5">
             <div className="space-y-3 pb-5 border-b border-white/10">
               <div className="flex items-center gap-3 text-sm">
-                <Calendar className="h-4 w-4 text-accent" />
+                <Calendar aria-hidden className="h-4 w-4 text-accent" />
                 <span>{formatEventDateTime(event.startsAt)}</span>
               </div>
               {event.doorsAt && (
                 <div className="flex items-center gap-3 text-sm">
-                  <Clock className="h-4 w-4 text-accent" />
+                  <Clock aria-hidden className="h-4 w-4 text-accent" />
                   <span>Doors {formatEventTime(event.doorsAt)}</span>
                 </div>
               )}
               <div className="flex items-center gap-3 text-sm">
-                <MapPin className="h-4 w-4 text-accent" />
+                <MapPin aria-hidden className="h-4 w-4 text-accent" />
                 <span>
                   {event.venueName}, {event.venueCity}
                 </span>
@@ -162,7 +162,7 @@ export default async function EventDetailPage({
             <div className="grid gap-3">
               <Button asChild variant="primary" size="lg">
                 <Link href={`/events/${event.slug}/tickets`}>
-                  <Ticket className="h-4 w-4" /> Get Tickets
+                  <Ticket aria-hidden className="h-4 w-4" /> Get Tickets
                 </Link>
               </Button>
               <Button asChild variant="ghost" size="lg">
@@ -174,7 +174,7 @@ export default async function EventDetailPage({
                 rel="noopener noreferrer"
                 className="text-center text-xs text-muted hover:text-foreground underline underline-offset-4"
               >
-                Or ask on WhatsApp →
+                Or ask on WhatsApp <span aria-hidden>→</span>
               </a>
             </div>
           </div>
