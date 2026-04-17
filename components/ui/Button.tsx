@@ -10,21 +10,14 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        primary:
-          'bg-accent text-white glow-red hover:bg-accent-hot',
+        primary: 'bg-accent text-white glow-red hover:bg-accent-hot',
         ghost:
           'bg-white/5 text-foreground border border-white/10 hover:bg-white/10 hover:border-white/20 backdrop-blur-sm',
-        outline:
-          'border border-accent/70 text-foreground hover:bg-accent hover:text-white glow-red',
-        subtle:
-          'bg-surface text-foreground hover:bg-elevated',
-        link: 'text-accent underline-offset-4 hover:underline p-0 h-auto',
       },
       size: {
         sm: 'h-9 px-4 text-sm',
         md: 'h-11 px-6 text-sm',
         lg: 'h-14 px-8 text-base',
-        icon: 'h-10 w-10 p-0',
       },
     },
     defaultVariants: {

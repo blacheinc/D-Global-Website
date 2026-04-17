@@ -3,7 +3,8 @@ import { cn } from '@/lib/utils';
 
 const baseField =
   'w-full rounded-xl bg-elevated border border-white/10 px-4 py-3 text-foreground placeholder:text-muted/60 ' +
-  'focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/40 transition-colors';
+  'focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/40 transition-colors ' +
+  'aria-[invalid=true]:border-accent-hot aria-[invalid=true]:ring-2 aria-[invalid=true]:ring-accent-hot/40';
 
 export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(
   ({ className, ...props }, ref) => (
@@ -25,7 +26,10 @@ export function Label({
 }: React.LabelHTMLAttributes<HTMLLabelElement>) {
   return (
     <label
-      className={cn('block text-xs font-medium uppercase tracking-[0.18em] text-muted mb-2', className)}
+      className={cn(
+        'block text-xs font-medium uppercase tracking-[0.18em] text-muted mb-2',
+        className,
+      )}
       {...props}
     />
   );
@@ -33,5 +37,9 @@ export function Label({
 
 export function FieldError({ children }: { children?: React.ReactNode }) {
   if (!children) return null;
-  return <p className="mt-1.5 text-xs text-accent-hot">{children}</p>;
+  return (
+    <p role="alert" className="mt-1.5 text-xs text-accent-hot">
+      {children}
+    </p>
+  );
 }
