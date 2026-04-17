@@ -39,7 +39,10 @@ export default async function ConfirmationPage({
   return (
     <section className="min-h-[70vh] container-px py-20 grid place-items-center">
       <div className="max-w-lg text-center space-y-6">
-        <div className="inline-grid h-16 w-16 place-items-center rounded-full bg-accent/15 border border-accent/40 mx-auto">
+        <div
+          aria-hidden
+          className="inline-grid h-16 w-16 place-items-center rounded-full bg-accent/15 border border-accent/40 mx-auto"
+        >
           <span className="font-display text-xl">✓</span>
         </div>
         <div>
@@ -64,7 +67,7 @@ export default async function ConfirmationPage({
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <Button asChild variant="primary" size="lg">
             <a href={waHref} target="_blank" rel="noopener noreferrer">
-              <MessageCircle className="h-4 w-4" /> Continue on WhatsApp
+              <MessageCircle aria-hidden className="h-4 w-4" /> Continue on WhatsApp
             </a>
           </Button>
           <Button asChild variant="ghost" size="lg">

@@ -27,7 +27,8 @@ export function PackageCard({ pkg, selected, onClick }: PackageCardProps) {
         {pkg.heroImage && (
           <Image
             src={pkg.heroImage}
-            alt={pkg.name}
+            alt=""
+            aria-hidden
             fill
             sizes="(min-width: 768px) 33vw, 100vw"
             className="object-cover transition-transform duration-700 group-hover:scale-105"
@@ -40,7 +41,10 @@ export function PackageCard({ pkg, selected, onClick }: PackageCardProps) {
           </span>
         </div>
         {selected && (
-          <div className="absolute top-4 right-4 grid h-8 w-8 place-items-center rounded-full bg-accent text-white">
+          <div
+            aria-hidden
+            className="absolute top-4 right-4 grid h-8 w-8 place-items-center rounded-full bg-accent text-white"
+          >
             <Check className="h-4 w-4" />
           </div>
         )}

@@ -48,6 +48,16 @@ export function BookingForm({
       )
     : buildWaLink('Hi D-Global, I want to book a VIP table.');
 
+  // Wire zod field errors to each input via aria-invalid + aria-describedby so
+  // screen readers announce the validation message when focusing the field.
+  const fieldProps = (name: string) => {
+    const hasErr = Boolean(state.fieldErrors?.[name]);
+    return {
+      'aria-invalid': hasErr || undefined,
+      'aria-describedby': hasErr ? `${name}-err` : undefined,
+    };
+  };
+
   return (
     <form action={formAction} className="space-y-10">
       <div>
@@ -62,14 +72,9 @@ export function BookingForm({
             />
           ))}
         </div>
-        <input
-          type="hidden"
-          name="packageTier"
-          value={selectedPkg?.tier ?? ''}
-          required
-        />
+        <input type="hidden" name="packageTier" value={selectedPkg?.tier ?? ''} required />
         {state.fieldErrors?.packageTier && (
-          <FieldError>{state.fieldErrors.packageTier}</FieldError>
+          <FieldError id="packageTier-err">{state.fieldErrors.packageTier}</FieldError>
         )}
       </div>
 
@@ -85,8 +90,10 @@ export function BookingForm({
               placeholder="As it should appear on the reservation"
               value={guestName}
               onChange={(e) => setGuestName(e.target.value)}
+              autoComplete="name"
+              {...fieldProps('guestName')}
             />
-            <FieldError>{state.fieldErrors?.guestName}</FieldError>
+            <FieldError id="guestName-err">{state.fieldErrors?.guestName}</FieldError>
           </div>
 
           <div>
@@ -94,11 +101,14 @@ export function BookingForm({
             <Input
               id="guestPhone"
               name="guestPhone"
+              type="tel"
+              inputMode="tel"
+              autoComplete="tel"
               required
               placeholder="+233 XX XXX XXXX"
-              inputMode="tel"
+              {...fieldProps('guestPhone')}
             />
-            <FieldError>{state.fieldErrors?.guestPhone}</FieldError>
+            <FieldError id="guestPhone-err">{state.fieldErrors?.guestPhone}</FieldError>
           </div>
 
           <div>
@@ -107,8 +117,11 @@ export function BookingForm({
               id="guestEmail"
               name="guestEmail"
               type="email"
+              autoComplete="email"
               placeholder="you@example.com"
+              {...fieldProps('guestEmail')}
             />
+            <FieldError id="guestEmail-err">{state.fieldErrors?.guestEmail}</FieldError>
           </div>
 
           <div>
@@ -117,12 +130,15 @@ export function BookingForm({
               id="partySize"
               name="partySize"
               type="number"
+              inputMode="numeric"
               min={1}
               max={30}
               required
               value={partySize}
               onChange={(e) => setPartySize(Number(e.target.value))}
+              {...fieldProps('partySize')}
             />
+            <FieldError id="partySize-err">{state.fieldErrors?.partySize}</FieldError>
           </div>
 
           <div>
@@ -147,23 +163,32 @@ export function BookingForm({
             <Textarea
               id="notes"
               name="notes"
+              maxLength={500}
               placeholder="Birthdays, bottles, specific requests…"
+              {...fieldProps('notes')}
             />
+            <FieldError id="notes-err">{state.fieldErrors?.notes}</FieldError>
           </div>
         </div>
       </div>
 
       {state.error && (
-        <div className="rounded-xl border border-accent/40 bg-accent/10 p-4 text-sm">
+        <div role="alert" className="rounded-xl border border-accent/40 bg-accent/10 p-4 text-sm">
           {state.error}
         </div>
       )}
 
       <div className="flex flex-col sm:flex-row gap-3">
-        <Button type="submit" variant="primary" size="lg" disabled={pending || !selectedPkg} className="flex-1">
+        <Button
+          type="submit"
+          variant="primary"
+          size="lg"
+          disabled={pending || !selectedPkg}
+          className="flex-1"
+        >
           {pending ? (
             <>
-              <Loader2 className="h-4 w-4 animate-spin" /> Sending request…
+              <Loader2 aria-hidden className="h-4 w-4 animate-spin" /> Sending request…
             </>
           ) : (
             'Reserve table'
@@ -175,7 +200,7 @@ export function BookingForm({
           rel="noopener noreferrer"
           className="flex-1 inline-flex items-center justify-center gap-2 h-14 rounded-full border border-white/15 bg-white/5 hover:bg-white/10 text-foreground font-medium"
         >
-          <MessageCircle className="h-4 w-4" /> Continue on WhatsApp
+          <MessageCircle aria-hidden className="h-4 w-4" /> Continue on WhatsApp
         </a>
       </div>
 

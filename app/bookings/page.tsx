@@ -46,12 +46,21 @@ export default async function BookingsPage({ searchParams }: PageProps) {
         </div>
 
         <div className="mt-12 max-w-5xl">
-          <BookingForm
-            packages={packages}
-            events={events}
-            defaultPackageTier={pkg?.toUpperCase()}
-            defaultEventId={defaultEventId}
-          />
+          {packages.length === 0 ? (
+            <div className="rounded-2xl border border-white/10 bg-surface p-8 md:p-12 text-center">
+              <p className="text-muted">
+                VIP bookings are temporarily unavailable. Message D-Global on WhatsApp and we'll
+                take your reservation directly.
+              </p>
+            </div>
+          ) : (
+            <BookingForm
+              packages={packages}
+              events={events}
+              defaultPackageTier={pkg?.toUpperCase()}
+              defaultEventId={defaultEventId}
+            />
+          )}
         </div>
       </div>
     </section>

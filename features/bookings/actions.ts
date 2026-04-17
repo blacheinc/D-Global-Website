@@ -1,7 +1,6 @@
 'use server';
 
 import { redirect } from 'next/navigation';
-import { PackageTier } from '@prisma/client';
 import { db } from '@/server/db';
 import { bookingSchema } from './schema';
 
@@ -37,7 +36,7 @@ export async function createBooking(
   }
 
   const pkg = await db.package.findUnique({
-    where: { tier: parsed.data.packageTier as PackageTier },
+    where: { tier: parsed.data.packageTier },
   });
   if (!pkg) return { ok: false, error: 'Selected package is no longer available.' };
 
