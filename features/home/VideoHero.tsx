@@ -44,7 +44,6 @@ export function VideoHero() {
         loop
         playsInline
         preload="metadata"
-        poster="/brand/d-global-logo.png"
         onCanPlay={() => setVideoReady(true)}
         onError={() => setVideoReady(false)}
       >

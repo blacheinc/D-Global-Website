@@ -52,7 +52,7 @@ export const metadata: Metadata = {
     siteName: site.name,
     title: `${site.name} — ${site.tagline}`,
     description: site.description,
-    images: [{ url: '/brand/d-global-logo.png', width: 1200, height: 630 }],
+    locale: 'en_GH',
   },
   twitter: {
     card: 'summary_large_image',

@@ -7,7 +7,6 @@ build
 coverage
 
 public/videos
-public/images
 fonts
 
 pnpm-lock.yaml
