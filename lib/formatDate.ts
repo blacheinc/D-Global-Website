@@ -1,4 +1,3 @@
-import { format } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
 
 const TZ = 'Africa/Accra';
@@ -16,11 +15,6 @@ export function formatEventDateTime(date: Date | string): string {
 export function formatEventTime(date: Date | string): string {
   const d = typeof date === 'string' ? new Date(date) : date;
   return formatInTimeZone(d, TZ, 'HH:mm');
-}
-
-export function formatRelative(date: Date | string): string {
-  const d = typeof date === 'string' ? new Date(date) : date;
-  return format(d, 'PP');
 }
 
 export type CountdownParts = {

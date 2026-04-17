@@ -18,5 +18,3 @@ export const site = {
   },
   contactEmail: 'hello@dglobal.gh',
 } as const;
-
-export type SiteConfig = typeof site;

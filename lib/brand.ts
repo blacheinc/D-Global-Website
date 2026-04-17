@@ -15,5 +15,3 @@ export const brand = {
   muted: '#B3B3B3',
   border: '#2E2E2E',
 } as const;
-
-export type BrandColor = keyof typeof brand;
