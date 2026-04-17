@@ -77,6 +77,7 @@ export function GalleryClient({ images }: GalleryClientProps) {
               alt=""
               aria-hidden
               fill
+              priority={i < 4}
               sizes="(min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw"
               className="object-cover transition-transform duration-700 group-hover:scale-105"
             />
