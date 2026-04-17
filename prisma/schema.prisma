@@ -1,0 +1,292 @@
+// D-Global Prisma schema — digital nightlife ecosystem.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  GUEST
+  ADMIN
+  STAFF
+  ARTIST
+}
+
+enum TicketTier {
+  EARLY_BIRD
+  REGULAR
+  VIP
+  TABLE
+}
+
+enum PackageTier {
+  SILVER
+  GOLD
+  PLATINUM
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  WAITLIST
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+  EXPIRED
+}
+
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+  SOLD_OUT
+  CANCELLED
+}
+
+enum ReleaseKind {
+  SINGLE
+  EP
+  ALBUM
+  MIX
+  VIDEO
+}
+
+enum GalleryCategory {
+  EVENTS
+  BACKSTAGE
+  ARTISTS
+  VENUE
+  CAMPAIGN
+}
+
+model User {
+  id        String    @id @default(cuid())
+  email     String    @unique
+  phone     String?
+  name      String?
+  role      Role      @default(GUEST)
+  bookings  Booking[]
+  orders    Order[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([phone])
+}
+
+model Event {
+  id          String       @id @default(cuid())
+  slug        String       @unique
+  title       String
+  subtitle    String?
+  description String
+  startsAt    DateTime
+  endsAt      DateTime?
+  doorsAt     DateTime?
+  venueName   String
+  venueCity   String       @default("Accra")
+  venueAddress String?
+  venueMapUrl String?
+  latitude    Float?
+  longitude   Float?
+  heroImage   String
+  gallery     String[]     @default([])
+  genre       String[]     @default([])
+  status      EventStatus  @default(DRAFT)
+  featured    Boolean      @default(false)
+  ticketTypes TicketType[]
+  lineup      LineupSlot[]
+  bookings    Booking[]
+  orders      Order[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([startsAt])
+  @@index([status, featured, startsAt])
+  @@index([venueCity])
+}
+
+model TicketType {
+  id              String      @id @default(cuid())
+  eventId         String
+  event           Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  tier            TicketTier
+  name            String
+  description     String?
+  priceMinor      Int
+  currency        String      @default("GHS")
+  quota           Int
+  sold            Int         @default(0)
+  salesStart      DateTime?
+  salesEnd        DateTime?
+  paymentLinkUrl  String?
+  orderItems      OrderItem[]
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@index([eventId, tier])
+}
+
+model LineupSlot {
+  id          String    @id @default(cuid())
+  eventId     String
+  event       Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  artistId    String?
+  artist      Artist?   @relation(fields: [artistId], references: [id])
+  displayName String
+  role        String?
+  slotStart   DateTime?
+  order       Int       @default(0)
+
+  @@index([eventId, order])
+}
+
+model Package {
+  id          String        @id @default(cuid())
+  tier        PackageTier   @unique
+  name        String
+  tagline     String?
+  description String?
+  priceMinor  Int
+  currency    String        @default("GHS")
+  perks       String[]      @default([])
+  maxGuests   Int
+  bottlesIncl Int           @default(0)
+  heroImage   String?
+  active      Boolean       @default(true)
+  bookings    Booking[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+model Booking {
+  id           String        @id @default(cuid())
+  code         String        @unique @default(cuid())
+  userId       String?
+  user         User?         @relation(fields: [userId], references: [id])
+  eventId      String?
+  event        Event?        @relation(fields: [eventId], references: [id])
+  packageId    String
+  package      Package       @relation(fields: [packageId], references: [id])
+  guestName    String
+  guestPhone   String
+  guestEmail   String?
+  partySize    Int           @default(2)
+  requestedAt  DateTime      @default(now())
+  notes        String?
+  status       BookingStatus @default(PENDING)
+  whatsappSent Boolean       @default(false)
+  updatedAt    DateTime      @updatedAt
+
+  @@index([eventId, status])
+  @@index([guestPhone])
+}
+
+model Order {
+  id              String      @id @default(cuid())
+  reference       String      @unique
+  userId          String?
+  user            User?       @relation(fields: [userId], references: [id])
+  eventId         String
+  event           Event       @relation(fields: [eventId], references: [id])
+  buyerEmail      String
+  buyerName       String
+  buyerPhone      String?
+  totalMinor      Int
+  currency        String      @default("GHS")
+  status          OrderStatus @default(PENDING)
+  paystackPayload Json?
+  items           OrderItem[]
+  createdAt       DateTime    @default(now())
+  paidAt          DateTime?
+
+  @@index([buyerEmail])
+  @@index([status, createdAt])
+}
+
+model OrderItem {
+  id             String     @id @default(cuid())
+  orderId        String
+  order          Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  ticketTypeId   String
+  ticketType     TicketType @relation(fields: [ticketTypeId], references: [id])
+  quantity       Int
+  unitPriceMinor Int
+  qrToken        String?    @unique
+  scannedAt      DateTime?
+
+  @@index([orderId])
+}
+
+model Artist {
+  id          String       @id @default(cuid())
+  slug        String       @unique
+  stageName   String
+  bio         String?
+  avatar      String?
+  heroImage   String?
+  spotifyId   String?
+  audiomackId String?
+  instagram   String?
+  twitter     String?
+  featured    Boolean      @default(false)
+  releases    Release[]
+  lineupSlots LineupSlot[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([featured])
+}
+
+model Release {
+  id           String      @id @default(cuid())
+  slug         String      @unique
+  artistId     String
+  artist       Artist      @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  title        String
+  kind         ReleaseKind @default(SINGLE)
+  coverImage   String
+  releasedAt   DateTime
+  spotifyUrl   String?
+  audiomackUrl String?
+  youtubeUrl   String?
+  tracks       Track[]
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@index([artistId, releasedAt])
+}
+
+model Track {
+  id          String  @id @default(cuid())
+  releaseId   String
+  release     Release @relation(fields: [releaseId], references: [id], onDelete: Cascade)
+  title       String
+  durationSec Int?
+  spotifyId   String?
+  order       Int     @default(0)
+
+  @@index([releaseId, order])
+}
+
+model GalleryImage {
+  id        String          @id @default(cuid())
+  url       String
+  blurData  String?
+  caption   String?
+  category  GalleryCategory @default(EVENTS)
+  eventId   String?
+  featured  Boolean         @default(false)
+  order     Int             @default(0)
+  createdAt DateTime        @default(now())
+
+  @@index([category, order])
+  @@index([eventId])
+}

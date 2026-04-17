@@ -1,0 +1,119 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --bg: 0 0% 0%;
+    --surface: 0 0% 10.2%;
+    --elevated: 0 0% 14%;
+    --accent: 0 100% 37.6%;
+    --accent-hot: 0 100% 48%;
+    --accent-deep: 0 100% 24%;
+    --fg: 0 0% 100%;
+    --muted: 0 0% 70.2%;
+    --border: 0 0% 18%;
+    --radius: 0.75rem;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    @apply antialiased;
+    scroll-behavior: smooth;
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+    font-feature-settings: 'ss01', 'cv01';
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: var(--font-display), ui-serif, Georgia, serif;
+    letter-spacing: -0.015em;
+    font-weight: 600;
+  }
+
+  ::selection {
+    background: hsl(var(--accent) / 0.8);
+    color: hsl(var(--fg));
+  }
+
+  :focus-visible {
+    outline: 2px solid hsl(var(--accent));
+    outline-offset: 2px;
+  }
+
+  /* Hide default scrollbar in carousels */
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { scrollbar-width: none; }
+}
+
+@layer components {
+  .container-px {
+    @apply px-4 sm:px-6 lg:px-10;
+  }
+
+  .section-y {
+    @apply py-16 md:py-24 lg:py-32;
+  }
+
+  .eyebrow {
+    @apply inline-flex items-center gap-2 text-xs uppercase tracking-[0.22em] text-muted font-medium;
+  }
+
+  .eyebrow::before {
+    content: '';
+    @apply inline-block h-px w-6 bg-accent;
+  }
+}
+
+@layer utilities {
+  .glow-red {
+    transition:
+      box-shadow 0.35s ease,
+      transform 0.3s ease,
+      background-color 0.3s ease;
+  }
+  .glow-red:hover {
+    box-shadow:
+      0 0 0 1px hsl(var(--accent) / 0.6),
+      0 0 24px 2px hsl(var(--accent) / 0.55),
+      0 0 64px 12px hsl(var(--accent) / 0.25);
+    transform: translateY(-1px);
+  }
+
+  .card-lift {
+    transition:
+      transform 0.4s cubic-bezier(0.2, 0.7, 0.2, 1),
+      box-shadow 0.4s ease,
+      border-color 0.3s ease;
+  }
+  .card-lift:hover {
+    transform: translateY(-4px);
+    box-shadow:
+      0 16px 40px rgba(0, 0, 0, 0.55),
+      0 0 0 1px hsl(var(--accent) / 0.35);
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .mask-fade-b {
+    mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
+  }
+
+  .gradient-radial-red {
+    background: radial-gradient(
+      ellipse 70% 50% at 50% 0%,
+      hsl(var(--accent) / 0.18) 0%,
+      transparent 65%
+    );
+  }
+}
