@@ -68,7 +68,15 @@ export function TicketCheckout({ eventId, ticketTypes, paystackMode }: TicketChe
         body: JSON.stringify({ eventId, items, buyer }),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error ?? 'Checkout failed');
+      if (!res.ok) {
+        // Server may return either a plain string (config / upstream errors)
+        // or a structured zod flatten() object (validation errors). Coerce
+        // anything non-string to a friendly fallback so we never render
+        // "[object Object]" to the user.
+        const msg =
+          typeof json?.error === 'string' ? json.error : 'Please check your details and try again.';
+        throw new Error(msg);
+      }
       window.location.href = json.authorization_url;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong.');
