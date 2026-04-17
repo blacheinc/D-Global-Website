@@ -158,8 +158,6 @@ Every booking flow has a WhatsApp deep-link fallback (`https://wa.me/<number>?te
 - **Utilities:** `.glow-red` (red hover glow), `.card-lift` (-4px translate + shadow on hover), `.gradient-radial-red`.
 - **Motion:** subtle fade/slide on scroll via `Reveal`; `prefers-reduced-motion` respected.
 
-> Note: The shipped font bundle includes `AtypDisplay-Regular.ttf` but no `AtypText-Regular.ttf`. In `app/layout.tsx`, `AtypDisplay-Regular.ttf` is used for the body-text 400 weight slot per brand direction. If/when a dedicated `AtypText-Regular.ttf` ships, swap the path in the `atypText` `next/font/local` mapping.
-
 ---
 
 ## Future milestones (scaffolded, not implemented)

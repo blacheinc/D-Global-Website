@@ -19,13 +19,10 @@ const atypDisplay = localFont({
   display: 'swap',
 });
 
-// NOTE: AtypText-Regular.ttf is not in the asset bundle (only Light/Medium/Semibold/Bold).
-// Per brand direction, AtypDisplay-Regular is used for the 400 weight slot so default
-// body text has a dedicated regular file instead of falling back to Medium.
 const atypText = localFont({
   src: [
     { path: '../fonts/AtypText-Light.ttf', weight: '300', style: 'normal' },
-    { path: '../fonts/AtypDisplay-Regular.ttf', weight: '400', style: 'normal' },
+    { path: '../fonts/AtypText-Regular.ttf', weight: '400', style: 'normal' },
     { path: '../fonts/AtypText-Medium.ttf', weight: '500', style: 'normal' },
     { path: '../fonts/AtypText-Semibold.ttf', weight: '600', style: 'normal' },
     { path: '../fonts/AtypText-Bold.ttf', weight: '700', style: 'normal' },
