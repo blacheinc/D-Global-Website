@@ -3,10 +3,13 @@ import { z } from 'zod';
 const schema = z.object({
   DATABASE_URL: z.string().url().optional(),
   NEXT_PUBLIC_SITE_URL: z.string().url().default('http://localhost:3000'),
+  // Default is an obviously-fake all-zeroes number so a missing env var
+  // produces visibly-broken WhatsApp links instead of silently sending
+  // booking inquiries to a real stranger's phone.
   NEXT_PUBLIC_WHATSAPP_NUMBER: z
     .string()
     .regex(/^\d{8,15}$/, 'WhatsApp number must be digits only, E.164 without +')
-    .default('233241234567'),
+    .default('233000000000'),
   PAYSTACK_MODE: z.enum(['link', 'api']).default('link'),
   PAYSTACK_SECRET_KEY: z.string().optional(),
   QR_SECRET: z.string().min(8).default('dev-only-qr-secret-change-me-in-prod'),
