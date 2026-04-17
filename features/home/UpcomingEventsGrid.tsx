@@ -30,7 +30,7 @@ export async function UpcomingEventsGrid() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
         {events.map((event, i) => (
           <Reveal key={event.id} delay={i * 0.08}>
-            <EventCard event={event} priority={i < 3} />
+            <EventCard event={event} />
           </Reveal>
         ))}
       </div>
