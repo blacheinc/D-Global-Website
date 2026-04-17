@@ -16,13 +16,17 @@ export function LineupList({ lineup }: LineupListProps) {
             {slot.artist?.avatar ? (
               <Image
                 src={slot.artist.avatar}
-                alt={slot.displayName}
+                alt=""
+                aria-hidden
                 fill
                 sizes="64px"
                 className="object-cover"
               />
             ) : (
-              <div className="h-full w-full grid place-items-center text-muted text-xs uppercase">
+              <div
+                aria-hidden
+                className="h-full w-full grid place-items-center text-muted text-xs uppercase"
+              >
                 {slot.displayName.charAt(0)}
               </div>
             )}

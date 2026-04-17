@@ -21,7 +21,8 @@ export function EventCard({ event, priority }: EventCardProps) {
       <div className="relative aspect-[4/5] overflow-hidden">
         <Image
           src={event.heroImage}
-          alt={event.title}
+          alt=""
+          aria-hidden
           fill
           priority={priority}
           sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"

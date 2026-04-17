@@ -54,7 +54,8 @@ export default async function EventDetailPage({
       <section className="relative h-[65vh] md:h-[80vh] w-full overflow-hidden">
         <Image
           src={event.heroImage}
-          alt={event.title}
+          alt=""
+          aria-hidden
           fill
           priority
           sizes="100vw"
