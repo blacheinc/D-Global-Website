@@ -17,6 +17,9 @@ async function paystackFetch<T>(
   if (!secret) {
     throw new Error('PAYSTACK_SECRET_KEY is not set. Either configure it or use PAYSTACK_MODE=link.');
   }
+  // 15s timeout caps the longest a checkout request can hang waiting on
+  // Paystack. Without this, a Paystack outage leaves Node connections open
+  // until the host-level timeout (Vercel hobby = 10s; self-hosted = none).
   const res = await fetch(`${BASE}${path}`, {
     ...init,
     headers: {
@@ -25,6 +28,7 @@ async function paystackFetch<T>(
       'Content-Type': 'application/json',
     },
     cache: 'no-store',
+    signal: AbortSignal.timeout(15_000),
   });
   const json = (await res.json()) as PaystackResponse<T>;
   if (!res.ok || !json.status) {

@@ -20,7 +20,14 @@ export function signTicket(payload: TicketPayload): string {
 }
 
 export function verifyTicket(token: string): TicketPayload | null {
-  const [body, sig] = token.split('.');
+  // Strict 2-part parse: signTicket only ever produces `body.sig`. Tokens
+  // with extra dots (`body.sig.junk`) wouldn't be exploitable today (the
+  // verified payload is still the legitimate body), but rejecting them keeps
+  // the format invariant explicit and prevents subtle drift if the format
+  // ever evolves.
+  const parts = token.split('.');
+  if (parts.length !== 2) return null;
+  const [body, sig] = parts;
   if (!body || !sig) return null;
   const expected = sign(body);
   const a = Buffer.from(expected, 'hex');
