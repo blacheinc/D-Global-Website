@@ -27,7 +27,7 @@ It is not a website. It is a night you can step inside from any device.
 | Database | **PostgreSQL** via **Prisma** |
 | Styling | **Tailwind CSS** + custom CSS variables + `tailwindcss-animate` |
 | Motion | **Framer Motion** (`Reveal`, hero entrance) |
-| Forms | **react-hook-form** + **zod** (validated on client and server) |
+| Forms | **zod** schemas + React 19 `useActionState` / Server Actions |
 | Payment | **Paystack** (Ghana-first: MoMo + card); optional "link" mode for zero-backend launch |
 | Carousels / Lightbox | `embla-carousel-react`, `yet-another-react-lightbox` |
 | QR | `qrcode` (server-side, HMAC-signed payload) |
@@ -94,7 +94,7 @@ Fill in at minimum:
 - `QR_SECRET` — any long random string (HMAC key for ticket integrity).
 
 Optional (only if you want live payments):
-- `PAYSTACK_MODE=api` plus `PAYSTACK_SECRET_KEY` and `NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY`.
+- `PAYSTACK_MODE=api` plus `PAYSTACK_SECRET_KEY`.
 - Leave as `PAYSTACK_MODE=link` to use hosted Paystack Payment Links (per `TicketType.paymentLinkUrl`).
 
 ### 3. Database

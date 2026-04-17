@@ -2,6 +2,7 @@
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  serverExternalPackages: ['@prisma/client'],
   images: {
     formats: ['image/avif', 'image/webp'],
     remotePatterns: [
@@ -10,6 +11,9 @@ const nextConfig = {
       { protocol: 'https', hostname: 'res.cloudinary.com' },
       { protocol: 'https', hostname: 'images.unsplash.com' },
     ],
+  },
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production' ? { exclude: ['error', 'warn'] } : false,
   },
   experimental: {
     optimizePackageImports: ['lucide-react', 'date-fns', 'framer-motion'],
