@@ -3,7 +3,9 @@
 import { useMemo, useState } from 'react';
 import Image from 'next/image';
 import Lightbox from 'yet-another-react-lightbox';
+import Captions from 'yet-another-react-lightbox/plugins/captions';
 import 'yet-another-react-lightbox/styles.css';
+import 'yet-another-react-lightbox/plugins/captions.css';
 import { GalleryCategory, type GalleryImage } from '@prisma/client';
 import { cn } from '@/lib/utils';
 import { brand } from '@/lib/brand';
@@ -38,12 +40,17 @@ export function GalleryClient({ images }: GalleryClientProps) {
 
   return (
     <div className="space-y-10">
-      <div className="flex flex-wrap gap-2">
+      <div
+        role="group"
+        aria-label="Filter gallery by category"
+        className="flex flex-wrap gap-2"
+      >
         {CATEGORIES.map((c) => (
           <button
             key={c.value}
             type="button"
             onClick={() => setCategory(c.value)}
+            aria-pressed={category === c.value}
             className={cn(
               'rounded-full px-4 py-2 text-xs uppercase tracking-[0.22em] border transition-colors',
               category === c.value
@@ -62,18 +69,26 @@ export function GalleryClient({ images }: GalleryClientProps) {
             key={img.id}
             type="button"
             onClick={() => setIndex(i)}
+            aria-label={img.caption ? `Open photo: ${img.caption}` : `Open photo ${i + 1}`}
             className="group relative aspect-[4/5] overflow-hidden rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
             <Image
               src={img.url}
-              alt={img.caption ?? 'D-Global'}
+              alt=""
+              aria-hidden
               fill
               sizes="(min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw"
               className="object-cover transition-transform duration-700 group-hover:scale-105"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-background/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div
+              aria-hidden
+              className="absolute inset-0 bg-gradient-to-t from-background/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity"
+            />
             {img.caption && (
-              <div className="absolute inset-x-0 bottom-0 p-3 text-xs text-foreground opacity-0 group-hover:opacity-100 transition-opacity">
+              <div
+                aria-hidden
+                className="absolute inset-x-0 bottom-0 p-3 text-xs text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+              >
                 {img.caption}
               </div>
             )}
@@ -86,6 +101,7 @@ export function GalleryClient({ images }: GalleryClientProps) {
         index={Math.max(0, index)}
         close={() => setIndex(-1)}
         slides={slides}
+        plugins={[Captions]}
         styles={{
           container: { backgroundColor: `${brand.bg}F2` },
         }}
