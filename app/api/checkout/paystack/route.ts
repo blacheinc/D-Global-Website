@@ -25,7 +25,13 @@ export async function POST(req: Request) {
 
   const parsed = checkoutSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+    return NextResponse.json(
+      {
+        error: 'Please check your details and try again.',
+        fieldErrors: parsed.error.flatten().fieldErrors,
+      },
+      { status: 400 },
+    );
   }
   const { eventId, items, buyer } = parsed.data;
 
@@ -37,32 +43,55 @@ export async function POST(req: Request) {
   });
   if (!event) return NextResponse.json({ error: 'Event not found' }, { status: 404 });
 
+  // Re-price server-side from DB and validate availability per item. Use a
+  // for-loop with early returns rather than throwing inside .map() — throwing
+  // would surface as an uncaught 500, but these are user-correctable input
+  // errors that deserve a 400/409 with a helpful message.
   let totalMinor = 0;
-  const lineItems = items.map((it) => {
+  const lineItems: Array<{ ticketTypeId: string; quantity: number; unitPriceMinor: number }> = [];
+  for (const it of items) {
     const tt = event.ticketTypes.find((t) => t.id === it.ticketTypeId);
-    if (!tt) throw new Error(`Ticket type ${it.ticketTypeId} not on this event`);
+    if (!tt) {
+      return NextResponse.json(
+        { error: `Selected ticket type isn't available for this event.` },
+        { status: 400 },
+      );
+    }
     if (tt.quota - tt.sold < it.quantity) {
-      throw new Error(`Not enough ${tt.name} tickets remaining`);
+      return NextResponse.json(
+        { error: `Only ${Math.max(0, tt.quota - tt.sold)} ${tt.name} tickets left.` },
+        { status: 409 },
+      );
     }
     totalMinor += tt.priceMinor * it.quantity;
-    return { ticketTypeId: tt.id, quantity: it.quantity, unitPriceMinor: tt.priceMinor };
-  });
+    lineItems.push({ ticketTypeId: tt.id, quantity: it.quantity, unitPriceMinor: tt.priceMinor });
+  }
 
   const reference = `dg_${randomUUID().replace(/-/g, '')}`;
 
-  const order = await db.order.create({
-    data: {
-      reference,
-      eventId: event.id,
-      buyerName: buyer.name,
-      buyerEmail: buyer.email,
-      buyerPhone: buyer.phone,
-      totalMinor,
-      items: { create: lineItems },
-    },
-  });
+  let orderId: string;
+  try {
+    const order = await db.order.create({
+      data: {
+        reference,
+        eventId: event.id,
+        buyerName: buyer.name,
+        buyerEmail: buyer.email,
+        buyerPhone: buyer.phone,
+        totalMinor,
+        items: { create: lineItems },
+      },
+    });
+    orderId = order.id;
+  } catch (err) {
+    console.error('[checkout] order create failed:', err);
+    return NextResponse.json(
+      { error: 'Could not create your order. Try again in a moment.' },
+      { status: 500 },
+    );
+  }
 
-  const callback = `${env.NEXT_PUBLIC_SITE_URL}/tickets/${order.id}?ref=${reference}`;
+  const callback = `${env.NEXT_PUBLIC_SITE_URL}/tickets/${orderId}?ref=${reference}`;
 
   try {
     const res = await initializeTransaction({
@@ -70,20 +99,21 @@ export async function POST(req: Request) {
       amountMinor: totalMinor,
       reference,
       callbackUrl: callback,
-      metadata: { orderId: order.id, eventId: event.id },
+      metadata: { orderId, eventId: event.id },
     });
     return NextResponse.json({
       authorization_url: res.data.authorization_url,
-      orderId: order.id,
+      orderId,
       reference,
     });
   } catch (err) {
     await db.order.update({
-      where: { id: order.id },
+      where: { id: orderId },
       data: { status: 'FAILED' },
     });
+    console.error('[checkout] paystack initialize failed:', err);
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Paystack initialize failed' },
+      { error: 'Payment provider is unreachable. Try again or message us on WhatsApp.' },
       { status: 502 },
     );
   }
