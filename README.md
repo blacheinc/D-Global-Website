@@ -25,7 +25,7 @@ It is not a website. It is a night you can step inside from any device.
 | Framework | **Next.js 15** (App Router, RSC-first) |
 | Language | **TypeScript** (strict, `noUncheckedIndexedAccess`) |
 | Database | **PostgreSQL** via **Prisma** |
-| Styling | **Tailwind CSS** + custom CSS variables + `tailwindcss-animate` |
+| Styling | **Tailwind CSS** v3.4 + custom CSS variables (HSL tokens) |
 | Motion | **Framer Motion** (`Reveal`, hero entrance) |
 | Forms | **zod** schemas + React 19 `useActionState` / Server Actions |
 | Payment | **Paystack** (Ghana-first: MoMo + card); optional "link" mode for zero-backend launch |
