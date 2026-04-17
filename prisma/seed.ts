@@ -216,7 +216,6 @@ async function main() {
       latitude: 5.6037,
       longitude: -0.1718,
       heroImage: img('photo-1514525253161-7a46d19cd819'),
-      gallery: [img('photo-1470229722913-7c0e2dbbafd3'), img('photo-1566737236500-c8ac43014a67')],
       genre: ['afrobeats', 'amapiano', 'house'],
       status: EventStatus.PUBLISHED,
       featured: true,
@@ -350,8 +349,8 @@ async function main() {
   });
 
   const galleryImages = [
-    { url: img('photo-1514525253161-7a46d19cd819'), category: GalleryCategory.EVENTS, caption: 'Opening night — the Boulevard' },
-    { url: img('photo-1470229722913-7c0e2dbbafd3'), category: GalleryCategory.EVENTS, caption: 'Main floor, 1am' },
+    { url: img('photo-1514525253161-7a46d19cd819'), category: GalleryCategory.EVENTS, caption: 'Opening night — the Boulevard', eventId: accraLabs.id },
+    { url: img('photo-1470229722913-7c0e2dbbafd3'), category: GalleryCategory.EVENTS, caption: 'Main floor, 1am', eventId: accraLabs.id },
     { url: img('photo-1566737236500-c8ac43014a67'), category: GalleryCategory.VENUE, caption: 'VIP suite' },
     { url: img('photo-1493225457124-a3eb161ffa5f'), category: GalleryCategory.ARTISTS, caption: 'Kwesi Nyame — live' },
     { url: img('photo-1522327646852-4e28586a40dd'), category: GalleryCategory.ARTISTS, caption: 'Ama Black — backstage' },

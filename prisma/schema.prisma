@@ -97,7 +97,6 @@ model Event {
   latitude      Float?
   longitude     Float?
   heroImage     String
-  gallery       String[]       @default([])
   genre         String[]       @default([])
   status        EventStatus    @default(DRAFT)
   featured      Boolean        @default(false)
