@@ -33,20 +33,20 @@
   html {
     @apply antialiased;
     scroll-behavior: smooth;
+    scrollbar-gutter: stable;
     color-scheme: dark;
     -webkit-tap-highlight-color: transparent;
   }
 
   body {
-    @apply bg-background text-foreground;
-    font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+    @apply bg-background text-foreground font-sans;
     font-feature-settings: 'ss01', 'cv01';
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 
   h1, h2, h3, h4 {
-    font-family: var(--font-display), ui-serif, Georgia, serif;
+    @apply font-display;
     letter-spacing: -0.015em;
     font-weight: 600;
   }
