@@ -4,6 +4,7 @@ import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { StickyMobileBar } from '@/components/layout/StickyMobileBar';
 import { site } from '@/lib/site';
+import { brand } from '@/lib/brand';
 import { env } from '@/lib/env';
 import './globals.css';
 
@@ -62,7 +63,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#000000',
+  themeColor: brand.bg,
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',

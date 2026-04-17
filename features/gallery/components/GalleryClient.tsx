@@ -6,6 +6,7 @@ import Lightbox from 'yet-another-react-lightbox';
 import 'yet-another-react-lightbox/styles.css';
 import { GalleryCategory, type GalleryImage } from '@prisma/client';
 import { cn } from '@/lib/utils';
+import { brand } from '@/lib/brand';
 
 const CATEGORIES: Array<{ value: GalleryCategory | 'ALL'; label: string }> = [
   { value: 'ALL', label: 'All' },
@@ -86,7 +87,7 @@ export function GalleryClient({ images }: GalleryClientProps) {
         close={() => setIndex(-1)}
         slides={slides}
         styles={{
-          container: { backgroundColor: 'rgba(0,0,0,0.95)' },
+          container: { backgroundColor: `${brand.bg}F2` },
         }}
       />
 

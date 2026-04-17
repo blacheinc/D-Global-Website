@@ -2,6 +2,17 @@
 @tailwind components;
 @tailwind utilities;
 
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 @layer base {
   :root {
     --bg: 0 0% 0%;
@@ -13,7 +24,6 @@
     --fg: 0 0% 100%;
     --muted: 0 0% 70.2%;
     --border: 0 0% 18%;
-    --radius: 0.75rem;
   }
 
   * {
@@ -48,10 +58,6 @@
     outline: 2px solid hsl(var(--accent));
     outline-offset: 2px;
   }
-
-  /* Hide default scrollbar in carousels */
-  .no-scrollbar::-webkit-scrollbar { display: none; }
-  .no-scrollbar { scrollbar-width: none; }
 }
 
 @layer components {
@@ -99,14 +105,6 @@
     box-shadow:
       0 16px 40px rgba(0, 0, 0, 0.55),
       0 0 0 1px hsl(var(--accent) / 0.35);
-  }
-
-  .text-balance {
-    text-wrap: balance;
-  }
-
-  .mask-fade-b {
-    mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
   }
 
   .gradient-radial-red {

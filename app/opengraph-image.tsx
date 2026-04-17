@@ -1,5 +1,6 @@
 import { ImageResponse } from 'next/og';
 import { site } from '@/lib/site';
+import { brand } from '@/lib/brand';
 
 export const runtime = 'edge';
 export const alt = `${site.name} — ${site.tagline}`;
@@ -17,9 +18,8 @@ export default function OpenGraphImage() {
           flexDirection: 'column',
           justifyContent: 'flex-end',
           padding: '72px',
-          color: '#FFFFFF',
-          background:
-            'radial-gradient(ellipse 80% 60% at 50% 0%, rgba(192,0,0,0.45), transparent 60%), linear-gradient(180deg, #000000 0%, #000000 60%, #0a0000 100%)',
+          color: brand.fg,
+          background: `radial-gradient(ellipse 80% 60% at 50% 0%, ${brand.accent}73, transparent 60%), linear-gradient(180deg, ${brand.bg} 0%, ${brand.bg} 60%, #0a0000 100%)`,
           fontFamily: 'sans-serif',
         }}
       >
@@ -33,12 +33,12 @@ export default function OpenGraphImage() {
             gap: 16,
             letterSpacing: 6,
             fontSize: 22,
-            color: '#C00000',
+            color: brand.accent,
             textTransform: 'uppercase',
             fontWeight: 600,
           }}
         >
-          <div style={{ width: 40, height: 2, background: '#C00000' }} />
+          <div style={{ width: 40, height: 2, background: brand.accent }} />
           Accra · Nightlife
         </div>
 
@@ -58,7 +58,7 @@ export default function OpenGraphImage() {
           style={{
             marginTop: 24,
             fontSize: 40,
-            color: '#B3B3B3',
+            color: brand.muted,
             fontWeight: 400,
             maxWidth: 900,
           }}
@@ -74,7 +74,7 @@ export default function OpenGraphImage() {
             display: 'flex',
             alignItems: 'center',
             fontSize: 20,
-            color: '#B3B3B3',
+            color: brand.muted,
             letterSpacing: 4,
             textTransform: 'uppercase',
           }}
@@ -86,7 +86,7 @@ export default function OpenGraphImage() {
           style={{
             position: 'absolute',
             inset: 0,
-            border: '2px solid rgba(192,0,0,0.25)',
+            border: `2px solid ${brand.accent}40`,
             margin: 48,
             borderRadius: 24,
             pointerEvents: 'none',
