@@ -22,13 +22,19 @@ export default async function ArtistsPage() {
         </p>
       </div>
 
-      <div className="mt-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {artists.map((a, i) => (
-          <Reveal key={a.id} delay={i * 0.05}>
-            <ArtistCard artist={a} />
-          </Reveal>
-        ))}
-      </div>
+      {artists.length === 0 ? (
+        <div className="mt-12 rounded-2xl border border-white/10 bg-surface p-12 text-center">
+          <p className="text-muted">The roster is being finalised. Check back soon.</p>
+        </div>
+      ) : (
+        <div className="mt-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {artists.map((a, i) => (
+            <Reveal key={a.id} delay={i * 0.05}>
+              <ArtistCard artist={a} />
+            </Reveal>
+          ))}
+        </div>
+      )}
     </section>
   );
 }

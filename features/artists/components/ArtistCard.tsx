@@ -17,13 +17,14 @@ export function ArtistCard({ artist }: ArtistCardProps) {
         {artist.heroImage ? (
           <Image
             src={artist.heroImage}
-            alt={artist.stageName}
+            alt=""
+            aria-hidden
             fill
             sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
             className="object-cover transition-transform duration-700 group-hover:scale-110"
           />
         ) : (
-          <div className="h-full w-full grid place-items-center bg-elevated text-muted">
+          <div aria-hidden className="h-full w-full grid place-items-center bg-elevated text-muted">
             <span className="font-display text-3xl">{artist.stageName.charAt(0)}</span>
           </div>
         )}

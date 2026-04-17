@@ -47,7 +47,8 @@ export default async function ArtistDetailPage({
         {artist.heroImage && (
           <Image
             src={artist.heroImage}
-            alt={artist.stageName}
+            alt=""
+            aria-hidden
             fill
             priority
             sizes="100vw"
@@ -66,7 +67,7 @@ export default async function ArtistDetailPage({
                 rel="noopener noreferrer"
                 className="inline-flex h-10 items-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 text-sm hover:bg-white/10"
               >
-                <Instagram className="h-4 w-4" />
+                <Instagram aria-hidden className="h-4 w-4" />
                 @{artist.instagram}
               </a>
             )}
@@ -77,7 +78,7 @@ export default async function ArtistDetailPage({
                 rel="noopener noreferrer"
                 className="inline-flex h-10 items-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 text-sm hover:bg-white/10"
               >
-                <Twitter className="h-4 w-4" />
+                <Twitter aria-hidden className="h-4 w-4" />
                 @{artist.twitter}
               </a>
             )}
@@ -114,7 +115,14 @@ export default async function ArtistDetailPage({
                     className="group flex gap-4 rounded-2xl border border-white/10 bg-surface p-4 card-lift"
                   >
                     <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg">
-                      <Image src={r.coverImage} alt={r.title} fill sizes="80px" className="object-cover" />
+                      <Image
+                        src={r.coverImage}
+                        alt=""
+                        aria-hidden
+                        fill
+                        sizes="80px"
+                        className="object-cover"
+                      />
                     </div>
                     <div className="min-w-0">
                       <Badge tone="accent">{r.kind}</Badge>
@@ -140,7 +148,7 @@ export default async function ArtistDetailPage({
                         href={`/events/${slot.event.slug}`}
                         className="flex gap-3 items-start hover:text-accent"
                       >
-                        <Calendar className="h-4 w-4 mt-1 text-accent shrink-0" />
+                        <Calendar aria-hidden className="h-4 w-4 mt-1 text-accent shrink-0" />
                         <div>
                           <p className="font-medium">{slot.event.title}</p>
                           <p className="text-xs text-muted">

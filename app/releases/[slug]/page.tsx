@@ -57,7 +57,8 @@ export default async function ReleaseDetailPage({
         <div className="relative aspect-square overflow-hidden rounded-2xl border border-white/5">
           <Image
             src={release.coverImage}
-            alt={release.title}
+            alt=""
+            aria-hidden
             fill
             priority
             sizes="(min-width: 768px) 360px, 100vw"

@@ -48,7 +48,8 @@ export function ArtistCarousel({ artists }: ArtistCarouselProps) {
                 {a.heroImage ? (
                   <Image
                     src={a.heroImage}
-                    alt={a.stageName}
+                    alt=""
+                    aria-hidden
                     fill
                     sizes="320px"
                     className="object-cover transition-transform duration-700 group-hover:scale-110"
@@ -73,7 +74,7 @@ export function ArtistCarousel({ artists }: ArtistCarouselProps) {
           disabled={!canPrev}
           className="grid h-11 w-11 place-items-center rounded-full border border-white/10 bg-white/5 hover:bg-white/10 disabled:opacity-40"
         >
-          <ChevronLeft className="h-5 w-5" />
+          <ChevronLeft aria-hidden className="h-5 w-5" />
         </button>
         <button
           type="button"
@@ -82,7 +83,7 @@ export function ArtistCarousel({ artists }: ArtistCarouselProps) {
           disabled={!canNext}
           className="grid h-11 w-11 place-items-center rounded-full border border-white/10 bg-white/5 hover:bg-white/10 disabled:opacity-40"
         >
-          <ChevronRight className="h-5 w-5" />
+          <ChevronRight aria-hidden className="h-5 w-5" />
         </button>
       </div>
     </div>

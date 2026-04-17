@@ -20,13 +20,19 @@ export default async function ReleasesPage() {
         </p>
       </div>
 
-      <div className="mt-12 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
-        {releases.map((r, i) => (
-          <Reveal key={r.id} delay={i * 0.05}>
-            <ReleaseCard release={r} />
-          </Reveal>
-        ))}
-      </div>
+      {releases.length === 0 ? (
+        <div className="mt-12 rounded-2xl border border-white/10 bg-surface p-12 text-center">
+          <p className="text-muted">No releases yet. The catalog drops soon.</p>
+        </div>
+      ) : (
+        <div className="mt-12 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+          {releases.map((r, i) => (
+            <Reveal key={r.id} delay={i * 0.05}>
+              <ReleaseCard release={r} />
+            </Reveal>
+          ))}
+        </div>
+      )}
     </section>
   );
 }

@@ -1,4 +1,5 @@
 import 'server-only';
+import { cache } from 'react';
 import { db } from '@/server/db';
 
 export async function getFeaturedArtists({ take = 8 }: { take?: number } = {}) {
@@ -16,7 +17,9 @@ export async function listArtists() {
   });
 }
 
-export async function getArtistBySlug(slug: string) {
+// `cache()` de-duplicates within a single request, so `generateMetadata`
+// and the page body share one DB round-trip.
+export const getArtistBySlug = cache(async (slug: string) => {
   return db.artist.findUnique({
     where: { slug },
     include: {
@@ -30,7 +33,7 @@ export async function getArtistBySlug(slug: string) {
       },
     },
   });
-}
+});
 
 export async function getAllArtistSlugs() {
   const artists = await db.artist.findMany({ select: { slug: true } });
