@@ -42,11 +42,20 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true, idempotent: true });
     }
     if (payload.data.amount !== order.totalMinor) {
+      // Mark the order failed for ops review, but ACK the webhook with 200.
+      // Returning a non-2xx here would trigger Paystack's exponential-backoff
+      // retry loop, and every retry would re-detect the same mismatch — a
+      // retry storm. The mismatch is captured in paystackPayload for ops.
       await db.order.update({
         where: { id: order.id },
         data: { status: 'FAILED', paystackPayload: payload as unknown as object },
       });
-      return NextResponse.json({ error: 'Amount mismatch' }, { status: 400 });
+      console.error('[paystack webhook] amount mismatch', {
+        reference: payload.data.reference,
+        expected: order.totalMinor,
+        received: payload.data.amount,
+      });
+      return NextResponse.json({ ok: true, ignored: 'amount mismatch' });
     }
 
     await db.$transaction([
