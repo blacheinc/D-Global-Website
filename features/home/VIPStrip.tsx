@@ -10,6 +10,7 @@ export async function VIPStrip() {
     where: { active: true },
     orderBy: { priceMinor: 'asc' },
   });
+  if (packages.length === 0) return null;
 
   return (
     <section className="relative overflow-hidden">
@@ -33,7 +34,7 @@ export async function VIPStrip() {
             </div>
             <Button asChild variant="primary" size="lg">
               <Link href="/bookings">
-                <Wine className="h-4 w-4" /> Reserve a Table
+                <Wine aria-hidden className="h-4 w-4" /> Reserve a Table
               </Link>
             </Button>
           </div>
@@ -60,9 +61,10 @@ export async function VIPStrip() {
                 </ul>
                 <Link
                   href={`/bookings?pkg=${pkg.tier}`}
-                  className="mt-6 inline-flex items-center text-sm text-foreground group-hover:text-accent transition-colors"
+                  className="mt-6 inline-flex items-center gap-1.5 text-sm text-foreground group-hover:text-accent transition-colors"
                 >
-                  Reserve {pkg.name} →
+                  Reserve {pkg.name}
+                  <span aria-hidden>→</span>
                 </Link>
               </div>
             </Reveal>

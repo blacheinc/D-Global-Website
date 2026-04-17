@@ -25,7 +25,7 @@ export async function ArtistCarouselSection() {
             href="/artists"
             className="inline-flex items-center gap-2 text-sm text-accent hover:text-accent-hot"
           >
-            All artists <ArrowRight className="h-4 w-4" />
+            All artists <ArrowRight aria-hidden className="h-4 w-4" />
           </Link>
         </div>
       </Reveal>

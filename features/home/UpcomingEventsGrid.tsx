@@ -22,7 +22,7 @@ export async function UpcomingEventsGrid() {
             href="/events"
             className="inline-flex items-center gap-2 text-sm text-accent hover:text-accent-hot"
           >
-            See all events <ArrowRight className="h-4 w-4" />
+            See all events <ArrowRight aria-hidden className="h-4 w-4" />
           </Link>
         </div>
       </Reveal>

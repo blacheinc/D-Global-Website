@@ -36,6 +36,8 @@ export function VideoHero() {
 
       <video
         ref={videoRef}
+        aria-hidden
+        tabIndex={-1}
         className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-1000 ${
           videoReady ? 'opacity-60' : 'opacity-0'
         }`}
@@ -72,7 +74,7 @@ export function VideoHero() {
           <div className="mt-8 flex flex-wrap gap-3">
             <Button asChild variant="primary" size="lg">
               <Link href="/events">
-                <Ticket className="h-4 w-4" /> Get Tickets
+                <Ticket aria-hidden className="h-4 w-4" /> Get Tickets
               </Link>
             </Button>
             <Button asChild variant="ghost" size="lg">
@@ -81,14 +83,17 @@ export function VideoHero() {
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                <Wine className="h-4 w-4" /> Book a Table
+                <Wine aria-hidden className="h-4 w-4" /> Book a Table
               </a>
             </Button>
           </div>
         </motion.div>
       </div>
 
-      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 hidden md:flex flex-col items-center gap-2 text-muted/60 z-10">
+      <div
+        aria-hidden
+        className="absolute bottom-6 left-1/2 -translate-x-1/2 hidden md:flex flex-col items-center gap-2 text-muted/60 z-10"
+      >
         <span className="text-[10px] uppercase tracking-[0.3em]">Scroll</span>
         <motion.span
           animate={prefersReduced ? {} : { y: [0, 6, 0] }}

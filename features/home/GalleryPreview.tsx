@@ -24,7 +24,7 @@ export async function GalleryPreview() {
             href="/gallery"
             className="inline-flex items-center gap-2 text-sm text-accent hover:text-accent-hot"
           >
-            Full gallery <ArrowRight className="h-4 w-4" />
+            Full gallery <ArrowRight aria-hidden className="h-4 w-4" />
           </Link>
         </div>
       </Reveal>
