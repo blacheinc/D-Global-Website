@@ -9,8 +9,12 @@ import {
 
 const db = new PrismaClient();
 
+// Anchor all date math to a single "now" so date offsets are consistent
+// across the run, even if script execution straddles midnight.
+const scriptStart = new Date();
+
 const daysFromNow = (d: number) => {
-  const date = new Date();
+  const date = new Date(scriptStart);
   date.setDate(date.getDate() + d);
   date.setHours(22, 0, 0, 0);
   return date;
@@ -193,6 +197,7 @@ async function main() {
     },
   });
 
+  const labsStart = daysFromNow(14);
   const accraLabs = await db.event.create({
     data: {
       slug: 'accra-labs-vol-07',
@@ -200,9 +205,9 @@ async function main() {
       subtitle: 'Afrobeats × Amapiano × Future',
       description:
         'The seventh edition of the city\'s most anticipated underground series. A full-spectrum night of afrobeats, amapiano, and future-sound experiments from D-Global\'s resident roster and a special-guest headliner.',
-      startsAt: daysFromNow(14),
+      startsAt: labsStart,
       endsAt: daysFromNow(15),
-      doorsAt: new Date(daysFromNow(14).getTime() - 2 * 60 * 60 * 1000),
+      doorsAt: new Date(labsStart.getTime() - 2 * 60 * 60 * 1000),
       venueName: 'The Boulevard',
       venueCity: 'Accra',
       venueAddress: 'Airport Residential, Accra',
@@ -251,6 +256,7 @@ async function main() {
     },
   });
 
+  const blackRoomStart = daysFromNow(28);
   await db.event.create({
     data: {
       slug: 'black-room-sessions',
@@ -258,8 +264,8 @@ async function main() {
       subtitle: 'Intimate listening. Full system.',
       description:
         'A stripped-back, listening-first evening in the Black Room. Seated capacity only, D-Global records on rotation, the best system in the country.',
-      startsAt: daysFromNow(28),
-      doorsAt: new Date(daysFromNow(28).getTime() - 1 * 60 * 60 * 1000),
+      startsAt: blackRoomStart,
+      doorsAt: new Date(blackRoomStart.getTime() - 1 * 60 * 60 * 1000),
       venueName: 'D-Global HQ',
       venueCity: 'Accra',
       venueAddress: 'East Legon, Accra',

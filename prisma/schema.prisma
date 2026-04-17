@@ -82,31 +82,32 @@ model User {
 }
 
 model Event {
-  id          String       @id @default(cuid())
-  slug        String       @unique
-  title       String
-  subtitle    String?
-  description String
-  startsAt    DateTime
-  endsAt      DateTime?
-  doorsAt     DateTime?
-  venueName   String
-  venueCity   String       @default("Accra")
-  venueAddress String?
-  venueMapUrl String?
-  latitude    Float?
-  longitude   Float?
-  heroImage   String
-  gallery     String[]     @default([])
-  genre       String[]     @default([])
-  status      EventStatus  @default(DRAFT)
-  featured    Boolean      @default(false)
-  ticketTypes TicketType[]
-  lineup      LineupSlot[]
-  bookings    Booking[]
-  orders      Order[]
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  id            String         @id @default(cuid())
+  slug          String         @unique
+  title         String
+  subtitle      String?
+  description   String
+  startsAt      DateTime
+  endsAt        DateTime?
+  doorsAt       DateTime?
+  venueName     String
+  venueCity     String         @default("Accra")
+  venueAddress  String?
+  venueMapUrl   String?
+  latitude      Float?
+  longitude     Float?
+  heroImage     String
+  gallery       String[]       @default([])
+  genre         String[]       @default([])
+  status        EventStatus    @default(DRAFT)
+  featured      Boolean        @default(false)
+  ticketTypes   TicketType[]
+  lineup        LineupSlot[]
+  bookings      Booking[]
+  orders        Order[]
+  galleryImages GalleryImage[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 
   @@index([startsAt])
   @@index([status, featured, startsAt])
@@ -146,6 +147,7 @@ model LineupSlot {
   order       Int       @default(0)
 
   @@index([eventId, order])
+  @@index([artistId])
 }
 
 model Package {
@@ -205,6 +207,7 @@ model Order {
   paystackPayload Json?
   items           OrderItem[]
   createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
   paidAt          DateTime?
 
   @@index([buyerEmail])
@@ -283,6 +286,7 @@ model GalleryImage {
   caption   String?
   category  GalleryCategory @default(EVENTS)
   eventId   String?
+  event     Event?          @relation(fields: [eventId], references: [id], onDelete: SetNull)
   featured  Boolean         @default(false)
   order     Int             @default(0)
   createdAt DateTime        @default(now())
