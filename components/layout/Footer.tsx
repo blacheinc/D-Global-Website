@@ -20,12 +20,13 @@ export function Footer() {
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 text-sm text-accent hover:text-accent-hot"
             >
-              Chat on WhatsApp →
+              Chat on WhatsApp
+              <span aria-hidden>→</span>
             </a>
           </div>
 
           <div>
-            <h4 className="text-xs uppercase tracking-[0.22em] text-muted mb-4">Explore</h4>
+            <h3 className="text-xs uppercase tracking-[0.22em] text-muted mb-4">Explore</h3>
             <ul className="space-y-3">
               {site.nav.map((item) => (
                 <li key={item.href}>
@@ -38,7 +39,7 @@ export function Footer() {
           </div>
 
           <div>
-            <h4 className="text-xs uppercase tracking-[0.22em] text-muted mb-4">Follow</h4>
+            <h3 className="text-xs uppercase tracking-[0.22em] text-muted mb-4">Follow</h3>
             <ul className="space-y-3">
               <li>
                 <a href={site.socials.instagram} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-sm text-foreground/80 hover:text-foreground">
