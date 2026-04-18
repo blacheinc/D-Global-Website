@@ -186,9 +186,25 @@ const schema = z
     }
   });
 
+// Tolerant resolver for NEXT_PUBLIC_SITE_URL:
+//   1. If it's set with a scheme, use it.
+//   2. If it's set as a bare hostname (a pitfall when pasting a Vercel
+//      URL from the dashboard), prepend https://.
+//   3. If it's unset and we're building on Vercel, fall back to the
+//      per-deployment VERCEL_URL that Vercel auto-populates — this is
+//      also schemeless, so normalize the same way. Previews and
+//      production deploys both build without an explicit env var.
+// Returning undefined lets the zod .default(FALLBACK_SITE_URL) fire in
+// dev, and the production refine below catches a still-missing value.
+function resolveSiteUrl(raw: string | undefined): string | undefined {
+  const candidate = raw || process.env.VERCEL_URL;
+  if (!candidate) return undefined;
+  return /^https?:\/\//.test(candidate) ? candidate : `https://${candidate}`;
+}
+
 const parsed = schema.safeParse({
   DATABASE_URL: process.env.DATABASE_URL,
-  NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL,
+  NEXT_PUBLIC_SITE_URL: resolveSiteUrl(process.env.NEXT_PUBLIC_SITE_URL),
   NEXT_PUBLIC_WHATSAPP_NUMBER: process.env.NEXT_PUBLIC_WHATSAPP_NUMBER,
   PAYSTACK_MODE: process.env.PAYSTACK_MODE,
   PAYSTACK_SECRET_KEY: process.env.PAYSTACK_SECRET_KEY,
