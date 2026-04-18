@@ -6,7 +6,7 @@ import { withSentryConfig } from '@sentry/nextjs';
 // images. Tightening this further later (e.g. nonces for inline scripts)
 // is straightforward; loosening is a regression.
 //
-// `'unsafe-inline'` for script-src is required by next/script and the
+// `'unsafe-inline'` for script-src is required by next/font and the
 // Next.js dev runtime; pair it with strict-dynamic + nonces in a future
 // pass once we audit every inline tag.
 //
@@ -14,7 +14,7 @@ import { withSentryConfig } from '@sentry/nextjs';
 // below in withSentryConfig), which is same-origin and covered by
 // connect-src 'self'. The *.ingest.sentry.io entry is the fallback path
 // the SDK uses if the tunnel is unreachable on first init.
-const csp = [
+const cspDirectives = [
   "default-src 'self'",
   "base-uri 'self'",
   "object-src 'none'",
@@ -24,13 +24,29 @@ const csp = [
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self' data:",
   "img-src 'self' data: blob: https://i.scdn.co https://assets.audiomack.com https://res.cloudinary.com https://images.unsplash.com https://*.googleapis.com https://*.gstatic.com",
-  "media-src 'self' https://res.cloudinary.com",
+  "media-src 'self'",
   "connect-src 'self' https://api.paystack.co https://checkout.paystack.com https://plausible.io https://*.sentry.io https://*.ingest.sentry.io",
   "frame-src 'self' https://open.spotify.com https://embed.audiomack.com https://www.google.com https://www.youtube.com https://www.youtube-nocookie.com https://checkout.paystack.com https://standard.paystack.co",
   "worker-src 'self' blob:",
   "manifest-src 'self'",
   "upgrade-insecure-requests",
-].join('; ');
+  // Browsers POST violations here. The legacy directive (report-uri) is
+  // still the most widely supported; Reporting API (report-to) is wired
+  // alongside via the Reporting-Endpoints header below.
+  'report-uri /api/csp-report',
+  "report-to csp-endpoint",
+];
+const csp = cspDirectives.join('; ');
+
+// Report-Only mode lets us roll out a new CSP without breaking the site.
+// Browsers evaluate the policy and POST violations to /api/csp-report but
+// don't actually block anything. Use CSP_REPORT_ONLY=1 when introducing a
+// tightening change (e.g. removing 'unsafe-inline'), watch Sentry for a
+// few days, then flip back to enforcing.
+const cspReportOnly = process.env.CSP_REPORT_ONLY === '1';
+const cspHeaderName = cspReportOnly
+  ? 'Content-Security-Policy-Report-Only'
+  : 'Content-Security-Policy';
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -70,7 +86,15 @@ const nextConfig = {
         key: 'Strict-Transport-Security',
         value: 'max-age=31536000; includeSubDomains',
       });
-      baseHeaders.push({ key: 'Content-Security-Policy', value: csp });
+      baseHeaders.push({ key: cspHeaderName, value: csp });
+      // Reporting API endpoint registration. Browsers that support
+      // report-to read this and route violations of the named group to
+      // the URL. max_age is one day — short enough that policy changes
+      // propagate quickly, long enough to survive a session.
+      baseHeaders.push({
+        key: 'Reporting-Endpoints',
+        value: 'csp-endpoint="/api/csp-report"',
+      });
     }
     return [{ source: '/:path*', headers: baseHeaders }];
   },
