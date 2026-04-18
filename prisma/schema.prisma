@@ -296,23 +296,61 @@ model OrderItem {
 }
 
 model Artist {
-  id          String       @id @default(cuid())
-  slug        String       @unique
-  stageName   String
-  bio         String?
-  avatar      String?
-  heroImage   String?
-  spotifyId   String?
-  audiomackId String?
-  instagram   String?
-  twitter     String?
-  featured    Boolean      @default(false)
-  releases    Release[]
-  lineupSlots LineupSlot[]
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  id              String           @id @default(cuid())
+  slug            String           @unique
+  stageName       String
+  bio             String?
+  avatar          String?
+  heroImage       String?
+  spotifyId       String?
+  audiomackId     String?
+  instagram       String?
+  twitter         String?
+  featured        Boolean          @default(false)
+  releases        Release[]
+  lineupSlots     LineupSlot[]
+  artistBookings  ArtistBooking[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 
   @@index([featured])
+}
+
+// Label-side artist-booking requests. Distinct from `Booking` (which is
+// the VIP-table/package flow). Fields are the minimum a label needs to
+// quote: who wants the artist, when, where, for what, and how to reach
+// them. Budget is optional because serious inbound often wants to chat
+// before quoting a number.
+enum ArtistBookingStatus {
+  PENDING
+  REVIEWING
+  CONFIRMED
+  DECLINED
+  CANCELLED
+}
+
+model ArtistBooking {
+  id              String              @id @default(cuid())
+  code            String              @unique @default(cuid())
+  artistId        String
+  artist          Artist              @relation(fields: [artistId], references: [id])
+  requesterName   String
+  requesterEmail  String
+  requesterPhone  String
+  company         String?
+  eventDate       DateTime
+  venueName       String
+  city            String
+  country         String              @default("Ghana")
+  budgetMinor     Int?
+  currency        String              @default("GHS")
+  notes           String?
+  status          ArtistBookingStatus @default(PENDING)
+  requestedAt     DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  @@index([artistId, status])
+  @@index([status, requestedAt])
 }
 
 model Release {

@@ -4,9 +4,8 @@ import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { motion, useReducedMotion } from 'framer-motion';
-import { Ticket, Wine } from 'lucide-react';
+import { Disc3, Headphones } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import { buildWaLink } from '@/lib/whatsapp';
 
 export function VideoHero() {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -68,28 +67,25 @@ export function VideoHero() {
           transition={{ duration: 0.9, ease: [0.2, 0.7, 0.2, 1] }}
           className="max-w-4xl"
         >
-          <p className="eyebrow">Accra · Nightlife</p>
+          <p className="eyebrow">Accra · Records</p>
           <h1 className="mt-5 font-display text-display-2xl text-balance">
-            Step <span className="text-accent">inside</span> the night.
+            The <span className="text-accent">sound</span> of a generation.
           </h1>
           <p className="mt-5 text-lg md:text-xl text-muted max-w-xl leading-relaxed">
-            Events, VIP tables, and the sound of a generation. D-Global is where the city comes
-            alive after dark.
+            D-Global Records is the label shaping West Africa's next wave — afro-electronic, alté,
+            and amapiano artists with a cult following at home and a passport already stamped.
+            Book one of ours. Hear the catalogue.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Button asChild variant="primary" size="lg">
-              <Link href="/events">
-                <Ticket aria-hidden className="h-4 w-4" /> Get Tickets
+              <Link href="/artists">
+                <Disc3 aria-hidden className="h-4 w-4" /> Book an artist
               </Link>
             </Button>
             <Button asChild variant="ghost" size="lg">
-              <a
-                href={buildWaLink('Hi D-Global, I want to book a VIP table.')}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <Wine aria-hidden className="h-4 w-4" /> Book a Table
-              </a>
+              <Link href="/releases">
+                <Headphones aria-hidden className="h-4 w-4" /> Hear the catalogue
+              </Link>
             </Button>
           </div>
         </motion.div>

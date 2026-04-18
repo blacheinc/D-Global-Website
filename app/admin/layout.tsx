@@ -28,6 +28,7 @@ const NAV: ReadonlyArray<AdminNavItem> = [
   { href: '/admin/packages', label: 'Packages' },
   { href: '/admin/gallery', label: 'Gallery' },
   { href: '/admin/bookings', label: 'Bookings' },
+  { href: '/admin/artist-bookings', label: 'Artist bookings' },
   { href: '/admin/orders', label: 'Orders' },
   { href: '/admin/push', label: 'Push' },
 ];

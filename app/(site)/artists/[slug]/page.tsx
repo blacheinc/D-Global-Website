@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation';
 import { Instagram, Twitter, Calendar } from 'lucide-react';
 import { getArtistBySlug, getAllArtistSlugs } from '@/features/artists/queries';
 import { SpotifyEmbed } from '@/features/artists/components/SpotifyEmbed';
+import { ArtistBookingForm } from '@/features/artistBookings/components/ArtistBookingForm';
 import { Badge } from '@/components/ui/Badge';
 import { formatEventDate } from '@/lib/formatDate';
 
@@ -57,7 +58,13 @@ export default async function ArtistDetailPage({
         <div className="container container-px absolute inset-x-0 bottom-0 pb-10 md:pb-16">
           <p className="eyebrow">Artist</p>
           <h1 className="mt-3 font-display text-display-2xl text-balance">{artist.stageName}</h1>
-          <div className="mt-4 flex gap-3">
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <a
+              href="#book"
+              className="inline-flex h-10 items-center gap-2 rounded-full bg-accent px-4 text-sm font-medium text-white hover:bg-accent-hot"
+            >
+              Book this artist
+            </a>
             {artist.instagram && (
               <a
                 href={`https://instagram.com/${artist.instagram}`}
@@ -161,6 +168,26 @@ export default async function ArtistDetailPage({
             </div>
           )}
         </aside>
+      </section>
+
+      <section
+        id="book"
+        aria-labelledby="book-title"
+        className="border-t border-white/5 bg-surface/30"
+      >
+        <div className="container container-px py-14 md:py-20 max-w-3xl">
+          <p className="eyebrow">Booking</p>
+          <h2 id="book-title" className="mt-3 font-display text-3xl md:text-4xl">
+            Book {artist.stageName}
+          </h2>
+          <p className="mt-3 text-sm text-muted max-w-xl">
+            Festival, brand activation, private event — tell us the shape of the show and we'll
+            come back with availability and a quote.
+          </p>
+          <div className="mt-10">
+            <ArtistBookingForm artistId={artist.id} artistName={artist.stageName} />
+          </div>
+        </div>
       </section>
     </article>
   );
