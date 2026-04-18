@@ -22,6 +22,10 @@ export const metadata: Metadata = {
 const NAV: ReadonlyArray<{ href: string; label: string }> = [
   { href: '/admin', label: 'Overview' },
   { href: '/admin/events', label: 'Events' },
+  { href: '/admin/artists', label: 'Artists' },
+  { href: '/admin/releases', label: 'Releases' },
+  { href: '/admin/packages', label: 'Packages' },
+  { href: '/admin/gallery', label: 'Gallery' },
   { href: '/admin/bookings', label: 'Bookings' },
   { href: '/admin/orders', label: 'Orders' },
   { href: '/admin/push', label: 'Push' },

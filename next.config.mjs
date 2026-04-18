@@ -21,6 +21,25 @@ const plausibleOrigin = (() => {
   }
 })();
 
+// R2's public-read bucket gets served from a Cloudflare domain (either a
+// custom domain bound to the bucket, or pub-<id>.r2.dev). Derive the
+// origin so CSP img-src and next/image's remotePatterns both know where
+// admin-uploaded assets live. Same https-only defensive check as
+// plausibleOrigin — rejects schemes that would silently corrupt the
+// allowlist.
+const r2PublicOrigin = (() => {
+  const url = process.env.R2_PUBLIC_URL;
+  if (!url) return null;
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== 'https:') return null;
+    return parsed.origin;
+  } catch {
+    return null;
+  }
+})();
+const r2PublicHost = r2PublicOrigin ? new URL(r2PublicOrigin).hostname : null;
+
 // Content Security Policy. Allowlist of origins we either load from today
 // or have pre-authorized for the integration families this app ships with
 // (Spotify, Audiomack, YouTube, Google Maps, Paystack, Plausible, Sentry,
@@ -58,7 +77,8 @@ const plausibleOrigin = (() => {
 //                                          redirects — no form submit to
 //                                          Paystack. Kept for future popup.)
 //   img-src                              → used (Spotify/Audiomack/Cloudinary/
-//                                          Unsplash covers + Maps statics)
+//                                          Unsplash covers + Maps statics +
+//                                          R2 public host when R2 is configured)
 //   media-src 'self'                     → used (hero video is same-origin)
 //
 // `'unsafe-inline'` for script-src is required by next/font and the Next.js
@@ -78,7 +98,7 @@ const cspDirectives = [
   `script-src 'self' 'unsafe-inline' https://js.paystack.co ${plausibleOrigin}`,
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self' data:",
-  "img-src 'self' data: blob: https://i.scdn.co https://assets.audiomack.com https://res.cloudinary.com https://images.unsplash.com https://*.googleapis.com https://*.gstatic.com",
+  `img-src 'self' data: blob: https://i.scdn.co https://assets.audiomack.com https://res.cloudinary.com https://images.unsplash.com https://*.googleapis.com https://*.gstatic.com${r2PublicOrigin ? ` ${r2PublicOrigin}` : ''}`,
   "media-src 'self'",
   `connect-src 'self' https://api.paystack.co https://checkout.paystack.com ${plausibleOrigin} https://*.sentry.io https://*.ingest.sentry.io`,
   "frame-src 'self' https://open.spotify.com https://embed.audiomack.com https://www.google.com https://www.youtube.com https://www.youtube-nocookie.com https://checkout.paystack.com https://standard.paystack.co",
@@ -115,6 +135,9 @@ const nextConfig = {
       { protocol: 'https', hostname: 'assets.audiomack.com' },
       { protocol: 'https', hostname: 'res.cloudinary.com' },
       { protocol: 'https', hostname: 'images.unsplash.com' },
+      // R2 public host — derived from R2_PUBLIC_URL at build time. Admin
+      // uploads land here; next/image needs it to optimize them.
+      ...(r2PublicHost ? [{ protocol: 'https', hostname: r2PublicHost }] : []),
     ],
   },
   compiler: {

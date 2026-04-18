@@ -63,6 +63,17 @@ const schema = z
     NEXT_PUBLIC_VAPID_PUBLIC_KEY: z.string().optional(),
     VAPID_PRIVATE_KEY: z.string().optional(),
     VAPID_SUBJECT: z.string().default('mailto:ops@d-global.example'),
+
+    // --- Storage (Cloudflare R2) ---
+    // R2 is S3-compatible. Account ID is the tenant; access keys are the IAM
+    // credentials; bucket is the container; public URL is the CDN domain
+    // (either a custom domain bound to the bucket or pub-xxx.r2.dev).
+    // Uploads go through /api/admin/upload which is admin-only.
+    R2_ACCOUNT_ID: z.string().optional(),
+    R2_ACCESS_KEY_ID: z.string().optional(),
+    R2_SECRET_ACCESS_KEY: z.string().optional(),
+    R2_BUCKET: z.string().optional(),
+    R2_PUBLIC_URL: z.string().url().optional(),
   })
   // Cross-field validation that applies in any environment: if
   // PAYSTACK_MODE=api is selected, the secret key must be set or every
@@ -92,6 +103,24 @@ const schema = z
         code: z.ZodIssueCode.custom,
         path: ['VAPID_PRIVATE_KEY'],
         message: 'NEXT_PUBLIC_VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY must both be set, or neither.',
+      });
+    }
+    // R2 config is all-or-nothing. Partial config would let admin upload
+    // buttons render but crash at upload time with an opaque AWS SDK error.
+    const r2Fields = [
+      val.R2_ACCOUNT_ID,
+      val.R2_ACCESS_KEY_ID,
+      val.R2_SECRET_ACCESS_KEY,
+      val.R2_BUCKET,
+      val.R2_PUBLIC_URL,
+    ];
+    const r2Set = r2Fields.filter(Boolean).length;
+    if (r2Set > 0 && r2Set < r2Fields.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['R2_BUCKET'],
+        message:
+          'R2_* env vars must all be set, or none. Missing one breaks uploads at runtime.',
       });
     }
   })
@@ -177,6 +206,11 @@ const parsed = schema.safeParse({
   NEXT_PUBLIC_VAPID_PUBLIC_KEY: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
   VAPID_PRIVATE_KEY: process.env.VAPID_PRIVATE_KEY,
   VAPID_SUBJECT: process.env.VAPID_SUBJECT,
+  R2_ACCOUNT_ID: process.env.R2_ACCOUNT_ID,
+  R2_ACCESS_KEY_ID: process.env.R2_ACCESS_KEY_ID,
+  R2_SECRET_ACCESS_KEY: process.env.R2_SECRET_ACCESS_KEY,
+  R2_BUCKET: process.env.R2_BUCKET,
+  R2_PUBLIC_URL: process.env.R2_PUBLIC_URL,
 });
 
 if (!parsed.success) {

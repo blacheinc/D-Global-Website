@@ -165,7 +165,8 @@ Every booking flow has a WhatsApp deep-link fallback (`https://wa.me/<number>?te
 | Integration | Status | Notes |
 |---|---|---|
 | **NextAuth (Auth.js v5)** | shipped | Magic-link via Resend, PrismaAdapter, ADMIN_EMAILS allowlist auto-promotes. |
-| **Admin dashboard** | shipped | `/admin` overview + events CRUD + bookings/orders read + push broadcast. Gated by `requireAdmin()`. |
+| **Admin dashboard** | shipped | Full CRUD for events (+ ticket tiers + lineup), artists, releases (+ tracks), VIP packages, gallery. Status updates for bookings and orders. Push broadcast. Gated by `requireAdmin()`. |
+| **Image uploads (Cloudflare R2)** | shipped | Admin-only `/api/admin/upload` → R2 via the S3-compatible API. `<ImageUpload>` component replaces raw URL inputs in every admin form. |
 | **Transactional mail (Resend)** | shipped | `server/mailer.ts` + branded layout; sends order confirmations after webhook commit and magic-link sign-ins. |
 | **Analytics (Plausible)** | shipped | `<PlausibleScript />` opt-in via `NEXT_PUBLIC_PLAUSIBLE_DOMAIN`. `track()` no-ops without it. |
 | **Push notifications** | shipped | VAPID + service worker at `/sw.js`. SubscribeButton in footer; admin broadcast at `/admin/push`. |

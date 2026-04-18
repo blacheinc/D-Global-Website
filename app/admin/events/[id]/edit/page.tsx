@@ -1,6 +1,9 @@
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { db } from '@/server/db';
 import { EventForm } from '@/features/admin/components/EventForm';
+
+export const dynamic = 'force-dynamic';
 
 export default async function AdminEventEditPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -11,6 +14,28 @@ export default async function AdminEventEditPage({ params }: { params: Promise<{
       <header className="mb-8">
         <h1 className="text-3xl font-semibold tracking-tight">Edit event</h1>
         <p className="mt-2 text-sm text-muted">{event.title}</p>
+        <div className="mt-4 flex gap-4 text-xs uppercase tracking-[0.18em]">
+          <Link
+            href={`/admin/events/${id}/tickets`}
+            className="text-accent hover:text-accent-hot"
+          >
+            Ticket tiers →
+          </Link>
+          <Link
+            href={`/admin/events/${id}/lineup`}
+            className="text-accent hover:text-accent-hot"
+          >
+            Lineup →
+          </Link>
+          <Link
+            href={`/events/${event.slug}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-muted hover:text-foreground"
+          >
+            View public ↗
+          </Link>
+        </div>
       </header>
       <EventForm
         initial={{

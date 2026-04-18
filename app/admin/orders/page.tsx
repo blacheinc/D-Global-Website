@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { db } from '@/server/db';
 import { Badge } from '@/components/ui/Badge';
 import { formatEventDateTime } from '@/lib/formatDate';
@@ -38,7 +39,11 @@ export default async function AdminOrdersPage() {
             <tbody className="divide-y divide-white/5">
               {orders.map((o) => (
                 <tr key={o.id} className="bg-bg/50">
-                  <td className="px-4 py-3 font-mono text-xs text-muted">{o.reference}</td>
+                  <td className="px-4 py-3 font-mono text-xs text-muted">
+                    <Link href={`/admin/orders/${o.id}`} className="hover:text-accent">
+                      {o.reference}
+                    </Link>
+                  </td>
                   <td className="px-4 py-3">
                     <div>{o.buyerName}</div>
                     <div className="text-xs text-muted">{o.buyerEmail}</div>

@@ -3,6 +3,7 @@
 import { useActionState } from 'react';
 import { Input, Label, Textarea, FieldError } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
+import { ImageUpload } from '@/components/admin/ImageUpload';
 import { upsertEvent, type EventFormState } from '../eventActions';
 
 type EventInitial = {
@@ -159,8 +160,14 @@ export function EventForm({ initial }: { initial?: EventInitial }) {
       </div>
 
       <div>
-        <Label htmlFor="heroImage">Hero image URL</Label>
-        <Input id="heroImage" name="heroImage" defaultValue={initial?.heroImage} required aria-invalid={!!fe.heroImage} />
+        <Label htmlFor="heroImage">Hero image</Label>
+        <ImageUpload
+          name="heroImage"
+          defaultValue={initial?.heroImage}
+          category="events"
+          required
+          ariaInvalid={!!fe.heroImage}
+        />
         <FieldError>{fe.heroImage?.[0]}</FieldError>
       </div>
 

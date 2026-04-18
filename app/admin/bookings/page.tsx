@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { db } from '@/server/db';
 import { Badge } from '@/components/ui/Badge';
 import { formatEventDateTime } from '@/lib/formatDate';
@@ -38,7 +39,11 @@ export default async function AdminBookingsPage() {
             <tbody className="divide-y divide-white/5">
               {bookings.map((b) => (
                 <tr key={b.id} className="bg-bg/50">
-                  <td className="px-4 py-3 font-mono text-xs text-muted">{b.code.slice(0, 10)}</td>
+                  <td className="px-4 py-3 font-mono text-xs text-muted">
+                    <Link href={`/admin/bookings/${b.id}`} className="hover:text-accent">
+                      {b.code.slice(0, 10)}
+                    </Link>
+                  </td>
                   <td className="px-4 py-3">{b.guestName}</td>
                   <td className="px-4 py-3 text-muted">{b.guestPhone}</td>
                   <td className="px-4 py-3">{b.package.name}</td>
