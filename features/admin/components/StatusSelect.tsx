@@ -1,12 +1,16 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 
 // Generic status-update control used by bookings and orders. Renders a
 // <select> + Save button. Calling code provides the action and the
 // allowed options. We keep it minimal (no useActionState) because the
 // action signature takes (id, formData) which doesn't fit the
 // two-arg (prev, formData) shape useActionState expects.
+//
+// Calls router.refresh() on success so the status badge in the parent
+// page header re-renders with the new value without a manual page reload.
 
 export function StatusSelect<T extends string>({
   current,
@@ -17,6 +21,7 @@ export function StatusSelect<T extends string>({
   options: ReadonlyArray<T>;
   action: (formData: FormData) => Promise<{ ok: boolean; error?: string }>;
 }) {
+  const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -30,12 +35,19 @@ export function StatusSelect<T extends string>({
       return;
     }
     setSaved(true);
+    // Re-fetch the current route so the parent page's server-rendered
+    // Badge reflects the new status. The server action already called
+    // revalidatePath; refresh just makes Next pick it up here too.
+    router.refresh();
   }
 
   return (
     <div className="flex flex-col gap-2">
       <form
-        action={(fd) => startTransition(() => onSubmit(fd))}
+        // Async callback so startTransition tracks the full round-trip
+        // (setPending true → await → setPending false). Without the async
+        // keyword, React wouldn't know to hold `pending` across the await.
+        action={(fd) => startTransition(async () => onSubmit(fd))}
         className="flex items-center gap-3"
       >
         <select

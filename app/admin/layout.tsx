@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { requireAdmin } from '@/server/auth';
 import { signOut } from '@/auth';
 import { site } from '@/lib/site';
+import { AdminNav, type AdminNavItem } from '@/components/admin/AdminNav';
 
 // All /admin routes share this layout. requireAdmin() runs on every
 // request — there's no edge middleware in front because the Email
@@ -19,7 +20,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-const NAV: ReadonlyArray<{ href: string; label: string }> = [
+const NAV: ReadonlyArray<AdminNavItem> = [
   { href: '/admin', label: 'Overview' },
   { href: '/admin/events', label: 'Events' },
   { href: '/admin/artists', label: 'Artists' },
@@ -46,17 +47,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             </Link>
             <p className="mt-1 text-xs uppercase tracking-[0.22em] text-muted">Admin</p>
           </div>
-          <nav className="space-y-1">
-            {NAV.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="block rounded-lg px-3 py-2 text-sm text-muted hover:bg-white/5 hover:text-foreground transition-colors"
-              >
-                {item.label}
-              </Link>
-            ))}
-          </nav>
+          <AdminNav items={NAV} />
           <div className="mt-8 border-t border-white/10 pt-6">
             <p className="text-xs text-muted truncate">{user.email}</p>
             <form

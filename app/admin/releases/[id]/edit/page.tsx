@@ -51,11 +51,11 @@ export default async function AdminReleaseEditPage({
             <table className="w-full text-sm">
               <thead className="bg-surface text-left text-xs uppercase tracking-[0.18em] text-muted">
                 <tr>
-                  <th className="px-4 py-3 font-medium">#</th>
-                  <th className="px-4 py-3 font-medium">Title</th>
-                  <th className="px-4 py-3 font-medium">Duration</th>
-                  <th className="px-4 py-3 font-medium">Spotify</th>
-                  <th className="px-4 py-3 font-medium" />
+                  <th scope="col" className="px-4 py-3 font-medium">#</th>
+                  <th scope="col" className="px-4 py-3 font-medium">Title</th>
+                  <th scope="col" className="px-4 py-3 font-medium">Duration</th>
+                  <th scope="col" className="px-4 py-3 font-medium">Spotify</th>
+                  <th scope="col" className="px-4 py-3 font-medium" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">

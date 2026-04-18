@@ -82,11 +82,11 @@ export default async function AdminOrderDetailPage({
           <table className="w-full text-sm">
             <thead className="bg-surface text-left text-xs uppercase tracking-[0.18em] text-muted">
               <tr>
-                <th className="px-4 py-3 font-medium">Tier</th>
-                <th className="px-4 py-3 font-medium">Qty</th>
-                <th className="px-4 py-3 font-medium">Unit</th>
-                <th className="px-4 py-3 font-medium">Subtotal</th>
-                <th className="px-4 py-3 font-medium">Scanned</th>
+                <th scope="col" className="px-4 py-3 font-medium">Tier</th>
+                <th scope="col" className="px-4 py-3 font-medium">Qty</th>
+                <th scope="col" className="px-4 py-3 font-medium">Unit</th>
+                <th scope="col" className="px-4 py-3 font-medium">Subtotal</th>
+                <th scope="col" className="px-4 py-3 font-medium">Scanned</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">

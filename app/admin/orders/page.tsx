@@ -3,11 +3,23 @@ import { db } from '@/server/db';
 import { Badge } from '@/components/ui/Badge';
 import { formatEventDateTime } from '@/lib/formatDate';
 import { formatPriceMinor } from '@/lib/formatCurrency';
+import { paginate } from '@/lib/pagination';
+import { Pagination } from '@/components/admin/Pagination';
 
-export default async function AdminOrdersPage() {
+const PAGE_SIZE = 50;
+
+export default async function AdminOrdersPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const sp = await searchParams;
+  const total = await db.order.count();
+  const info = paginate(sp.page, total, PAGE_SIZE);
   const orders = await db.order.findMany({
     orderBy: { createdAt: 'desc' },
-    take: 100,
+    skip: info.skip,
+    take: info.take,
     include: {
       event: { select: { title: true } },
       items: { select: { quantity: true } },
@@ -18,7 +30,7 @@ export default async function AdminOrdersPage() {
     <div>
       <header className="mb-8">
         <h1 className="text-3xl font-semibold tracking-tight">Orders</h1>
-        <p className="mt-2 text-sm text-muted">Last 100 ticket orders.</p>
+        <p className="mt-2 text-sm text-muted">{total} total ticket orders.</p>
       </header>
       {orders.length === 0 ? (
         <p className="text-sm text-muted">No orders yet.</p>
@@ -27,13 +39,13 @@ export default async function AdminOrdersPage() {
           <table className="w-full text-sm">
             <thead className="bg-surface text-left text-xs uppercase tracking-[0.18em] text-muted">
               <tr>
-                <th className="px-4 py-3 font-medium">Reference</th>
-                <th className="px-4 py-3 font-medium">Buyer</th>
-                <th className="px-4 py-3 font-medium">Event</th>
-                <th className="px-4 py-3 font-medium">Tickets</th>
-                <th className="px-4 py-3 font-medium">Total</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3 font-medium">Placed</th>
+                <th scope="col" className="px-4 py-3 font-medium">Reference</th>
+                <th scope="col" className="px-4 py-3 font-medium">Buyer</th>
+                <th scope="col" className="px-4 py-3 font-medium">Event</th>
+                <th scope="col" className="px-4 py-3 font-medium">Tickets</th>
+                <th scope="col" className="px-4 py-3 font-medium">Total</th>
+                <th scope="col" className="px-4 py-3 font-medium">Status</th>
+                <th scope="col" className="px-4 py-3 font-medium">Placed</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
@@ -61,6 +73,7 @@ export default async function AdminOrdersPage() {
           </table>
         </div>
       )}
+      <Pagination info={info} basePath="/admin/orders" searchParams={sp} />
     </div>
   );
 }

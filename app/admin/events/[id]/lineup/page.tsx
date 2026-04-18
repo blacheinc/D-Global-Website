@@ -47,12 +47,12 @@ export default async function AdminEventLineupPage({
           <table className="w-full text-sm">
             <thead className="bg-surface text-left text-xs uppercase tracking-[0.18em] text-muted">
               <tr>
-                <th className="px-4 py-3 font-medium">Order</th>
-                <th className="px-4 py-3 font-medium">Name</th>
-                <th className="px-4 py-3 font-medium">Role</th>
-                <th className="px-4 py-3 font-medium">Slot</th>
-                <th className="px-4 py-3 font-medium">Artist</th>
-                <th className="px-4 py-3 font-medium" />
+                <th scope="col" className="px-4 py-3 font-medium">Order</th>
+                <th scope="col" className="px-4 py-3 font-medium">Name</th>
+                <th scope="col" className="px-4 py-3 font-medium">Role</th>
+                <th scope="col" className="px-4 py-3 font-medium">Slot</th>
+                <th scope="col" className="px-4 py-3 font-medium">Artist</th>
+                <th scope="col" className="px-4 py-3 font-medium" />
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">

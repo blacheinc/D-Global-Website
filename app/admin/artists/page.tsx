@@ -3,34 +3,38 @@ import { db } from '@/server/db';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { DeleteArtistButton } from '@/features/admin/components/DeleteArtistButton';
+import { paginate } from '@/lib/pagination';
+import { Pagination } from '@/components/admin/Pagination';
 
-const PAGE_SIZE = 100;
+const PAGE_SIZE = 50;
 
-export default async function AdminArtistsPage() {
-  const [artists, total] = await Promise.all([
-    db.artist.findMany({
-      orderBy: { stageName: 'asc' },
-      take: PAGE_SIZE,
-      select: {
-        id: true,
-        slug: true,
-        stageName: true,
-        featured: true,
-        _count: { select: { releases: true, lineupSlots: true } },
-      },
-    }),
-    db.artist.count(),
-  ]);
-  const clipped = total > artists.length;
+export default async function AdminArtistsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const sp = await searchParams;
+  const total = await db.artist.count();
+  const info = paginate(sp.page, total, PAGE_SIZE);
+  const artists = await db.artist.findMany({
+    orderBy: { stageName: 'asc' },
+    skip: info.skip,
+    take: info.take,
+    select: {
+      id: true,
+      slug: true,
+      stageName: true,
+      featured: true,
+      _count: { select: { releases: true, lineupSlots: true } },
+    },
+  });
 
   return (
     <div>
       <header className="mb-8 flex items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight">Artists</h1>
-          <p className="mt-2 text-sm text-muted">
-            {clipped ? `Showing ${artists.length} of ${total}` : `${total} total`}
-          </p>
+          <p className="mt-2 text-sm text-muted">{total} total</p>
         </div>
         <Button asChild>
           <Link href="/admin/artists/new">New artist</Link>
@@ -43,11 +47,11 @@ export default async function AdminArtistsPage() {
           <table className="w-full text-sm">
             <thead className="bg-surface text-left text-xs uppercase tracking-[0.18em] text-muted">
               <tr>
-                <th className="px-4 py-3 font-medium">Stage name</th>
-                <th className="px-4 py-3 font-medium">Slug</th>
-                <th className="px-4 py-3 font-medium">Releases</th>
-                <th className="px-4 py-3 font-medium">Lineup slots</th>
-                <th className="px-4 py-3 font-medium" />
+                <th scope="col" className="px-4 py-3 font-medium">Stage name</th>
+                <th scope="col" className="px-4 py-3 font-medium">Slug</th>
+                <th scope="col" className="px-4 py-3 font-medium">Releases</th>
+                <th scope="col" className="px-4 py-3 font-medium">Lineup slots</th>
+                <th scope="col" className="px-4 py-3 font-medium" />
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
@@ -71,6 +75,7 @@ export default async function AdminArtistsPage() {
           </table>
         </div>
       )}
+      <Pagination info={info} basePath="/admin/artists" searchParams={sp} />
     </div>
   );
 }

@@ -3,28 +3,32 @@ import { db } from '@/server/db';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { DeleteGalleryButton } from '@/features/admin/components/DeleteGalleryButton';
+import { paginate } from '@/lib/pagination';
+import { Pagination } from '@/components/admin/Pagination';
 
-const PAGE_SIZE = 100;
+const PAGE_SIZE = 48; // 48 keeps the grid tidy across the common breakpoints.
 
-export default async function AdminGalleryPage() {
-  const [images, total] = await Promise.all([
-    db.galleryImage.findMany({
-      orderBy: [{ order: 'asc' }, { createdAt: 'desc' }],
-      take: PAGE_SIZE,
-      include: { event: { select: { title: true } } },
-    }),
-    db.galleryImage.count(),
-  ]);
-  const clipped = total > images.length;
+export default async function AdminGalleryPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const sp = await searchParams;
+  const total = await db.galleryImage.count();
+  const info = paginate(sp.page, total, PAGE_SIZE);
+  const images = await db.galleryImage.findMany({
+    orderBy: [{ order: 'asc' }, { createdAt: 'desc' }],
+    skip: info.skip,
+    take: info.take,
+    include: { event: { select: { title: true } } },
+  });
 
   return (
     <div>
       <header className="mb-8 flex items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight">Gallery</h1>
-          <p className="mt-2 text-sm text-muted">
-            {clipped ? `Showing ${images.length} of ${total}` : `${total} total`}
-          </p>
+          <p className="mt-2 text-sm text-muted">{total} total</p>
         </div>
         <Button asChild>
           <Link href="/admin/gallery/new">Upload image</Link>
@@ -68,6 +72,7 @@ export default async function AdminGalleryPage() {
           ))}
         </div>
       )}
+      <Pagination info={info} basePath="/admin/gallery" searchParams={sp} />
     </div>
   );
 }

@@ -3,44 +3,42 @@ import { db } from '@/server/db';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { formatEventDateTime } from '@/lib/formatDate';
+import { paginate } from '@/lib/pagination';
 import { DeleteEventButton } from '@/features/admin/components/DeleteEventButton';
+import { Pagination } from '@/components/admin/Pagination';
 
-// Match the cap used on /admin/bookings and /admin/orders — keeps the
-// render cheap at any scale; a proper search + pagination UI is a
-// follow-up, but an unbounded findMany would page in every event on a
-// grown-up catalog.
-const EVENTS_PAGE_SIZE = 100;
+const PAGE_SIZE = 50;
 
-export default async function AdminEventsPage() {
-  const [events, total] = await Promise.all([
-    db.event.findMany({
-      orderBy: { startsAt: 'desc' },
-      take: EVENTS_PAGE_SIZE,
-      select: {
-        id: true,
-        slug: true,
-        title: true,
-        startsAt: true,
-        venueName: true,
-        status: true,
-        featured: true,
-        _count: { select: { ticketTypes: true, orders: true } },
-      },
-    }),
-    db.event.count(),
-  ]);
-  const clipped = total > events.length;
+export default async function AdminEventsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const sp = await searchParams;
+  const total = await db.event.count();
+  const info = paginate(sp.page, total, PAGE_SIZE);
+  const events = await db.event.findMany({
+    orderBy: { startsAt: 'desc' },
+    skip: info.skip,
+    take: info.take,
+    select: {
+      id: true,
+      slug: true,
+      title: true,
+      startsAt: true,
+      venueName: true,
+      status: true,
+      featured: true,
+      _count: { select: { ticketTypes: true, orders: true } },
+    },
+  });
 
   return (
     <div>
       <header className="mb-8 flex items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight">Events</h1>
-          <p className="mt-2 text-sm text-muted">
-            {clipped
-              ? `Showing ${events.length} of ${total} — newest first`
-              : `${total} total`}
-          </p>
+          <p className="mt-2 text-sm text-muted">{total} total</p>
         </div>
         <Button asChild>
           <Link href="/admin/events/new">New event</Link>
@@ -54,12 +52,12 @@ export default async function AdminEventsPage() {
           <table className="w-full text-sm">
             <thead className="bg-surface text-left text-xs uppercase tracking-[0.18em] text-muted">
               <tr>
-                <th className="px-4 py-3 font-medium">Title</th>
-                <th className="px-4 py-3 font-medium">Date</th>
-                <th className="px-4 py-3 font-medium">Venue</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3 font-medium">Orders</th>
-                <th className="px-4 py-3 font-medium" />
+                <th scope="col" className="px-4 py-3 font-medium">Title</th>
+                <th scope="col" className="px-4 py-3 font-medium">Date</th>
+                <th scope="col" className="px-4 py-3 font-medium">Venue</th>
+                <th scope="col" className="px-4 py-3 font-medium">Status</th>
+                <th scope="col" className="px-4 py-3 font-medium">Orders</th>
+                <th scope="col" className="px-4 py-3 font-medium" />
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
@@ -84,6 +82,8 @@ export default async function AdminEventsPage() {
           </table>
         </div>
       )}
+
+      <Pagination info={info} basePath="/admin/events" searchParams={sp} />
     </div>
   );
 }

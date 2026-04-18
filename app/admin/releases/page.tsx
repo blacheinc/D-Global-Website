@@ -3,31 +3,35 @@ import { db } from '@/server/db';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { DeleteReleaseButton } from '@/features/admin/components/DeleteReleaseButton';
+import { paginate } from '@/lib/pagination';
+import { Pagination } from '@/components/admin/Pagination';
 
-const PAGE_SIZE = 100;
+const PAGE_SIZE = 50;
 
-export default async function AdminReleasesPage() {
-  const [releases, total] = await Promise.all([
-    db.release.findMany({
-      orderBy: { releasedAt: 'desc' },
-      take: PAGE_SIZE,
-      include: {
-        artist: { select: { stageName: true } },
-        _count: { select: { tracks: true } },
-      },
-    }),
-    db.release.count(),
-  ]);
-  const clipped = total > releases.length;
+export default async function AdminReleasesPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const sp = await searchParams;
+  const total = await db.release.count();
+  const info = paginate(sp.page, total, PAGE_SIZE);
+  const releases = await db.release.findMany({
+    orderBy: { releasedAt: 'desc' },
+    skip: info.skip,
+    take: info.take,
+    include: {
+      artist: { select: { stageName: true } },
+      _count: { select: { tracks: true } },
+    },
+  });
 
   return (
     <div>
       <header className="mb-8 flex items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight">Releases</h1>
-          <p className="mt-2 text-sm text-muted">
-            {clipped ? `Showing ${releases.length} of ${total}` : `${total} total`}
-          </p>
+          <p className="mt-2 text-sm text-muted">{total} total</p>
         </div>
         <Button asChild>
           <Link href="/admin/releases/new">New release</Link>
@@ -40,12 +44,12 @@ export default async function AdminReleasesPage() {
           <table className="w-full text-sm">
             <thead className="bg-surface text-left text-xs uppercase tracking-[0.18em] text-muted">
               <tr>
-                <th className="px-4 py-3 font-medium">Title</th>
-                <th className="px-4 py-3 font-medium">Artist</th>
-                <th className="px-4 py-3 font-medium">Kind</th>
-                <th className="px-4 py-3 font-medium">Released</th>
-                <th className="px-4 py-3 font-medium">Tracks</th>
-                <th className="px-4 py-3 font-medium" />
+                <th scope="col" className="px-4 py-3 font-medium">Title</th>
+                <th scope="col" className="px-4 py-3 font-medium">Artist</th>
+                <th scope="col" className="px-4 py-3 font-medium">Kind</th>
+                <th scope="col" className="px-4 py-3 font-medium">Released</th>
+                <th scope="col" className="px-4 py-3 font-medium">Tracks</th>
+                <th scope="col" className="px-4 py-3 font-medium" />
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
@@ -73,6 +77,7 @@ export default async function AdminReleasesPage() {
           </table>
         </div>
       )}
+      <Pagination info={info} basePath="/admin/releases" searchParams={sp} />
     </div>
   );
 }
