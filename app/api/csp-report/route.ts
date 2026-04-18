@@ -72,19 +72,30 @@ function normalizeModern(envelope: ModernReport): Normalized | null {
   };
 }
 
-function normalize(payload: LegacyReport | ModernReport[] | ModernReport): Normalized[] {
+function normalize(payload: unknown): Normalized[] {
   // Modern Reporting API batches multiple report envelopes per POST.
   // Extract every csp-violation in the batch — losing all-but-first is
   // a bug because a single page can fire many violations at once.
   if (Array.isArray(payload)) {
-    return payload.map(normalizeModern).filter((r): r is Normalized => r !== null);
+    return payload
+      .map((envelope) =>
+        typeof envelope === 'object' && envelope !== null
+          ? normalizeModern(envelope as ModernReport)
+          : null,
+      )
+      .filter((r): r is Normalized => r !== null);
   }
+  // Every branch past here does a property-existence check via `in`, which
+  // throws a TypeError on non-object payloads. Automated scanners probe
+  // report endpoints with junk bodies (strings, nulls, numbers); those
+  // should ACK with 204, not 500.
+  if (typeof payload !== 'object' || payload === null) return [];
   if ('type' in payload) {
-    const single = normalizeModern(payload);
+    const single = normalizeModern(payload as ModernReport);
     return single ? [single] : [];
   }
-  if ('csp-report' in payload && payload['csp-report']) {
-    const r = payload['csp-report'];
+  if ('csp-report' in payload && (payload as LegacyReport)['csp-report']) {
+    const r = (payload as LegacyReport)['csp-report']!;
     return [
       {
         directive: r['effective-directive'] ?? r['violated-directive'] ?? 'unknown',
@@ -113,8 +124,17 @@ export async function POST(req: Request) {
       return new NextResponse(null, { status: 204 });
     }
 
-    const reports = normalize(payload as LegacyReport | ModernReport | ModernReport[]);
+    const reports = normalize(payload);
     for (const report of reports) {
+      // Console first so violations are visible in host logs even when
+      // Sentry is unconfigured (local preview of a CSP change, fork PR
+      // without DSN, etc.). The alternative is silent loss, which defeats
+      // the whole point of having a report endpoint.
+      console.warn('[csp]', report.directive, 'blocked', report.blocked, {
+        document: report.document,
+        disposition: report.disposition,
+        sample: report.sample,
+      });
       Sentry.captureMessage(`[csp] ${report.directive} blocked ${report.blocked}`, {
         level: report.disposition === 'enforce' ? 'warning' : 'info',
         tags: {
