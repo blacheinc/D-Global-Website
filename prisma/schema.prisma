@@ -193,7 +193,13 @@ model TicketType {
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
 
-  @@index([eventId, tier])
+  // One row per (event, tier). The admin CRUD has a pre-check, but
+  // without a DB-level unique constraint two concurrent submissions
+  // can both pass the check and insert duplicates — that would confuse
+  // the public checkout (cheapest-tier lookup is ambiguous) and make
+  // the `sold` counter unreliable. The unique makes the P2002 catch in
+  // upsertTicketType actually reachable and closes the race.
+  @@unique([eventId, tier])
 }
 
 model LineupSlot {
