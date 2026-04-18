@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { db } from '@/server/db';
 import { captureError } from '@/server/observability';
+import { isSameOrigin, rateLimit } from '@/server/rateLimit';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -9,6 +10,21 @@ export const dynamic = 'force-dynamic';
 const schema = z.object({ endpoint: z.string().url().max(1000) });
 
 export async function POST(req: Request) {
+  // Same rationale as /api/push/subscribe: same-origin only, rate-
+  // limited per IP. Unsubscribe is less dangerous than subscribe (the
+  // worst an attacker can do is delete subscription rows they'd have
+  // to know the endpoint of), but consistency + defense-in-depth.
+  if (!isSameOrigin(req)) {
+    return NextResponse.json({ error: 'Cross-origin request rejected' }, { status: 403 });
+  }
+  const rl = rateLimit(req, 'push-unsubscribe', 20, 10 * 60 * 1000);
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: 'Too many attempts. Try again shortly.' },
+      { status: 429, headers: { 'Retry-After': String(rl.retryAfterSec) } },
+    );
+  }
+
   let body: unknown;
   try {
     body = await req.json();

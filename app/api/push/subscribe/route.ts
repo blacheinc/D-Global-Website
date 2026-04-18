@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { db } from '@/server/db';
 import { captureError } from '@/server/observability';
+import { isSameOrigin, rateLimit } from '@/server/rateLimit';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -15,6 +16,26 @@ const subscribeSchema = z.object({
 });
 
 export async function POST(req: Request) {
+  // CSRF defense: this endpoint is only meant to be hit from our own
+  // SubscribeButton (page context) or from the service worker's
+  // pushsubscriptionchange handler (SW context, same origin). Blocking
+  // cross-origin POSTs closes the "visit attacker.com while signed in
+  // and get silently re-subscribed to their VAPID key" hole.
+  if (!isSameOrigin(req)) {
+    return NextResponse.json({ error: 'Cross-origin request rejected' }, { status: 403 });
+  }
+  // 20 subscribe attempts per 10 minutes per IP is well above the
+  // realistic "user clicks, grants perm, SW re-subscribes on rotation"
+  // traffic for a single device, and low enough to blunt a scripted
+  // row-inflation attack on PushSubscription.
+  const rl = rateLimit(req, 'push-subscribe', 20, 10 * 60 * 1000);
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: 'Too many attempts. Try again shortly.' },
+      { status: 429, headers: { 'Retry-After': String(rl.retryAfterSec) } },
+    );
+  }
+
   let body: unknown;
   try {
     body = await req.json();

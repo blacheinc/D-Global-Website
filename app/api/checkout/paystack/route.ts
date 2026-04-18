@@ -5,15 +5,42 @@ import { env } from '@/lib/env';
 import { initializeTransaction } from '@/server/paystack/client';
 import { checkoutSchema } from '@/features/tickets/schema';
 import { captureError } from '@/server/observability';
+import { isSameOrigin, rateLimit } from '@/server/rateLimit';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+
+// How long a PENDING order reserves capacity against a tier's quota.
+// Paystack's redirect → Pay → webhook round-trip is usually seconds,
+// occasionally minutes (bank 3DS flow); 30 minutes covers realistic
+// completions while freeing abandoned carts fast enough that inventory
+// stays honest during a drop.
+const PENDING_TTL_MS = 30 * 60 * 1000;
 
 export async function POST(req: Request) {
   if (env.PAYSTACK_MODE !== 'api') {
     return NextResponse.json(
       { error: 'API checkout is disabled. Set PAYSTACK_MODE=api and configure secret key.' },
       { status: 400 },
+    );
+  }
+
+  // Same-origin gate: checkout creates an Order + hits Paystack; a
+  // cross-origin POST from attacker.com isn't a legitimate flow, and
+  // blocking one closes a low-effort spam vector. Rate limit on top:
+  // 10 init attempts / 5 min / IP is enough for a human retrying a
+  // bank-declined card without being so generous that a script can
+  // flood pending orders and hold quota hostage (PENDING_TTL_MS is 30
+  // minutes, so without a cap a scripted attacker could reserve the
+  // whole inventory for half an hour at near-zero cost).
+  if (!isSameOrigin(req)) {
+    return NextResponse.json({ error: 'Cross-origin request rejected' }, { status: 403 });
+  }
+  const rl = rateLimit(req, 'checkout', 10, 5 * 60 * 1000);
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: 'Too many checkout attempts. Try again shortly.' },
+      { status: 429, headers: { 'Retry-After': String(rl.retryAfterSec) } },
     );
   }
 
@@ -44,46 +71,80 @@ export async function POST(req: Request) {
   });
   if (!event) return NextResponse.json({ error: 'Event not found' }, { status: 404 });
 
-  // Re-price server-side from DB and validate availability per item. Use a
-  // for-loop with early returns rather than throwing inside .map() — throwing
-  // would surface as an uncaught 500, but these are user-correctable input
-  // errors that deserve a 400/409 with a helpful message.
-  let totalMinor = 0;
-  const lineItems: Array<{ ticketTypeId: string; quantity: number; unitPriceMinor: number }> = [];
-  for (const it of items) {
-    const tt = event.ticketTypes.find((t) => t.id === it.ticketTypeId);
-    if (!tt) {
-      return NextResponse.json(
-        { error: `Selected ticket type isn't available for this event.` },
-        { status: 400 },
-      );
-    }
-    if (tt.quota - tt.sold < it.quantity) {
-      return NextResponse.json(
-        { error: `Only ${Math.max(0, tt.quota - tt.sold)} ${tt.name} tickets left.` },
-        { status: 409 },
-      );
-    }
-    totalMinor += tt.priceMinor * it.quantity;
-    lineItems.push({ ticketTypeId: tt.id, quantity: it.quantity, unitPriceMinor: tt.priceMinor });
-  }
-
   const reference = `dg_${randomUUID().replace(/-/g, '')}`;
 
-  let orderId: string;
+  // Re-price server-side from DB and validate availability per item.
+  //
+  // Historical bug: this used to check `quota - sold < qty` against the
+  // event.ticketTypes we already had in memory, then db.order.create()
+  // outside any transaction. Two failure modes:
+  //   (a) `sold` only moves on the Paystack webhook, so N concurrent
+  //       checkouts all read the same pre-payment value, all pass, all
+  //       get redirected to Paystack. Enough of them pay and sold ends
+  //       up > quota — a real oversell under drop-style load.
+  //   (b) Even the pre-check could race with another order creating an
+  //       item for the same tier, since order.create wasn't transactional.
+  //
+  // Fix: count pending-but-unpaid order items in the window against
+  // quota too, and wrap the re-check + order.create in a $transaction
+  // so they serialize within the request. A pending order holds
+  // capacity for PENDING_TTL_MS — long enough for a Paystack redirect
+  // + completion, short enough that an abandoned checkout frees
+  // inventory quickly. Abandoned pending orders past TTL are ignored
+  // here; the availability math already excludes them.
+  type CheckoutOutcome =
+    | { ok: true; orderId: string; totalMinor: number }
+    | { ok: false; status: number; error: string };
+  let outcome: CheckoutOutcome;
   try {
-    const order = await db.order.create({
-      data: {
-        reference,
-        eventId: event.id,
-        buyerName: buyer.name,
-        buyerEmail: buyer.email,
-        buyerPhone: buyer.phone,
-        totalMinor,
-        items: { create: lineItems },
-      },
+    outcome = await db.$transaction(async (tx) => {
+      let totalMinor = 0;
+      const lineItems: Array<{ ticketTypeId: string; quantity: number; unitPriceMinor: number }> =
+        [];
+      for (const it of items) {
+        const tt = event.ticketTypes.find((t) => t.id === it.ticketTypeId);
+        if (!tt) {
+          return {
+            ok: false as const,
+            status: 400,
+            error: "Selected ticket type isn't available for this event.",
+          };
+        }
+        const pending = await tx.orderItem.aggregate({
+          where: {
+            ticketTypeId: tt.id,
+            order: {
+              status: 'PENDING',
+              createdAt: { gt: new Date(Date.now() - PENDING_TTL_MS) },
+            },
+          },
+          _sum: { quantity: true },
+        });
+        const reserved = pending._sum.quantity ?? 0;
+        const available = tt.quota - tt.sold - reserved;
+        if (available < it.quantity) {
+          return {
+            ok: false as const,
+            status: 409,
+            error: `Only ${Math.max(0, available)} ${tt.name} ticket${available === 1 ? '' : 's'} left.`,
+          };
+        }
+        totalMinor += tt.priceMinor * it.quantity;
+        lineItems.push({ ticketTypeId: tt.id, quantity: it.quantity, unitPriceMinor: tt.priceMinor });
+      }
+      const order = await tx.order.create({
+        data: {
+          reference,
+          eventId: event.id,
+          buyerName: buyer.name,
+          buyerEmail: buyer.email,
+          buyerPhone: buyer.phone,
+          totalMinor,
+          items: { create: lineItems },
+        },
+      });
+      return { ok: true as const, orderId: order.id, totalMinor };
     });
-    orderId = order.id;
   } catch (err) {
     captureError('[checkout] order create failed', err, { reference, eventId: event.id });
     return NextResponse.json(
@@ -91,6 +152,10 @@ export async function POST(req: Request) {
       { status: 500 },
     );
   }
+  if (!outcome.ok) {
+    return NextResponse.json({ error: outcome.error }, { status: outcome.status });
+  }
+  const { orderId, totalMinor } = outcome;
 
   const callback = `${env.NEXT_PUBLIC_SITE_URL}/tickets/${orderId}?ref=${reference}`;
 
