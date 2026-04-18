@@ -1,6 +1,7 @@
 import NextAuth from 'next-auth';
 import Nodemailer from 'next-auth/providers/nodemailer';
 import { PrismaAdapter } from '@auth/prisma-adapter';
+import type { Role } from '@prisma/client';
 import { db } from '@/server/db';
 import { env, adminEmails } from '@/lib/env';
 import { sendMagicLink } from '@/server/email/magicLink';
@@ -30,6 +31,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       // us — sendVerificationRequest takes over the actual transport.
       server: { host: 'unused', port: 0, auth: { user: 'unused', pass: 'unused' } },
       from: env.EMAIL_FROM,
+      // 10 minutes. NextAuth defaults to 24h which is a long window for
+      // a single-use credential — enterprise mail scanners (Microsoft Safe
+      // Links, Google's preview bot, archiving systems) routinely fetch URLs
+      // in email and can burn the token before the user clicks it, and a
+      // leaked 24h link stays valid for a whole day. 10 minutes is enough
+      // for a human to switch to their inbox and click; prefetch bots that
+      // burn the token fail on the same timer.
+      maxAge: 10 * 60,
       async sendVerificationRequest({ identifier, url }) {
         // If the send fails, NextAuth surfaces a generic "check your email"
         // response to the user regardless — meaning the actual cause (Resend
@@ -52,10 +61,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     // adapter has already created the User row by this point.
     async signIn({ user }) {
       if (!user.email) return false;
-      const isAdmin = adminEmails.has(user.email.toLowerCase());
+      const normalizedEmail = user.email.toLowerCase();
+      const isAdmin = adminEmails.has(normalizedEmail);
       try {
         await db.user.update({
-          where: { email: user.email },
+          where: { email: normalizedEmail },
           data: { role: isAdmin ? 'ADMIN' : 'GUEST' },
         });
       } catch {
@@ -71,14 +81,26 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async session({ session, user }) {
       if (session.user) {
         session.user.id = user.id;
-        // Re-read role + ensure it stays in sync with the allowlist.
+        // Re-read role + ensure it stays in sync with the allowlist on
+        // every request, not just on sign-in. This is the enforcement
+        // point for admin revocation — if we only trusted the DB role,
+        // a removed admin with an active session would keep ADMIN access
+        // until the session expired (up to 30d by default).
         const fresh = await db.user.findUnique({
           where: { id: user.id },
           select: { role: true, email: true },
         });
-        const role = fresh?.email && adminEmails.has(fresh.email.toLowerCase())
-          ? 'ADMIN'
-          : (fresh?.role ?? 'GUEST');
+        const inAllowlist = !!fresh?.email && adminEmails.has(fresh.email.toLowerCase());
+        let role: Role = fresh?.role ?? 'GUEST';
+        if (inAllowlist) {
+          role = 'ADMIN';
+        } else if (role === 'ADMIN') {
+          // Stale: DB still says ADMIN but the email was removed from the
+          // allowlist. Force the downgrade at read time so revocation is
+          // effective immediately. Preserve STAFF/ARTIST (non-ADMIN roles
+          // aren't governed by the allowlist).
+          role = 'GUEST';
+        }
         session.user.role = role;
       }
       return session;
