@@ -61,11 +61,11 @@ export default async function AdminEventLineupPage({
                 <tr key={slot.id} className="bg-bg/50">
                   <td className="px-4 py-3 font-mono text-xs">{slot.order}</td>
                   <td className="px-4 py-3">{slot.displayName}</td>
-                  <td className="px-4 py-3 text-muted">{slot.role ?? '—'}</td>
+                  <td className="px-4 py-3 text-muted">{slot.role ?? '-'}</td>
                   <td className="px-4 py-3 text-muted">
-                    {slot.slotStart ? formatEventTime(slot.slotStart) : '—'}
+                    {slot.slotStart ? formatEventTime(slot.slotStart) : '-'}
                   </td>
-                  <td className="px-4 py-3 text-muted">{slot.artist?.stageName ?? '—'}</td>
+                  <td className="px-4 py-3 text-muted">{slot.artist?.stageName ?? '-'}</td>
                   <td className="px-4 py-3 text-right">
                     <DeleteLineupButton
                       eventId={id}

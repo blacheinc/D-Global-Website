@@ -41,7 +41,7 @@ export async function broadcastPush(
       // clicked broadcast twice" case) collapses into the single most-
       // recent alert on-device instead of stacking two copies of the
       // same message. Different titles produce different tags and
-      // still stack — two distinct announcements should each be
+      // still stack, two distinct announcements should each be
       // visible. Date.now() here (the previous implementation) always
       // differed and so never actually deduped.
       tag: `broadcast:${parsed.data.title}`,

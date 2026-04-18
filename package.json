@@ -2,7 +2,7 @@
   "name": "d-global-website",
   "version": "0.1.0",
   "private": true,
-  "description": "D-Global — digital nightlife ecosystem. Events, VIP bookings, and record label platform.",
+  "description": "D-Global, digital nightlife ecosystem. Events, VIP bookings, and record label platform.",
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build",

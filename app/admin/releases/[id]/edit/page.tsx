@@ -77,10 +77,10 @@ export default async function AdminReleaseEditPage({
                     <td className="px-4 py-3 font-mono text-xs">{t.order}</td>
                     <td className="px-4 py-3">{t.title}</td>
                     <td className="px-4 py-3 text-muted">
-                      {t.durationSec ? `${Math.floor(t.durationSec / 60)}:${String(t.durationSec % 60).padStart(2, '0')}` : '—'}
+                      {t.durationSec ? `${Math.floor(t.durationSec / 60)}:${String(t.durationSec % 60).padStart(2, '0')}` : '-'}
                     </td>
                     <td className="px-4 py-3 font-mono text-xs text-muted">
-                      {t.spotifyId ?? '—'}
+                      {t.spotifyId ?? '-'}
                     </td>
                     <td className="px-4 py-3 text-right">
                       <DeleteTrackButton releaseId={id} id={t.id} title={t.title} />

@@ -25,7 +25,7 @@ const plausibleOrigin = (() => {
 // custom domain bound to the bucket, or pub-<id>.r2.dev). Derive the
 // origin so CSP img-src and next/image's remotePatterns both know where
 // admin-uploaded assets live. Same https-only defensive check as
-// plausibleOrigin — rejects schemes that would silently corrupt the
+// plausibleOrigin, rejects schemes that would silently corrupt the
 // allowlist.
 const r2PublicOrigin = (() => {
   const url = process.env.R2_PUBLIC_URL;
@@ -47,12 +47,12 @@ const r2PublicHost = r2PublicOrigin ? new URL(r2PublicOrigin).hostname : null;
 // or the Paystack popup later doesn't need a CSP PR, just the feature PR.
 // Loosening is a regression; tightening is a future improvement.
 //
-// Per-directive status (useful when auditing — keep this in sync):
+// Per-directive status (useful when auditing, keep this in sync):
 //   script-src
 //     'self' 'unsafe-inline'            → required (Next/font + hydration)
 //     https://js.paystack.co            → pre-auth (Paystack inline popup;
 //                                          current flow is full-page redirect,
-//                                          not popup — keep for future UX)
+//                                          not popup, keep for future UX)
 //     <plausibleOrigin>                 → used (PlausibleScript); derived
 //                                          from NEXT_PUBLIC_PLAUSIBLE_SCRIPT_URL
 //                                          so self-hosted instances work
@@ -74,7 +74,7 @@ const r2PublicHost = r2PublicOrigin ? new URL(r2PublicOrigin).hostname : null;
 //   form-action
 //     https://checkout.paystack.com     → pre-auth (current checkout POSTs
 //     https://standard.paystack.co         to /api/... same-origin, then JS
-//                                          redirects — no form submit to
+//                                          redirects, no form submit to
 //                                          Paystack. Kept for future popup.)
 //   img-src                              → used (Spotify/Audiomack/Cloudinary/
 //                                          Unsplash covers + Maps statics +
@@ -135,7 +135,7 @@ const nextConfig = {
       { protocol: 'https', hostname: 'assets.audiomack.com' },
       { protocol: 'https', hostname: 'res.cloudinary.com' },
       { protocol: 'https', hostname: 'images.unsplash.com' },
-      // R2 public host — derived from R2_PUBLIC_URL at build time. Admin
+      // R2 public host, derived from R2_PUBLIC_URL at build time. Admin
       // uploads land here; next/image needs it to optimize them.
       ...(r2PublicHost ? [{ protocol: 'https', hostname: r2PublicHost }] : []),
     ],
@@ -167,7 +167,7 @@ const nextConfig = {
       baseHeaders.push({ key: cspHeaderName, value: csp });
       // Reporting API endpoint registration. Browsers that support
       // report-to read this and route violations of the named group to
-      // the URL. max_age is one day — short enough that policy changes
+      // the URL. max_age is one day, short enough that policy changes
       // propagate quickly, long enough to survive a session.
       baseHeaders.push({
         key: 'Reporting-Endpoints',
@@ -180,12 +180,12 @@ const nextConfig = {
 
 // Sentry's webpack plugin uploads source maps at build time when an auth
 // token is present. Without a token (local builds, fork PRs) `silent: true`
-// suppresses the "no token" warning and the upload step is skipped — the
+// suppresses the "no token" warning and the upload step is skipped, the
 // runtime SDK still works, you just lose source-mapped stack traces.
 //
 // `tunnelRoute: '/monitoring'` reserves that route as a same-origin proxy
 // to Sentry's ingest endpoint so ad-blockers and strict CSPs don't drop
-// events. Don't add a real /monitoring page — the proxy will shadow it.
+// events. Don't add a real /monitoring page, the proxy will shadow it.
 export default withSentryConfig(nextConfig, {
   silent: !process.env.SENTRY_AUTH_TOKEN,
   org: process.env.SENTRY_ORG,
@@ -198,7 +198,7 @@ export default withSentryConfig(nextConfig, {
   // Sentry plumbing stays invisible to end users.
   disableLogger: true,
   sourcemaps: {
-    // Delete .map files from the final build output after upload — the
+    // Delete .map files from the final build output after upload, the
     // maps are still in Sentry, just not served publicly.
     deleteSourcemapsAfterUpload: true,
   },

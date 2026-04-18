@@ -1,4 +1,4 @@
-// D-Global Prisma schema — digital nightlife ecosystem.
+// D-Global Prisma schema, digital nightlife ecosystem.
 
 generator client {
   provider = "prisma-client-js"
@@ -78,7 +78,7 @@ model User {
   bookings      Booking[]
   orders        Order[]
   // NextAuth (PrismaAdapter) relations. The adapter writes into these on
-  // sign-in/link account flows — we never touch them directly.
+  // sign-in/link account flows, we never touch them directly.
   accounts      Account[]
   sessions      Session[]
   createdAt     DateTime  @default(now())
@@ -88,7 +88,7 @@ model User {
 }
 
 // --- NextAuth (Auth.js v5) PrismaAdapter tables ---
-// Schemas are dictated by @auth/prisma-adapter — don't drift from them.
+// Schemas are dictated by @auth/prisma-adapter, don't drift from them.
 // https://authjs.dev/getting-started/adapters/prisma#schema
 
 model Account {
@@ -128,7 +128,7 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
-// Web push subscription. One row per (endpoint) — endpoints are unique
+// Web push subscription. One row per (endpoint), endpoints are unique
 // per (browser, device, user). userId is optional because guests can
 // subscribe before signing in (e.g. for an event drop reminder).
 model PushSubscription {
@@ -195,7 +195,7 @@ model TicketType {
 
   // One row per (event, tier). The admin CRUD has a pre-check, but
   // without a DB-level unique constraint two concurrent submissions
-  // can both pass the check and insert duplicates — that would confuse
+  // can both pass the check and insert duplicates, that would confuse
   // the public checkout (cheapest-tier lookup is ambiguous) and make
   // the `sold` counter unreliable. The unique makes the P2002 catch in
   // upsertTicketType actually reachable and closes the race.

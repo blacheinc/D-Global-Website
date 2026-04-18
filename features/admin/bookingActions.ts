@@ -9,7 +9,7 @@ import { captureError } from '@/server/observability';
 
 // Bookings are read-mostly but admins need to flip status as they
 // reach out to guests on WhatsApp ("Confirmed", "Cancelled",
-// "Waitlisted"). No full form — just a status update.
+// "Waitlisted"). No full form, just a status update.
 
 const statusSchema = z.object({
   status: z.nativeEnum(BookingStatus),

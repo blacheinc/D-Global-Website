@@ -64,7 +64,7 @@ export function BroadcastForm({ subscriberCount }: { subscriberCount: number }) 
         type="submit"
         disabled={pending || subscriberCount === 0}
         // Confirm via the submit button's onClick rather than wrapping the
-        // form's `action` with a client function — that wrapper would keep
+        // form's `action` with a client function, that wrapper would keep
         // the form from passing the real useActionState `formAction` to
         // React, which is what drives the pending-state transition. Click
         // cancel → preventDefault stops the subsequent submit event; click
@@ -82,7 +82,7 @@ export function BroadcastForm({ subscriberCount }: { subscriberCount: number }) 
         {pending ? 'Sending…' : 'Broadcast'}
       </Button>
       {subscriberCount === 0 && (
-        <p className="text-xs text-muted">No subscribers yet — nothing to send.</p>
+        <p className="text-xs text-muted">No subscribers yet, nothing to send.</p>
       )}
     </form>
   );

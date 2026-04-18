@@ -71,10 +71,8 @@ export function VideoHero() {
           <h1 className="mt-5 font-display text-display-2xl text-balance">
             The <span className="text-accent">sound</span> of a generation.
           </h1>
-          <p className="mt-5 text-lg md:text-xl text-muted max-w-xl leading-relaxed">
-            D-Global Records is the label shaping West Africa's next wave — afro-electronic, alté,
-            and amapiano artists with a cult following at home and a passport already stamped.
-            Book one of ours. Hear the catalogue.
+          <p className="mt-5 text-lg md:text-xl text-muted max-w-lg leading-relaxed">
+            The label shaping West Africa's next wave.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Button asChild variant="primary" size="lg">

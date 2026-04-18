@@ -51,7 +51,7 @@ export default async function AdminBookingDetailPage({
         </div>
         <div>
           <dt className="text-xs uppercase tracking-[0.18em] text-muted">Email</dt>
-          <dd className="mt-1">{booking.guestEmail ?? '—'}</dd>
+          <dd className="mt-1">{booking.guestEmail ?? '-'}</dd>
         </div>
         <div>
           <dt className="text-xs uppercase tracking-[0.18em] text-muted">Package</dt>
@@ -68,10 +68,10 @@ export default async function AdminBookingDetailPage({
           <dd className="mt-1">
             {booking.event ? (
               <Link href={`/events/${booking.event.slug}`} className="hover:text-accent">
-                {booking.event.title} — {formatEventDateTime(booking.event.startsAt)}
+                {booking.event.title}, {formatEventDateTime(booking.event.startsAt)}
               </Link>
             ) : (
-              '— no specific event —'
+              '- no specific event -'
             )}
           </dd>
         </div>

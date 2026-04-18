@@ -77,7 +77,7 @@ export default async function AdminArtistBookingDetailPage({
           <dd className="mt-1">
             {booking.budgetMinor != null
               ? formatPriceMinor(booking.budgetMinor, booking.currency)
-              : '— not specified —'}
+              : '- not specified -'}
           </dd>
         </div>
         <div className="sm:col-span-2">

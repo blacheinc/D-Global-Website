@@ -5,7 +5,7 @@ import { PrismaClient } from '@prisma/client';
 // Why a separate script instead of folding this into seed.ts: the main
 // seed wipes Events / Orders / Bookings / Artists / etc. via deleteMany
 // so demo content stays clean across runs. Admins are infrastructure,
-// not content — nobody wants `pnpm db:seed` to nuke their real data
+// not content, nobody wants `pnpm db:seed` to nuke their real data
 // just to (re)ensure two admin rows exist. Keeping this split also
 // means you can safely run it in staging / production without the
 // destructive preamble.
@@ -24,7 +24,7 @@ import { PrismaClient } from '@prisma/client';
 //
 // Safety properties:
 //   - Upsert, not create → safe to re-run.
-//   - No delete, no role downgrade of non-listed users — if an operator
+//   - No delete, no role downgrade of non-listed users, if an operator
 //     later wants to demote an admin, remove them from ADMIN_EMAILS;
 //     the session callback handles the rest.
 
@@ -42,7 +42,7 @@ async function main() {
   const emails = parseAdminEmails();
   if (emails.length === 0) {
     console.log(
-      '[seed-admin] ADMIN_EMAILS is empty — nothing to seed. Set it in .env to a comma-separated list of admin emails and re-run.',
+      '[seed-admin] ADMIN_EMAILS is empty, nothing to seed. Set it in .env to a comma-separated list of admin emails and re-run.',
     );
     return;
   }
@@ -55,7 +55,7 @@ async function main() {
         // admin can sign in without NextAuth prompting to re-verify a
         // never-before-seen address on first attempt. NextAuth's
         // magic-link flow still issues a single-use token and validates
-        // it — this field just marks the address as known-good.
+        // it, this field just marks the address as known-good.
         create: { email, role: 'ADMIN', emailVerified: new Date() },
         update: { role: 'ADMIN' },
         select: { id: true, email: true, role: true, createdAt: true },

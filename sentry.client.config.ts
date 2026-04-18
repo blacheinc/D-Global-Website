@@ -1,6 +1,6 @@
 import * as Sentry from '@sentry/nextjs';
 
-// Browser-side error capture. Only initialized when a DSN is configured —
+// Browser-side error capture. Only initialized when a DSN is configured -
 // missing DSN means we silently no-op so dev environments don't ship phantom
 // noise to a Sentry project that doesn't exist.
 //
@@ -10,7 +10,7 @@ import * as Sentry from '@sentry/nextjs';
 const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
 
 if (dsn) {
-  // Don't pass `release` here — the Sentry webpack plugin auto-injects it
+  // Don't pass `release` here, the Sentry webpack plugin auto-injects it
   // at build time from SENTRY_RELEASE / VERCEL_GIT_COMMIT_SHA / git SHA.
   // Setting `release: undefined` would prevent that auto-injection.
   Sentry.init({

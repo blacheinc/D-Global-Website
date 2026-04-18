@@ -5,7 +5,7 @@ import { env } from '@/lib/env';
 import { captureError } from '@/server/observability';
 
 // VAPID setup runs once per process. If keys aren't configured, every
-// send call is a no-op — the admin UI surfaces the missing config.
+// send call is a no-op, the admin UI surfaces the missing config.
 let configured = false;
 function configure(): boolean {
   if (configured) return true;
@@ -41,7 +41,7 @@ const TTL_SECONDS = 60 * 60 * 48;
 
 // Cap concurrent push sends. Each send is an HTTP round-trip to FCM /
 // Mozilla / Apple; running them sequentially turns ~200 subscribers into
-// ~40 seconds of wall time — uncomfortably close to Vercel's default
+// ~40 seconds of wall time, uncomfortably close to Vercel's default
 // 60s server-action budget. Ten parallel is well within what the push
 // services accept and keeps a thousand subs under ~20s.
 const CONCURRENCY = 10;
@@ -66,14 +66,14 @@ export async function broadcast(payload: PushPayload): Promise<BroadcastResult> 
       delivered += 1;
     } catch (err: unknown) {
       // 404/410 means the subscription is dead at the push service.
-      // Anything else is a transient failure — log + count, but keep
+      // Anything else is a transient failure, log + count, but keep
       // the row so the next broadcast retries.
       const status = (err as { statusCode?: number }).statusCode;
       if (status === 404 || status === 410) {
         await db.pushSubscription.delete({ where: { endpoint: sub.endpoint } }).catch(() => {});
         removed += 1;
       } else {
-        // Only the endpoint's host lands in Sentry — the full URL carries
+        // Only the endpoint's host lands in Sentry, the full URL carries
         // the push-service-assigned per-browser token, which functions as
         // a replay credential. Host alone (fcm.googleapis.com vs
         // updates.push.services.mozilla.com) is enough to tell which

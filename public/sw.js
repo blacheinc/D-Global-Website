@@ -1,4 +1,4 @@
-// Web push service worker. Kept intentionally minimal — no caching
+// Web push service worker. Kept intentionally minimal, no caching
 // strategy, no precache manifest. The only job is to receive push
 // payloads and surface them as system notifications.
 //
@@ -21,7 +21,7 @@ self.addEventListener('push', (event) => {
   // surface a generic "this site has been updated in the background"
   // notification if we don't call showNotification for every push. So
   // even for a data-less or malformed payload, fall back to a neutral
-  // notification rather than returning early — otherwise real users
+  // notification rather than returning early, otherwise real users
   // see a confusing ghost notification we can't customize.
   let payload = {};
   if (event.data) {
@@ -108,7 +108,7 @@ self.addEventListener('pushsubscriptionchange', (event) => {
           body: JSON.stringify(fresh.toJSON()),
         });
       } catch {
-        // Nothing we can show to the user from the SW context — the
+        // Nothing we can show to the user from the SW context, the
         // next sender attempt will prune the dead endpoint anyway.
       }
     })(),

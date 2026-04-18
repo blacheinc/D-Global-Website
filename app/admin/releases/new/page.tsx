@@ -9,7 +9,7 @@ export default async function AdminReleaseNewPage() {
     select: { id: true, stageName: true },
   });
   if (artists.length === 0) {
-    // Releases require an artist — surface the dependency rather than
+    // Releases require an artist, surface the dependency rather than
     // letting the operator fight a broken form.
     notFound();
   }

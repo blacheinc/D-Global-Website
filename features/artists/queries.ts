@@ -20,7 +20,7 @@ export async function listArtists() {
 // `cache()` de-duplicates within a single request, so `generateMetadata`
 // and the page body share one DB round-trip.
 export const getArtistBySlug = cache(async (slug: string) => {
-  // Filter lineupSlots to upcoming events at the DB layer — the only consumer
+  // Filter lineupSlots to upcoming events at the DB layer, the only consumer
   // (artist detail page) never renders past shows, so fetching them wastes a
   // roundtrip row-count for artists with long gig histories.
   const now = new Date();

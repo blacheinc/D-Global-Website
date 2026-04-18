@@ -54,7 +54,7 @@ export async function POST(req: Request) {
       if (payload.data.amount !== order.totalMinor) {
         // Mark the order failed for ops review, but ACK the webhook with 200.
         // Returning a non-2xx here would trigger Paystack's exponential-backoff
-        // retry loop, and every retry would re-detect the same mismatch — a
+        // retry loop, and every retry would re-detect the same mismatch, a
         // retry storm. The mismatch is captured in paystackPayload for ops.
         await db.order.update({
           where: { id: order.id },
@@ -62,7 +62,7 @@ export async function POST(req: Request) {
         });
         // Surface to Sentry as a real event (not just an error log). An
         // amount mismatch on a verified webhook means either a bug in
-        // re-pricing or a tampering attempt — both warrant a page-able alert.
+        // re-pricing or a tampering attempt, both warrant a page-able alert.
         // `reference` is a per-order identifier and goes in extra; the only
         // tag is the categorical `kind` so dashboards can filter on it.
         Sentry.captureMessage('[paystack webhook] amount mismatch', {
@@ -107,7 +107,7 @@ export async function POST(req: Request) {
         ),
       ]);
 
-      // Confirmation email is best-effort — the order is already PAID and
+      // Confirmation email is best-effort, the order is already PAID and
       // the user can always reach their tickets via /tickets/[orderId]. A
       // mail-provider outage shouldn't bounce the webhook into a retry
       // (Paystack would re-fire and we'd attempt to mail twice).

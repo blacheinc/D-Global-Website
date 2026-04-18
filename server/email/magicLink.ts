@@ -6,7 +6,7 @@ import { site } from '@/lib/site';
 
 // Sent by NextAuth's Email provider (custom sendVerificationRequest below
 // in lib/auth.ts wires this in). The link is single-use and expires after
-// 10 minutes — we lean on Auth.js's built-in token table for that.
+// 10 minutes, we lean on Auth.js's built-in token table for that.
 
 export async function sendMagicLink(args: { to: string; url: string }): Promise<void> {
   // Dev-mode hard fallback: always print the URL to the server console
@@ -47,7 +47,7 @@ export async function sendMagicLink(args: { to: string; url: string }): Promise<
       text: `Sign in to ${site.name}: ${args.url}\n\nThe link works once and expires soon.`,
     });
   } catch (err) {
-    // In dev the URL is already on the console above — swallow the
+    // In dev the URL is already on the console above, swallow the
     // Resend / SMTP failure so NextAuth's sign-in flow proceeds as if
     // the email went through, and the developer can just click the
     // logged URL. In production, email is the only delivery channel;

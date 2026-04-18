@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 // Admin-only image upload endpoint. Client POSTs multipart/form-data with
 // fields: file (Blob), category (string). We relay to R2 and return the
 // public URL. The endpoint is admin-gated via requireAdmin; rejected
-// requests redirect to sign-in rather than 401 — that's NextAuth's
+// requests redirect to sign-in rather than 401, that's NextAuth's
 // behavior and matches the rest of /admin.
 //
 // Size limit is 4MB to stay safely under Vercel's 4.5MB serverless body
@@ -67,7 +67,7 @@ export async function POST(req: Request) {
     );
   }
 
-  // Extension derived from content-type, not the original filename —
+  // Extension derived from content-type, not the original filename -
   // filenames are attacker-controlled; content-type still is, but at
   // least we map it to a closed set. Defense in depth: R2 serves files
   // with the stored Content-Type, not derived from path.

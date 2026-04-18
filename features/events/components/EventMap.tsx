@@ -16,7 +16,7 @@ export function EventMap({ embedUrl, venueName, address }: EventMapProps) {
       <div className="aspect-video w-full rounded-2xl border border-white/10 bg-elevated p-6 grid place-items-center text-muted">
         <div className="text-center">
           <p className="text-sm">Map coming soon</p>
-          <p className="text-xs mt-1">{venueName}{address ? ` — ${address}` : ''}</p>
+          <p className="text-xs mt-1">{venueName}{address ? `, ${address}` : ''}</p>
         </div>
       </div>
     );
@@ -31,7 +31,7 @@ export function EventMap({ embedUrl, venueName, address }: EventMapProps) {
       )}
       <iframe
         src={embedUrl}
-        title={`Map — ${venueName}`}
+        title={`Map, ${venueName}`}
         width="100%"
         height="100%"
         loading="lazy"

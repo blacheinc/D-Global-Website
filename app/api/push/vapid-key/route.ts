@@ -8,10 +8,10 @@ export const dynamic = 'force-dynamic';
 // worker so it can re-subscribe on `pushsubscriptionchange`. The SW
 // context has no access to window.__NEXT_PUBLIC_* / process.env, so it
 // has to fetch this over HTTP. The key is genuinely public (that's the
-// whole point of VAPID — browsers use it to verify the server's
+// whole point of VAPID, browsers use it to verify the server's
 // identity during subscribe); there's no auth gate here.
 //
-// 204 when unconfigured — the SW already guards on `!key` and skips
+// 204 when unconfigured, the SW already guards on `!key` and skips
 // re-subscribe gracefully. Returning an empty 200 would also work but
 // 204 is the clearer signal.
 

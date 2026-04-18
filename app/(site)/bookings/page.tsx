@@ -6,7 +6,7 @@ import { EventStatus } from '@prisma/client';
 export const metadata: Metadata = {
   title: 'Book a VIP Table',
   description:
-    'Reserve a VIP table at the next D-Global night. Silver, Gold or Platinum — your call.',
+    'Reserve a VIP table at the next D-Global night. Silver, Gold or Platinum, your call.',
 };
 
 interface PageProps {
@@ -40,7 +40,7 @@ export default async function BookingsPage({ searchParams }: PageProps) {
             Reserve your corner of the night.
           </h1>
           <p className="mt-4 text-muted md:text-lg max-w-xl">
-            Table-side service. Premium bottles. The best sightlines. Choose a package — our team
+            Table-side service. Premium bottles. The best sightlines. Choose a package, our team
             confirms on WhatsApp within the hour.
           </p>
         </div>

@@ -1,14 +1,14 @@
 // Shared pagination math for admin lists. Every list page speaks the
 // same URL dialect (`?page=N`) so deep-links and browser-back behave
 // consistently, and the helpers below make the Prisma skip/take math
-// identical everywhere — no one-list-off-by-one bugs.
+// identical everywhere, no one-list-off-by-one bugs.
 //
 // Design notes:
 // - 1-based page index matches the URL. `skip` is (page-1) * pageSize.
 // - Coerce anything non-numeric or <1 to page 1, silently. Admin URLs
 //   shouldn't 400 on a fat-finger; better to land on page 1.
 // - Clamp page above totalPages to the last page. If total is 0,
-//   totalPages is 1 and we render the empty state — the pagination
+//   totalPages is 1 and we render the empty state, the pagination
 //   component hides itself.
 
 export type PageInfo = {

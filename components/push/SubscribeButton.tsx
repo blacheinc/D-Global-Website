@@ -5,7 +5,7 @@ import * as Sentry from '@sentry/nextjs';
 import { Button } from '@/components/ui/Button';
 
 // VAPID public keys are url-safe base64. The PushManager expects a
-// Uint8Array of the raw bytes — convert here.
+// Uint8Array of the raw bytes, convert here.
 function urlBase64ToUint8Array(base64: string): Uint8Array {
   const padding = '='.repeat((4 - (base64.length % 4)) % 4);
   const normalized = (base64 + padding).replace(/-/g, '+').replace(/_/g, '/');
@@ -43,7 +43,7 @@ export function SubscribeButton({ vapidPublicKey }: { vapidPublicKey?: string })
       } catch (err) {
         // Registration can fail in private windows, strict browsing
         // contexts, or corrupt SW states. Capture for visibility, and
-        // fall back to unsupported so the button hides itself — no
+        // fall back to unsupported so the button hides itself, no
         // point showing a broken CTA.
         Sentry.captureException(err, { tags: { source: 'push-sw-register' } });
         if (!cancelled) setState('unsupported');
@@ -84,7 +84,7 @@ export function SubscribeButton({ vapidPublicKey }: { vapidPublicKey?: string })
       setState('subscribed');
     } catch (err) {
       Sentry.captureException(err, { tags: { source: 'push-subscribe' } });
-      // User-facing copy stays generic — browser/push-service failures
+      // User-facing copy stays generic, browser/push-service failures
       // are many and unactionable by end users beyond "try again".
       setError('Couldn’t enable notifications. Try again in a moment.');
       setState('idle');

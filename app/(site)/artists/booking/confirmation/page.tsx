@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   title: 'Booking request received',
-  // Don't let confirmation pages bloat the sitemap or attract indexers —
+  // Don't let confirmation pages bloat the sitemap or attract indexers -
   // the `code` query param is a one-off reference, not content.
   robots: { index: false, follow: false },
 };

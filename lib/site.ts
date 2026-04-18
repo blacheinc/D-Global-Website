@@ -2,7 +2,7 @@ export const site = {
   name: 'D-Global',
   tagline: 'The sound of the night.',
   description:
-    'D-Global — digital nightlife ecosystem. Discover events, reserve VIP tables, and step inside the sound shaping the city after dark.',
+    'D-Global, digital nightlife ecosystem. Discover events, reserve VIP tables, and step inside the sound shaping the city after dark.',
   nav: [
     { href: '/events', label: 'Events' },
     { href: '/bookings', label: 'VIP Tables' },

@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import * as Sentry from '@sentry/nextjs';
 
 // Catches errors thrown inside the root layout itself (font loading, env
-// validation, etc.). When this fires, Next.js has unmounted the layout —
+// validation, etc.). When this fires, Next.js has unmounted the layout -
 // we render our own <html>/<body>. Inline styles only: globals.css may not
 // have loaded if the failure was early enough.
 

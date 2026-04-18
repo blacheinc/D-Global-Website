@@ -8,7 +8,7 @@ import { deleteEvent } from '../eventActions';
 //    do this from a pure RSC <form>).
 // 2. Use useTransition to disable the button during the round-trip
 //    rather than a full page navigation.
-// 3. Surface the action's structured error inline — a throw would bubble
+// 3. Surface the action's structured error inline, a throw would bubble
 //    to the error boundary and lose context. The common failure case
 //    ("event has orders, can't delete") needs to show up where the
 //    admin clicked, with actionable guidance.

@@ -25,7 +25,7 @@ export function TrackForm({
   const fe = state.fieldErrors ?? {};
   const formRef = useRef<HTMLFormElement>(null);
 
-  // Same pattern as TicketTypeForm / LineupForm — reset on successful
+  // Same pattern as TicketTypeForm / LineupForm, reset on successful
   // CREATE, refresh route so the list above picks up the new row.
   useEffect(() => {
     if (state.ok) {

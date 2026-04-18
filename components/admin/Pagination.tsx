@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import type { PageInfo } from '@/lib/pagination';
 
-// Prev / page indicator / Next. Pure server component — no interactivity
+// Prev / page indicator / Next. Pure server component, no interactivity
 // beyond Next's `<Link>` prefetch. Uses `rel="prev"`/`rel="next"` for
 // correct crawler semantics and `aria-current` for screen readers.
 //
@@ -21,7 +21,7 @@ export function Pagination({
   // Next's searchParams type is `Record<string, string | string[] |
   // undefined>`. Admin URLs don't use array params (duplicate keys in
   // the URL), but accept the wider type so callers can hand it
-  // straight through without narrowing — we just skip arrays.
+  // straight through without narrowing, we just skip arrays.
   searchParams?: Record<string, string | string[] | undefined>;
 }) {
   if (info.totalPages <= 1) return null;

@@ -7,7 +7,7 @@ import { env, adminEmails } from '@/lib/env';
 import { sendMagicLink } from '@/server/email/magicLink';
 import { captureError } from '@/server/observability';
 
-// NextAuth v5 (Auth.js) config. Magic-link only — no passwords, no OAuth.
+// NextAuth v5 (Auth.js) config. Magic-link only, no passwords, no OAuth.
 // The Nodemailer provider is the contract Auth.js exposes for email-based
 // flows; we ignore its server config and ship the verification request
 // through our own Resend-backed mailer.
@@ -19,7 +19,7 @@ import { captureError } from '@/server/observability';
 // Why no `session.strategy = 'jwt'`: the PrismaAdapter writes Session
 // rows, and the default strategy ('database') is correct for that. JWT
 // would skip the DB on every request but means we couldn't revoke
-// sessions server-side — a bad trade for an admin surface.
+// sessions server-side, a bad trade for an admin surface.
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(db),
@@ -28,11 +28,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
     Nodemailer({
       // The `server` config is required by Auth.js's type but unused by
-      // us — sendVerificationRequest takes over the actual transport.
+      // us, sendVerificationRequest takes over the actual transport.
       server: { host: 'unused', port: 0, auth: { user: 'unused', pass: 'unused' } },
       from: env.EMAIL_FROM,
       // 10 minutes. NextAuth defaults to 24h which is a long window for
-      // a single-use credential — enterprise mail scanners (Microsoft Safe
+      // a single-use credential, enterprise mail scanners (Microsoft Safe
       // Links, Google's preview bot, archiving systems) routinely fetch URLs
       // in email and can burn the token before the user clicks it, and a
       // leaked 24h link stays valid for a whole day. 10 minutes is enough
@@ -41,7 +41,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       maxAge: 10 * 60,
       async sendVerificationRequest({ identifier, url }) {
         // If the send fails, NextAuth surfaces a generic "check your email"
-        // response to the user regardless — meaning the actual cause (Resend
+        // response to the user regardless, meaning the actual cause (Resend
         // outage, bad API key, unverified sending domain) would be invisible
         // without explicit capture. captureError logs + ships to Sentry, then
         // rethrows so NextAuth still treats the sign-in attempt as failed.
@@ -68,7 +68,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       // "Record to update not found" error every time a new address
       // requests a magic link. The session callback re-syncs role on
       // every request anyway, so missing the first-sign-in write is
-      // harmless — the next loaded session picks up the allowlist.
+      // harmless, the next loaded session picks up the allowlist.
       const existing = await db.user.findUnique({
         where: { email: normalizedEmail },
         select: { id: true },
@@ -86,7 +86,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.id = user.id;
         // Re-read role + ensure it stays in sync with the allowlist on
         // every request, not just on sign-in. This is the enforcement
-        // point for admin revocation — if we only trusted the DB role,
+        // point for admin revocation, if we only trusted the DB role,
         // a removed admin with an active session would keep ADMIN access
         // until the session expired (up to 30d by default).
         const fresh = await db.user.findUnique({

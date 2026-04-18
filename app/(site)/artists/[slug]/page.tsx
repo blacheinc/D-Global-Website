@@ -181,7 +181,7 @@ export default async function ArtistDetailPage({
             Book {artist.stageName}
           </h2>
           <p className="mt-3 text-sm text-muted max-w-xl">
-            Festival, brand activation, private event — tell us the shape of the show and we'll
+            Festival, brand activation, private event, tell us the shape of the show and we'll
             come back with availability and a quote.
           </p>
           <div className="mt-10">

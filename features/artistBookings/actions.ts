@@ -30,7 +30,7 @@ export async function createArtistBooking(
   // 5 requests / 10min / IP. A serious booker filling one out by hand
   // stays well under; a scripted spammer bouncing off the form gets
   // stopped here before reaching the DB.
-  const rl = rateLimitHeaders(await headers(), 'artist-booking', 5, 10 * 60 * 1000);
+  const rl = rateLimitHeaders(await headers(), 'artist-bookings', 5, 10 * 60 * 1000);
   if (!rl.ok) {
     return {
       ok: false,
@@ -90,6 +90,11 @@ export async function createArtistBooking(
       select: { code: true },
     });
     bookingCode = booking.code;
+    // Push the new row onto the admin dashboard so the counter/list
+    // pick it up without an admin having to refresh. The public artist
+    // page isn't invalidated, nothing public surfaces per-artist
+    // booking state today.
+    revalidatePath('/admin/artist-bookings');
   } catch (err) {
     captureError('[createArtistBooking] DB error', err, {
       artistId: parsed.data.artistId,
@@ -100,7 +105,7 @@ export async function createArtistBooking(
     };
   }
 
-  // NEXT_REDIRECT throws — keep it OUTSIDE the try/catch so the
+  // NEXT_REDIRECT throws, keep it OUTSIDE the try/catch so the
   // framework can intercept it instead of the catch swallowing it.
   redirect(`/artists/booking/confirmation?code=${bookingCode}`);
 }
@@ -110,7 +115,7 @@ export async function createArtistBooking(
 // Status-only update. An admin moves PENDING → REVIEWING when they
 // pick up the request, then CONFIRMED / DECLINED once they've made a
 // decision with the booker. CANCELLED is for requesters who pulled
-// out after the fact. No free-form admin notes field yet — if the
+// out after the fact. No free-form admin notes field yet, if the
 // label needs one later, bolt on a separate comments model rather
 // than letting admins overwrite the requester's notes.
 

@@ -5,19 +5,19 @@ import { cn } from '@/lib/utils';
 
 // Form field that combines a URL text input with an upload button. The
 // URL is the source of truth (stored on the model); the uploader is a
-// shortcut to populate it. Direct paste is always allowed — we don't
+// shortcut to populate it. Direct paste is always allowed, we don't
 // want to break the flow when an operator has a Cloudinary URL in
 // hand, or when R2 is unconfigured in the current environment.
 //
 // The component renders a hidden real input (so the parent <form>
 // submits the URL via FormData) plus a visible labeled text input that
 // the admin can edit directly. Uploading sets the text input's value
-// via uncontrolled state — mirrors how EventForm handles all its other
+// via uncontrolled state, mirrors how EventForm handles all its other
 // fields (defaultValue + DOM-backed state).
 
 // Mirror the server's MAX_BYTES so we can short-circuit oversize files
 // client-side instead of burning upload bandwidth only to be rejected
-// with 413. Server is still the source of truth — this is just a UX
+// with 413. Server is still the source of truth, this is just a UX
 // optimization.
 const MAX_BYTES = 4 * 1024 * 1024;
 
@@ -65,7 +65,7 @@ export function ImageUpload({
       setUrl(body.url);
       setStatus('idle');
     } catch {
-      setError('Network error — try again.');
+      setError('Network error, try again.');
       setStatus('error');
     }
   }
@@ -114,7 +114,7 @@ export function ImageUpload({
         </p>
       )}
       {url && (
-        // Plain <img> on purpose — this is admin-only and we want to show
+        // Plain <img> on purpose, this is admin-only and we want to show
         // arbitrary external URLs (Cloudinary, Spotify CDN, R2) without
         // adding every possible host to next/image's remotePatterns.
         // eslint-disable-next-line @next/next/no-img-element
