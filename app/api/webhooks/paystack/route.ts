@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/server/db';
 import { verifyPaystackSignature } from '@/server/paystack/verifyWebhook';
 import { signTicket } from '@/server/qr/signPayload';
+import { sendOrderConfirmation } from '@/server/email/orderConfirmation';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -87,6 +88,35 @@ export async function POST(req: Request) {
         }),
       ),
     ]);
+
+    // Confirmation email is best-effort — the order is already PAID and
+    // the user can always reach their tickets via /tickets/[orderId]. A
+    // mail-provider outage shouldn't bounce the webhook into a retry
+    // (Paystack would re-fire and we'd attempt to mail twice).
+    try {
+      const fresh = await db.order.findUniqueOrThrow({
+        where: { id: order.id },
+        include: { event: true, items: { include: { ticketType: true } } },
+      });
+      await sendOrderConfirmation({
+        to: fresh.buyerEmail,
+        buyerName: fresh.buyerName,
+        orderId: fresh.id,
+        reference: fresh.reference,
+        totalMinor: fresh.totalMinor,
+        currency: fresh.currency,
+        eventTitle: fresh.event.title,
+        eventStartsAt: fresh.event.startsAt,
+        venueName: fresh.event.venueName,
+        items: fresh.items.map((i) => ({
+          name: i.ticketType.name,
+          quantity: i.quantity,
+          unitPriceMinor: i.unitPriceMinor,
+        })),
+      });
+    } catch (err) {
+      console.error('[paystack webhook] order confirmation email failed:', err);
+    }
   }
 
   return NextResponse.json({ ok: true });

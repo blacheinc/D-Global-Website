@@ -160,13 +160,18 @@ Every booking flow has a WhatsApp deep-link fallback (`https://wa.me/<number>?te
 
 ---
 
-## Future milestones (scaffolded, not implemented)
+## Operational integrations
 
-- **NextAuth** — `server/auth.ts` stub ready; add `/admin/*` routes in a follow-up.
-- **Admin dashboard** — for events, packages, artists, gallery uploads (Cloudinary).
-- **Transactional mail** — `server/mailer.ts` stub; wire Resend/Postmark for order receipts.
-- **Analytics** — `lib/analytics.ts` no-op; plug Plausible or PostHog.
-- **Push notifications** — PWA manifest is already in place.
+| Integration | Status | Notes |
+|---|---|---|
+| **NextAuth (Auth.js v5)** | shipped | Magic-link via Resend, PrismaAdapter, ADMIN_EMAILS allowlist auto-promotes. |
+| **Admin dashboard** | shipped | `/admin` overview + events CRUD + bookings/orders read + push broadcast. Gated by `requireAdmin()`. |
+| **Transactional mail (Resend)** | shipped | `server/mailer.ts` + branded layout; sends order confirmations after webhook commit and magic-link sign-ins. |
+| **Analytics (Plausible)** | shipped | `<PlausibleScript />` opt-in via `NEXT_PUBLIC_PLAUSIBLE_DOMAIN`. `track()` no-ops without it. |
+| **Push notifications** | shipped | VAPID + service worker at `/sw.js`. SubscribeButton in footer; admin broadcast at `/admin/push`. |
+| **Error tracking (Sentry)** | shipped | `instrumentation.ts` + client/server/edge configs. Build-time source-map upload when `SENTRY_AUTH_TOKEN` is set. |
+| **CSP** | shipped | Production-only; allowlists Spotify, Audiomack, YouTube, Google Maps, Paystack, Plausible, Sentry, Cloudinary, Unsplash. |
+| **CI/CD** | shipped | `.github/workflows/ci.yml` runs install + lint + typecheck + build on PR and main. |
 
 ---
 

@@ -3,6 +3,8 @@ import { Instagram, Youtube } from 'lucide-react';
 import { Logo } from '@/components/brand/Logo';
 import { site } from '@/lib/site';
 import { buildWaLink } from '@/lib/whatsapp';
+import { env } from '@/lib/env';
+import { SubscribeButton } from '@/components/push/SubscribeButton';
 
 export function Footer() {
   return (
@@ -23,6 +25,9 @@ export function Footer() {
               Chat on WhatsApp
               <span aria-hidden>→</span>
             </a>
+            <div className="pt-2">
+              <SubscribeButton vapidPublicKey={env.NEXT_PUBLIC_VAPID_PUBLIC_KEY} />
+            </div>
           </div>
 
           <div>

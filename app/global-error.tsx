@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import * as Sentry from '@sentry/nextjs';
 
 // Catches errors thrown inside the root layout itself (font loading, env
 // validation, etc.). When this fires, Next.js has unmounted the layout —
@@ -15,8 +16,11 @@ export default function GlobalError({
   reset: () => void;
 }) {
   useEffect(() => {
-    // Surface for ops via host log aggregation. compiler.removeConsole in
-    // next.config keeps `error`/`warn` calls in production builds.
+    // Sentry's error boundary integration only catches errors below the
+    // root layout. Global errors (the ones that unmount the layout) need
+    // to be captured manually here. The console.error keeps the message
+    // visible in host logs for ops who don't have Sentry access.
+    Sentry.captureException(error);
     console.error('[global-error]', error);
   }, [error]);
 

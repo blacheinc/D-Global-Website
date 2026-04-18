@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Cancel in-flight runs for the same ref. New pushes invalidate the old
+# build, so let them race and keep the cluster cycle short.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Lint, typecheck, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      # Build needs to know enough env to import lib/env without throwing.
+      # We set the bare minimum here — none of these are real secrets, just
+      # placeholder values that satisfy zod's prod refinement when CI runs
+      # against the production NODE_ENV during `next build`.
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci?schema=public
+      NEXT_PUBLIC_SITE_URL: https://example.com
+      NEXT_PUBLIC_WHATSAPP_NUMBER: '233241234567'
+      QR_SECRET: ci-build-qr-secret-not-a-real-key
+      AUTH_SECRET: ci-build-auth-secret-not-a-real-key
+      PAYSTACK_MODE: link
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm prisma generate
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Build
+        run: pnpm build

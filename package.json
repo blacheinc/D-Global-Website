@@ -20,8 +20,10 @@
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@auth/prisma-adapter": "^2.7.2",
     "@prisma/client": "^5.22.0",
     "@radix-ui/react-slot": "^1.1.0",
+    "@sentry/nextjs": "^8.36.0",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
@@ -30,11 +32,14 @@
     "framer-motion": "^11.11.0",
     "lucide-react": "^0.453.0",
     "next": "^15.0.0",
+    "next-auth": "5.0.0-beta.22",
     "qrcode": "^1.5.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "resend": "^4.0.1",
     "server-only": "^0.0.1",
     "tailwind-merge": "^2.5.4",
+    "web-push": "^3.6.7",
     "yet-another-react-lightbox": "^3.21.7",
     "zod": "^3.23.8"
   },
@@ -43,6 +48,7 @@
     "@types/qrcode": "^1.5.5",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "@types/web-push": "^3.6.4",
     "autoprefixer": "^10.4.20",
     "eslint": "^9.12.0",
     "eslint-config-next": "^15.0.0",

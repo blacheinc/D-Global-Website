@@ -68,17 +68,79 @@ enum GalleryCategory {
 }
 
 model User {
-  id        String    @id @default(cuid())
-  email     String    @unique
-  phone     String?
-  name      String?
-  role      Role      @default(GUEST)
-  bookings  Booking[]
-  orders    Order[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id            String    @id @default(cuid())
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  phone         String?
+  name          String?
+  role          Role      @default(GUEST)
+  bookings      Booking[]
+  orders        Order[]
+  // NextAuth (PrismaAdapter) relations. The adapter writes into these on
+  // sign-in/link account flows — we never touch them directly.
+  accounts      Account[]
+  sessions      Session[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   @@index([phone])
+}
+
+// --- NextAuth (Auth.js v5) PrismaAdapter tables ---
+// Schemas are dictated by @auth/prisma-adapter — don't drift from them.
+// https://authjs.dev/getting-started/adapters/prisma#schema
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// Web push subscription. One row per (endpoint) — endpoints are unique
+// per (browser, device, user). userId is optional because guests can
+// subscribe before signing in (e.g. for an event drop reminder).
+model PushSubscription {
+  id        String   @id @default(cuid())
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  userAgent String?
+  userId    String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 model Event {

@@ -3,6 +3,7 @@ import localFont from 'next/font/local';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { StickyMobileBar } from '@/components/layout/StickyMobileBar';
+import { PlausibleScript } from '@/components/analytics/PlausibleScript';
 import { site } from '@/lib/site';
 import { brand } from '@/lib/brand';
 import { env } from '@/lib/env';
@@ -85,6 +86,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </main>
         <Footer />
         <StickyMobileBar />
+        <PlausibleScript />
       </body>
     </html>
   );
