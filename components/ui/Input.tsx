@@ -1,0 +1,52 @@
+import {
+  forwardRef,
+  type HTMLAttributes,
+  type InputHTMLAttributes,
+  type LabelHTMLAttributes,
+  type TextareaHTMLAttributes,
+} from 'react';
+import { cn } from '@/lib/utils';
+
+const baseField =
+  'w-full rounded-xl bg-elevated border border-white/10 px-4 py-3 text-foreground placeholder:text-muted/60 ' +
+  'focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/40 transition-colors ' +
+  'aria-[invalid=true]:border-accent-hot aria-[invalid=true]:ring-2 aria-[invalid=true]:ring-accent-hot/40';
+
+export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(
+  ({ className, ...props }, ref) => (
+    <input ref={ref} className={cn(baseField, className)} {...props} />
+  ),
+);
+Input.displayName = 'Input';
+
+export const Textarea = forwardRef<HTMLTextAreaElement, TextareaHTMLAttributes<HTMLTextAreaElement>>(
+  ({ className, ...props }, ref) => (
+    <textarea ref={ref} className={cn(baseField, 'min-h-[120px] resize-y', className)} {...props} />
+  ),
+);
+Textarea.displayName = 'Textarea';
+
+export function Label({ className, ...props }: LabelHTMLAttributes<HTMLLabelElement>) {
+  return (
+    <label
+      className={cn(
+        'block text-xs font-medium uppercase tracking-[0.18em] text-muted mb-2',
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
+export function FieldError({
+  children,
+  className,
+  ...props
+}: HTMLAttributes<HTMLParagraphElement>) {
+  if (!children) return null;
+  return (
+    <p role="alert" className={cn('mt-1.5 text-xs text-accent-hot', className)} {...props}>
+      {children}
+    </p>
+  );
+}

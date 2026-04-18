@@ -1,0 +1,32 @@
+node_modules
+.next
+.turbo
+.swc
+out
+dist
+build
+coverage
+
+# Env files — all ignored, only the committed example is tracked.
+.env*
+!.env.example
+
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+.DS_Store
+.idea
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+
+next-env.d.ts
+*.tsbuildinfo
+
+prisma/*.db
+prisma/*.db-journal
+
+# Sentry CLI — `sentry-cli login` writes a token here; never commit.
+.sentryclirc

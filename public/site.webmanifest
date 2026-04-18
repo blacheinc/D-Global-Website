@@ -1,0 +1,41 @@
+{
+  "id": "/",
+  "name": "D-Global",
+  "short_name": "D-Global",
+  "description": "Digital nightlife ecosystem — events, VIP tables, and the sound of the night.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "natural",
+  "theme_color": "#000000",
+  "background_color": "#000000",
+  "lang": "en-GH",
+  "dir": "ltr",
+  "categories": ["entertainment", "music", "lifestyle"],
+  "icons": [
+    {
+      "src": "/android-chrome-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/android-chrome-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/android-chrome-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/android-chrome-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
