@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { db } from '@/server/db';
-import { auth } from '@/auth';
 import { captureError } from '@/server/observability';
 
 export const runtime = 'nodejs';
@@ -26,11 +25,20 @@ export async function POST(req: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: 'Invalid subscription' }, { status: 400 });
   }
-  const session = await auth();
   const userAgent = req.headers.get('user-agent')?.slice(0, 240);
   // upsert on endpoint: re-subscribing on the same browser shouldn't
   // create dupes, but updating keys/userAgent matters because browsers
   // can rotate keys when the user clears site data.
+  //
+  // We used to also link the subscription to the signed-in user via
+  // NextAuth's `auth()`. Dropped because (a) the linkage wasn't load-
+  // bearing — broadcasts go to every row regardless of userId, and the
+  // SW's own `pushsubscriptionchange` re-subscribe has no session
+  // anyway, so anonymous rows were already the common case — and (b)
+  // next-auth beta.22's sync headers() call triggers a Next 15 dynamic-
+  // IO warning in dev that clutters the console for every subscribe.
+  // If we later need per-user subscription management, match on
+  // endpoint from an authenticated endpoint instead of backfilling here.
   try {
     await db.pushSubscription.upsert({
       where: { endpoint: parsed.data.endpoint },
@@ -39,13 +47,11 @@ export async function POST(req: Request) {
         p256dh: parsed.data.keys.p256dh,
         auth: parsed.data.keys.auth,
         userAgent,
-        userId: session?.user?.id,
       },
       update: {
         p256dh: parsed.data.keys.p256dh,
         auth: parsed.data.keys.auth,
         userAgent,
-        userId: session?.user?.id,
       },
     });
   } catch (err) {

@@ -102,9 +102,10 @@ Optional (only if you want live payments):
 ```bash
 pnpm prisma migrate dev --name init
 pnpm db:seed
+pnpm db:seed:admin   # optional: pre-create User rows for ADMIN_EMAILS
 ```
 
-Seeds: 3 events, 3 VIP packages (Silver/Gold/Platinum), 4 artists, 3 releases, 12 gallery images.
+`db:seed` is destructive (wipes Events / Orders / Bookings / Artists and reseeds demo content). `db:seed:admin` is idempotent — it upserts User rows with `role=ADMIN` for every address in `ADMIN_EMAILS` without touching anything else, safe to run in any environment.
 
 ### 4. Run
 
@@ -187,7 +188,8 @@ Every booking flow has a WhatsApp deep-link fallback (`https://wa.me/<number>?te
 | `pnpm typecheck` | TypeScript `--noEmit` |
 | `pnpm prisma:migrate` | `prisma migrate dev` |
 | `pnpm prisma:studio` | Prisma Studio |
-| `pnpm db:seed` | Seed the DB |
+| `pnpm db:seed` | Seed the DB with demo content (destructive) |
+| `pnpm db:seed:admin` | Provision admin User rows from `ADMIN_EMAILS` (idempotent) |
 
 ---
 
