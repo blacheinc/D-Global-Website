@@ -63,18 +63,21 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (!user.email) return false;
       const normalizedEmail = user.email.toLowerCase();
       const isAdmin = adminEmails.has(normalizedEmail);
-      try {
+      // Read-before-update so the first-ever sign-in (where the adapter
+      // hasn't created the User row yet) doesn't emit a noisy Prisma
+      // "Record to update not found" error every time a new address
+      // requests a magic link. The session callback re-syncs role on
+      // every request anyway, so missing the first-sign-in write is
+      // harmless — the next loaded session picks up the allowlist.
+      const existing = await db.user.findUnique({
+        where: { email: normalizedEmail },
+        select: { id: true },
+      });
+      if (existing) {
         await db.user.update({
           where: { email: normalizedEmail },
           data: { role: isAdmin ? 'ADMIN' : 'GUEST' },
         });
-      } catch {
-        // First-ever sign-in: the adapter creates the User after
-        // signIn returns true, so update can fail. The session
-        // callback re-reads the role on every request, so the role
-        // gets set on the next sign-in (or via the adapter create
-        // event below if you wire it later). Better to let sign-in
-        // proceed than to block the user out.
       }
       return true;
     },
