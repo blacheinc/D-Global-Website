@@ -15,9 +15,14 @@ import { PlausibleScript } from '@/components/analytics/PlausibleScript';
 export default function SiteLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="pb-[calc(5rem_+_env(safe-area-inset-bottom))] md:pb-0">
+      {/* focus-visible: only triggers on keyboard focus, not on
+          programmatic focus restoration (DevTools tab-switch, page
+          restore, etc.) or mouse clicks. Using plain focus: here made
+          the skip link pop over the logo any time focus was restored
+          to the document without a clear keyboard action. */}
       <a
         href="#main"
-        className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:rounded-full focus:bg-accent focus:px-5 focus:py-3 focus:text-sm focus:text-white focus:shadow-glow-sm"
+        className="sr-only focus-visible:not-sr-only focus-visible:fixed focus-visible:top-4 focus-visible:left-4 focus-visible:z-50 focus-visible:rounded-full focus-visible:bg-accent focus-visible:px-5 focus-visible:py-3 focus-visible:text-sm focus-visible:text-white focus-visible:shadow-glow-sm"
       >
         Skip to main content
       </a>
