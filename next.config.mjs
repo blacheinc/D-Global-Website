@@ -1,16 +1,48 @@
 import { withSentryConfig } from '@sentry/nextjs';
 
-// Content Security Policy. Built as an allowlist of every external origin
-// the app actually loads at runtime — Spotify embeds, Audiomack iframes,
-// YouTube, Google Maps, Paystack inline checkout, Cloudinary/Unsplash
-// images. Tightening this further later (e.g. nonces for inline scripts)
-// is straightforward; loosening is a regression.
+// Content Security Policy. Allowlist of origins we either load from today
+// or have pre-authorized for the integration families this app ships with
+// (Spotify, Audiomack, YouTube, Google Maps, Paystack, Plausible, Sentry,
+// Cloudinary/Unsplash). Pre-authorization matters: adding a YouTube embed
+// or the Paystack popup later doesn't need a CSP PR, just the feature PR.
+// Loosening is a regression; tightening is a future improvement.
 //
-// `'unsafe-inline'` for script-src is required by next/font and the
-// Next.js dev runtime; pair it with strict-dynamic + nonces in a future
-// pass once we audit every inline tag.
+// Per-directive status (useful when auditing — keep this in sync):
+//   script-src
+//     'self' 'unsafe-inline'            → required (Next/font + hydration)
+//     https://js.paystack.co            → pre-auth (Paystack inline popup;
+//                                          current flow is full-page redirect,
+//                                          not popup — keep for future UX)
+//     https://plausible.io              → used (PlausibleScript)
+//   frame-src
+//     https://open.spotify.com          → used (SpotifyEmbed)
+//     https://embed.audiomack.com       → used (AudiomackEmbed)
+//     https://www.google.com            → used (EventMap → maps/embed)
+//     https://www.youtube.com           → pre-auth (release pages link to
+//     https://www.youtube-nocookie.com     YouTube today; iframe later)
+//     https://checkout.paystack.com     → pre-auth (inline-popup iframe;
+//     https://standard.paystack.co         current flow navigates instead)
+//   connect-src
+//     https://plausible.io              → used (tracking beacon)
+//     https://*.sentry.io               → used (fallback when tunnel fails)
+//     https://*.ingest.sentry.io        → used (regional ingest fallback)
+//     https://api.paystack.co           → pre-auth (all Paystack HTTP is
+//     https://checkout.paystack.com        server-side today; here for
+//                                          future client-initiated calls)
+//   form-action
+//     https://checkout.paystack.com     → pre-auth (current checkout POSTs
+//     https://standard.paystack.co         to /api/... same-origin, then JS
+//                                          redirects — no form submit to
+//                                          Paystack. Kept for future popup.)
+//   img-src                              → used (Spotify/Audiomack/Cloudinary/
+//                                          Unsplash covers + Maps statics)
+//   media-src 'self'                     → used (hero video is same-origin)
 //
-// Sentry note: we tunnel browser events through `/monitoring` (configured
+// `'unsafe-inline'` for script-src is required by next/font and the Next.js
+// dev runtime; pair it with strict-dynamic + nonces in a future pass once
+// we audit every inline tag.
+//
+// Sentry note: browser events tunnel through `/monitoring` (configured
 // below in withSentryConfig), which is same-origin and covered by
 // connect-src 'self'. The *.ingest.sentry.io entry is the fallback path
 // the SDK uses if the tunnel is unreachable on first init.
