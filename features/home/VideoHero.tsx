@@ -68,7 +68,7 @@ export function VideoHero() {
           className="max-w-4xl"
         >
           <p className="eyebrow">Accra · Records</p>
-          <h1 className="mt-5 font-display text-display-2xl text-balance">
+          <h1 className="mt-5 font-display text-display-xl text-balance">
             The <span className="text-accent">sound</span> of a generation.
           </h1>
           <p className="mt-5 text-lg md:text-xl text-muted max-w-lg leading-relaxed">
