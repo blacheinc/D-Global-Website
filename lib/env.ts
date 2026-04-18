@@ -4,6 +4,7 @@ const DEV_QR_SECRET = 'dev-only-qr-secret-change-me-in-prod';
 const DEV_AUTH_SECRET = 'dev-only-auth-secret-change-me-in-prod';
 const FALLBACK_SITE_URL = 'http://localhost:3000';
 const FALLBACK_WHATSAPP = '233000000000';
+const FALLBACK_EMAIL_FROM = 'D-Global <noreply@d-global.example>';
 
 const schema = z
   .object({
@@ -30,7 +31,11 @@ const schema = z
 
     // --- Email (Resend) ---
     RESEND_API_KEY: z.string().optional(),
-    EMAIL_FROM: z.string().email().default('D-Global <noreply@d-global.example>'),
+    // Not z.string().email() — From values use the RFC 5322 address-spec
+    // format ("Display Name <user@host>") which zod's email regex rejects.
+    // Resend validates the shape at send time; min(1) is enough here to
+    // catch an empty env.
+    EMAIL_FROM: z.string().min(1).default(FALLBACK_EMAIL_FROM),
 
     // --- Analytics (Plausible) ---
     NEXT_PUBLIC_PLAUSIBLE_DOMAIN: z.string().optional(),
@@ -123,6 +128,26 @@ const schema = z
         code: z.ZodIssueCode.custom,
         path: ['NEXT_PUBLIC_WHATSAPP_NUMBER'],
         message: 'NEXT_PUBLIC_WHATSAPP_NUMBER must be set in production.',
+      });
+    }
+    // Without RESEND_API_KEY in prod, every transactional email (magic-link
+    // sign-in, order confirmation) silently drops. Fail startup instead of
+    // shipping a deploy where sign-in looks like it worked but nobody ever
+    // gets the email. Intentional "no email" deploys should override this
+    // check at the deploy layer, not by leaving the key blank.
+    if (!val.RESEND_API_KEY) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['RESEND_API_KEY'],
+        message: 'RESEND_API_KEY must be set in production.',
+      });
+    }
+    if (val.EMAIL_FROM === FALLBACK_EMAIL_FROM) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['EMAIL_FROM'],
+        message:
+          'EMAIL_FROM must be set in production to a verified sender on your Resend domain.',
       });
     }
   });

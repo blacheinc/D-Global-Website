@@ -3,10 +3,10 @@ import { z } from 'zod';
 import { Resend } from 'resend';
 import { env } from '@/lib/env';
 
-// Resend client cached for the process lifetime. Without an API key we
-// log to the console instead — useful in dev (you see the magic link)
-// and safe in CI/preview environments where a real key would risk
-// sending mail to real addresses from a half-configured stack.
+// Resend client cached for the process lifetime. In production, env.ts's
+// refinement requires RESEND_API_KEY — so this branch only evaluates to
+// null in dev, where we fall back to logging the email (useful for
+// reading magic-link URLs off the console without an SMTP setup).
 const resend = env.RESEND_API_KEY ? new Resend(env.RESEND_API_KEY) : null;
 
 export type SendMailArgs = {
@@ -45,6 +45,10 @@ export async function sendMail(args: SendMailArgs): Promise<void> {
   }
 
   if (!resend) {
+    // Dev-only path. env.ts's production refinement requires
+    // RESEND_API_KEY so this branch can't execute in a production build
+    // without the boot already having failed. Print the email so
+    // operators can pick up magic links without running an SMTP server.
     console.info('[mailer:dev]', { to, subject });
     console.info('[mailer:dev:html]\n' + args.html);
     return;
