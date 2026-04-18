@@ -73,7 +73,12 @@ export async function broadcast(payload: PushPayload): Promise<BroadcastResult> 
         await db.pushSubscription.delete({ where: { endpoint: sub.endpoint } }).catch(() => {});
         removed += 1;
       } else {
-        captureError('[push:send] failed', err, { endpoint: sub.endpoint });
+        // Only the endpoint's host lands in Sentry — the full URL carries
+        // the push-service-assigned per-browser token, which functions as
+        // a replay credential. Host alone (fcm.googleapis.com vs
+        // updates.push.services.mozilla.com) is enough to tell which
+        // service is flaking.
+        captureError('[push:send] failed', err, { endpointHost: safeHost(sub.endpoint) });
         failed += 1;
       }
     }
@@ -85,4 +90,12 @@ export async function broadcast(payload: PushPayload): Promise<BroadcastResult> 
     await Promise.all(subs.slice(i, i + CONCURRENCY).map(sendOne));
   }
   return { attempted: subs.length, delivered, removed, failed };
+}
+
+function safeHost(endpoint: string): string | undefined {
+  try {
+    return new URL(endpoint).host;
+  } catch {
+    return undefined;
+  }
 }
