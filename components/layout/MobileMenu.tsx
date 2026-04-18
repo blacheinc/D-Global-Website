@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Menu, X } from 'lucide-react';
@@ -9,9 +10,11 @@ import { cn } from '@/lib/utils';
 
 export function MobileMenu() {
   const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
   const toggleRef = useRef<HTMLButtonElement>(null);
 
+  useEffect(() => setMounted(true), []);
   useEffect(() => setOpen(false), [pathname]);
 
   useEffect(() => {
@@ -31,6 +34,41 @@ export function MobileMenu() {
     };
   }, [open]);
 
+  // The drawer is portalled to document.body so it escapes the header's
+  // z-40 stacking context. Rendered inline, its z-30 would evaluate
+  // INSIDE the header's context — making it stack above the logo and
+  // toggle button (both at z-auto within the same parent) and hiding
+  // them the moment the menu opened. Outside the header, the ordinary
+  // z-index comparison works and the header floats on top of the drawer.
+  const drawer = (
+    <div
+      id="mobile-menu"
+      inert={!open}
+      aria-hidden={!open}
+      className={cn(
+        'lg:hidden fixed inset-0 top-0 z-30 bg-background/70 backdrop-blur-2xl transition-opacity duration-300',
+        open ? 'opacity-100' : 'pointer-events-none opacity-0',
+      )}
+    >
+      {/* Push nav below the fixed header so the first item isn't
+          tucked behind the logo + toggle button. */}
+      <nav className="flex flex-col gap-2 px-6 pt-24 md:pt-28" aria-label="Mobile">
+        {site.nav.map((item) => (
+          <Link
+            key={item.href}
+            href={item.href}
+            className="flex items-center justify-between border-b border-white/5 py-5 text-2xl font-display tracking-tight text-foreground hover:text-accent"
+          >
+            {item.label}
+            <span className="text-xs text-muted" aria-hidden>
+              →
+            </span>
+          </Link>
+        ))}
+      </nav>
+    </div>
+  );
+
   return (
     <>
       <button
@@ -45,40 +83,10 @@ export function MobileMenu() {
         {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
       </button>
 
-      <div
-        id="mobile-menu"
-        inert={!open}
-        aria-hidden={!open}
-        className={cn(
-          // Full-viewport drawer (top-0, not top-16). The transparent
-          // header sits ON this panel at z-40, so the menu reads as one
-          // continuous glass surface instead of a card with a strip of
-          // hero video peeking above it. bg-background/70 + heavy
-          // backdrop-blur gives the "frosted glass over whatever was
-          // behind" effect — opaque enough for nav text to stay high-
-          // contrast, transparent enough to feel like a modern drawer
-          // and not a solid black wall.
-          'lg:hidden fixed inset-0 top-0 z-30 bg-background/70 backdrop-blur-2xl transition-opacity duration-300',
-          open ? 'opacity-100' : 'pointer-events-none opacity-0',
-        )}
-      >
-        {/* Push nav below the fixed header so the first item isn't
-            tucked behind the logo + close button. */}
-        <nav className="flex flex-col gap-2 px-6 pt-24 md:pt-28" aria-label="Mobile">
-          {site.nav.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="flex items-center justify-between border-b border-white/5 py-5 text-2xl font-display tracking-tight text-foreground hover:text-accent"
-            >
-              {item.label}
-              <span className="text-xs text-muted" aria-hidden>
-                →
-              </span>
-            </Link>
-          ))}
-        </nav>
-      </div>
+      {/* createPortal requires a real DOM node — gate on mounted to
+          avoid calling it during SSR. The drawer is hidden anyway until
+          `open` toggles, so skipping it on the server render is fine. */}
+      {mounted ? createPortal(drawer, document.body) : null}
     </>
   );
 }
