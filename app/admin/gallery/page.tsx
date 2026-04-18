@@ -45,6 +45,8 @@ export default async function AdminGalleryPage({
               <img
                 src={img.url}
                 alt={img.caption ?? ''}
+                loading="lazy"
+                decoding="async"
                 className="aspect-square w-full rounded-lg object-cover"
               />
               <div className="mt-3 flex items-start justify-between gap-2">

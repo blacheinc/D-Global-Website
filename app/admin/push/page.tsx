@@ -14,7 +14,7 @@ export default async function AdminPushPage() {
           {configured ? '' : ' VAPID keys are not configured — broadcasts will fail until you set them.'}
         </p>
       </header>
-      <BroadcastForm />
+      <BroadcastForm subscriberCount={subscriberCount} />
     </div>
   );
 }

@@ -15,6 +15,12 @@ import { cn } from '@/lib/utils';
 // via uncontrolled state — mirrors how EventForm handles all its other
 // fields (defaultValue + DOM-backed state).
 
+// Mirror the server's MAX_BYTES so we can short-circuit oversize files
+// client-side instead of burning upload bandwidth only to be rejected
+// with 413. Server is still the source of truth — this is just a UX
+// optimization.
+const MAX_BYTES = 4 * 1024 * 1024;
+
 export type ImageUploadProps = {
   name: string;
   defaultValue?: string | null;
@@ -39,6 +45,11 @@ export function ImageUpload({
 
   async function handleFile(file: File) {
     setError(null);
+    if (file.size > MAX_BYTES) {
+      setError(`File too large. Max ${Math.round(MAX_BYTES / 1024 / 1024)}MB.`);
+      setStatus('error');
+      return;
+    }
     setStatus('uploading');
     const fd = new FormData();
     fd.append('file', file);
@@ -110,6 +121,8 @@ export function ImageUpload({
         <img
           src={url}
           alt=""
+          decoding="async"
+          loading="lazy"
           className="max-h-32 rounded-lg border border-white/10 object-cover"
           onError={(e) => {
             (e.currentTarget as HTMLImageElement).style.display = 'none';
