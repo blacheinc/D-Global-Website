@@ -95,6 +95,10 @@ export default function GlobalError({
             >
               Try again
             </button>
+            {/* global-error renders its own <html>/<body> when the app
+                router context has failed; next/link can't navigate in
+                that state, so a raw anchor is the correct choice here. */}
+            {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
             <a
               href="/"
               style={{

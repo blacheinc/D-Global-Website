@@ -46,7 +46,10 @@ export async function GET(
   }
 
   // Buffer extends Uint8Array, so it's a valid Response BodyInit on Node.
-  return new Response(png, {
+  // Cast silences the @types/node ArrayBufferLike-vs-ArrayBuffer mismatch
+  // introduced when the types package split SharedArrayBuffer out — the
+  // runtime behavior is unchanged.
+  return new Response(png as unknown as BodyInit, {
     headers: {
       'Content-Type': 'image/png',
       'Cache-Control': 'private, max-age=0, must-revalidate',

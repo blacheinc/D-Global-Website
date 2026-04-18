@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import * as Sentry from '@sentry/nextjs';
 import { Button } from '@/components/ui/Button';
 
 // VAPID public keys are url-safe base64. The PushManager expects a
@@ -18,6 +19,7 @@ type State = 'unsupported' | 'denied' | 'idle' | 'subscribed' | 'busy';
 
 export function SubscribeButton({ vapidPublicKey }: { vapidPublicKey?: string }) {
   const [state, setState] = useState<State>('idle');
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -38,7 +40,12 @@ export function SubscribeButton({ vapidPublicKey }: { vapidPublicKey?: string })
         const reg = await navigator.serviceWorker.register('/sw.js');
         const existing = await reg.pushManager.getSubscription();
         if (!cancelled) setState(existing ? 'subscribed' : 'idle');
-      } catch {
+      } catch (err) {
+        // Registration can fail in private windows, strict browsing
+        // contexts, or corrupt SW states. Capture for visibility, and
+        // fall back to unsupported so the button hides itself — no
+        // point showing a broken CTA.
+        Sentry.captureException(err, { tags: { source: 'push-sw-register' } });
         if (!cancelled) setState('unsupported');
       }
     }
@@ -52,6 +59,7 @@ export function SubscribeButton({ vapidPublicKey }: { vapidPublicKey?: string })
 
   async function subscribe() {
     if (!vapidPublicKey) return;
+    setError(null);
     setState('busy');
     try {
       const permission = await Notification.requestPermission();
@@ -60,23 +68,31 @@ export function SubscribeButton({ vapidPublicKey }: { vapidPublicKey?: string })
         return;
       }
       const reg = await navigator.serviceWorker.ready;
+      // @types/node's Uint8Array now carries ArrayBufferLike, while the
+      // DOM's BufferSource expects a pinned ArrayBuffer. .buffer narrows.
+      const key = urlBase64ToUint8Array(vapidPublicKey);
       const sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+        applicationServerKey: key.buffer as ArrayBuffer,
       });
       const res = await fetch('/api/push/subscribe', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(sub.toJSON()),
       });
-      if (!res.ok) throw new Error('subscribe failed');
+      if (!res.ok) throw new Error(`Subscribe endpoint returned ${res.status}`);
       setState('subscribed');
-    } catch {
+    } catch (err) {
+      Sentry.captureException(err, { tags: { source: 'push-subscribe' } });
+      // User-facing copy stays generic — browser/push-service failures
+      // are many and unactionable by end users beyond "try again".
+      setError('Couldn’t enable notifications. Try again in a moment.');
       setState('idle');
     }
   }
 
   async function unsubscribe() {
+    setError(null);
     setState('busy');
     try {
       const reg = await navigator.serviceWorker.ready;
@@ -90,7 +106,9 @@ export function SubscribeButton({ vapidPublicKey }: { vapidPublicKey?: string })
         await sub.unsubscribe();
       }
       setState('idle');
-    } catch {
+    } catch (err) {
+      Sentry.captureException(err, { tags: { source: 'push-unsubscribe' } });
+      setError('Couldn’t disable notifications. Try again.');
       setState('subscribed');
     }
   }
@@ -104,14 +122,21 @@ export function SubscribeButton({ vapidPublicKey }: { vapidPublicKey?: string })
   }
 
   return (
-    <Button
-      type="button"
-      variant={state === 'subscribed' ? 'ghost' : 'primary'}
-      size="sm"
-      disabled={state === 'busy'}
-      onClick={state === 'subscribed' ? unsubscribe : subscribe}
-    >
-      {state === 'subscribed' ? 'Disable notifications' : state === 'busy' ? '…' : 'Get drop alerts'}
-    </Button>
+    <div className="flex flex-col gap-2">
+      <Button
+        type="button"
+        variant={state === 'subscribed' ? 'ghost' : 'primary'}
+        size="sm"
+        disabled={state === 'busy'}
+        onClick={state === 'subscribed' ? unsubscribe : subscribe}
+      >
+        {state === 'subscribed' ? 'Disable notifications' : state === 'busy' ? '…' : 'Get drop alerts'}
+      </Button>
+      {error && (
+        <p role="alert" className="text-xs text-accent-hot max-w-xs">
+          {error}
+        </p>
+      )}
+    </div>
   );
 }

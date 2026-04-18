@@ -1,13 +1,16 @@
 import type { Metadata, Viewport } from 'next';
 import localFont from 'next/font/local';
-import { Header } from '@/components/layout/Header';
-import { Footer } from '@/components/layout/Footer';
-import { StickyMobileBar } from '@/components/layout/StickyMobileBar';
-import { PlausibleScript } from '@/components/analytics/PlausibleScript';
 import { site } from '@/lib/site';
 import { brand } from '@/lib/brand';
 import { env } from '@/lib/env';
 import './globals.css';
+
+// Root layout is intentionally minimal. Public chrome (Header, Footer,
+// StickyMobileBar, Plausible analytics, skip-link, site-wide <main>)
+// lives in app/(site)/layout.tsx so /admin/* doesn't inherit it. Keeping
+// only html/body/fonts/global-metadata here means the admin dashboard
+// renders with its own layout, its own <main>, no leaked WhatsApp
+// sticky CTA, and no admin-pageview pollution in Plausible.
 
 const atypDisplay = localFont({
   src: [
@@ -73,21 +76,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`dark ${atypDisplay.variable} ${atypText.variable}`}>
-      <body className="min-h-screen pb-[calc(5rem_+_env(safe-area-inset-bottom))] md:pb-0">
-        <a
-          href="#main"
-          className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:rounded-full focus:bg-accent focus:px-5 focus:py-3 focus:text-sm focus:text-white focus:shadow-glow-sm"
-        >
-          Skip to main content
-        </a>
-        <Header />
-        <main id="main" tabIndex={-1} className="pt-16 md:pt-20 outline-none">
-          {children}
-        </main>
-        <Footer />
-        <StickyMobileBar />
-        <PlausibleScript />
-      </body>
+      <body className="min-h-screen">{children}</body>
     </html>
   );
 }
