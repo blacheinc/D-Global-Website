@@ -206,7 +206,7 @@ export function TicketCheckout({ eventId, ticketTypes, paystackMode }: TicketChe
       <FieldError>{error}</FieldError>
 
       <p className="text-xs text-muted">
-        By continuing you agree to our terms. Tickets are delivered instantly after payment — you'll
+        By continuing you agree to our terms. Tickets are delivered instantly after payment, you'll
         get a QR code valid at the door. Need help? Message D-Global on WhatsApp.
       </p>
     </form>

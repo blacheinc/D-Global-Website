@@ -3,7 +3,7 @@ import { env } from '@/lib/env';
 
 // Small, dependency-free defenses for public mutating endpoints. These
 // aren't a substitute for Redis-backed rate limiting or a real CSRF
-// token flow — in a distributed deploy the in-memory bucket is per-
+// token flow, in a distributed deploy the in-memory bucket is per-
 // instance, so a distributed attacker would slip through. They're
 // proportionate to the actual threats for this app today (script-kiddie
 // spam, CSRF from another tab) and cost nothing to stand up.
@@ -12,7 +12,7 @@ import { env } from '@/lib/env';
 //
 // Server actions get origin-pinned CSRF protection for free via Next's
 // built-in Action-same-origin check. Plain route handlers (app/api/*)
-// don't — a form on attacker.com can POST to /api/push/subscribe from
+// don't, a form on attacker.com can POST to /api/push/subscribe from
 // a signed-in user's browser. The origin header is set by the browser
 // for all POSTs to cross-origin URLs (fetch without no-cors, <form>
 // submit, etc.) and can't be forged from page JS. Comparing it to the
@@ -21,7 +21,7 @@ import { env } from '@/lib/env';
 
 export function isSameOrigin(req: Request): boolean {
   const origin = req.headers.get('origin');
-  // No Origin header — be conservative and allow only if Referer is
+  // No Origin header, be conservative and allow only if Referer is
   // same-origin. Some legitimate user agents strip Origin on same-site
   // POSTs (older Safari, specific proxies). Blocking outright would
   // regress those. Referer is a weaker signal but it's the fallback
@@ -67,7 +67,7 @@ export function rateLimit(
 }
 
 // Server-action variant. Server actions receive FormData, not a Request
-// — to read the client IP they import `headers()` from next/headers and
+//, to read the client IP they import `headers()` from next/headers and
 // pass the result here. Same bucket semantics, same key space (so a
 // /api/bookings POST and a createBooking server action from the same
 // IP share the "bookings" counter if they use the same key).
@@ -94,7 +94,7 @@ export function rateLimitHeaders(
 
 // Vercel / Cloudflare / Fly surface the client IP in x-forwarded-for
 // (left-most entry) or x-real-ip. Fall back to 'unknown' so a missing
-// header still produces a key — everybody hitting a misconfigured edge
+// header still produces a key, everybody hitting a misconfigured edge
 // shares one bucket, which is noisy but not unsafe.
 function clientIpFromHeaders(h: Headers): string {
   const xff = h.get('x-forwarded-for');

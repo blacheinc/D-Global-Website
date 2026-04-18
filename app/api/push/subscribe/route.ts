@@ -53,9 +53,9 @@ export async function POST(req: Request) {
   //
   // We used to also link the subscription to the signed-in user via
   // NextAuth's `auth()`. Dropped because (a) the linkage wasn't load-
-  // bearing — broadcasts go to every row regardless of userId, and the
+  // bearing, broadcasts go to every row regardless of userId, and the
   // SW's own `pushsubscriptionchange` re-subscribe has no session
-  // anyway, so anonymous rows were already the common case — and (b)
+  // anyway, so anonymous rows were already the common case, and (b)
   // next-auth beta.22's sync headers() call triggers a Next 15 dynamic-
   // IO warning in dev that clutters the console for every subscribe.
   // If we later need per-user subscription management, match on
@@ -77,7 +77,7 @@ export async function POST(req: Request) {
     });
   } catch (err) {
     // Capture so we know if the push pipeline is silently failing at
-    // the storage layer — without this, every SubscribeButton click
+    // the storage layer, without this, every SubscribeButton click
     // would surface a generic "Couldn't enable notifications" from the
     // client's Sentry tag but the root cause (DB, unique constraint,
     // etc.) would be invisible on the server.

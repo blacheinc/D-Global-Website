@@ -17,7 +17,7 @@ export default async function GalleryPage() {
         <p className="eyebrow">Gallery</p>
         <h1 className="mt-4 font-display text-display-xl text-balance">The nights, in frames.</h1>
         <p className="mt-4 text-muted md:text-lg max-w-xl">
-          A living archive of every edition — tap any photo to view it full-screen.
+          A living archive of every edition, tap any photo to view it full-screen.
         </p>
       </div>
       <div className="mt-12">

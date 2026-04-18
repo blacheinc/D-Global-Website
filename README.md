@@ -1,6 +1,6 @@
 # D-Global
 
-> **Digital nightlife ecosystem** — events discovery, VIP table booking, and a record label home. Built for Accra, engineered to scale.
+> **Digital nightlife ecosystem**, events discovery, VIP table booking, and a record label home. Built for Accra, engineered to scale.
 
 ![D-Global](public/brand/d-global-logo.png)
 
@@ -10,9 +10,9 @@
 
 D-Global is a production-grade Next.js platform that combines three products into one immersive brand experience:
 
-1. **Events** — browse, countdown, and buy tickets (Early Bird / Regular / VIP).
-2. **VIP Tables** — Silver / Gold / Platinum packages with a WhatsApp-first booking flow (critical for Ghana).
-3. **Record Label** — artist profiles, releases, Spotify/Audiomack embeds, and a carousel of featured acts.
+1. **Events**, browse, countdown, and buy tickets (Early Bird / Regular / VIP).
+2. **VIP Tables**, Silver / Gold / Platinum packages with a WhatsApp-first booking flow (critical for Ghana).
+3. **Record Label**, artist profiles, releases, Spotify/Audiomack embeds, and a carousel of featured acts.
 
 It is not a website. It is a night you can step inside from any device.
 
@@ -89,9 +89,9 @@ cp .env.example .env.local
 ```
 
 Fill in at minimum:
-- `DATABASE_URL` — your Postgres connection string.
-- `NEXT_PUBLIC_WHATSAPP_NUMBER` — Ghana number in E.164 without `+` (e.g. `233241234567`).
-- `QR_SECRET` — any long random string (HMAC key for ticket integrity).
+- `DATABASE_URL`, your Postgres connection string.
+- `NEXT_PUBLIC_WHATSAPP_NUMBER`, Ghana number in E.164 without `+` (e.g. `233241234567`).
+- `QR_SECRET`, any long random string (HMAC key for ticket integrity).
 
 Optional (only if you want live payments):
 - `PAYSTACK_MODE=api` plus `PAYSTACK_SECRET_KEY`.
@@ -105,7 +105,7 @@ pnpm db:seed
 pnpm db:seed:admin   # optional: pre-create User rows for ADMIN_EMAILS
 ```
 
-`db:seed` is destructive (wipes Events / Orders / Bookings / Artists and reseeds demo content). `db:seed:admin` is idempotent — it upserts User rows with `role=ADMIN` for every address in `ADMIN_EMAILS` without touching anything else, safe to run in any environment.
+`db:seed` is destructive (wipes Events / Orders / Bookings / Artists and reseeds demo content). `db:seed:admin` is idempotent, it upserts User rows with `role=ADMIN` for every address in `ADMIN_EMAILS` without touching anything else, safe to run in any environment.
 
 ### 4. Run
 

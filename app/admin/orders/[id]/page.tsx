@@ -58,12 +58,12 @@ export default async function AdminOrderDetailPage({
         </div>
         <div>
           <dt className="text-xs uppercase tracking-[0.18em] text-muted">Phone</dt>
-          <dd className="mt-1">{order.buyerPhone ?? '—'}</dd>
+          <dd className="mt-1">{order.buyerPhone ?? '-'}</dd>
         </div>
         <div>
           <dt className="text-xs uppercase tracking-[0.18em] text-muted">Paid at</dt>
           <dd className="mt-1">
-            {order.paidAt ? formatEventDateTime(order.paidAt) : '—'}
+            {order.paidAt ? formatEventDateTime(order.paidAt) : '-'}
           </dd>
         </div>
         <div className="sm:col-span-2">
@@ -101,7 +101,7 @@ export default async function AdminOrderDetailPage({
                     {formatPriceMinor(item.unitPriceMinor * item.quantity, order.currency)}
                   </td>
                   <td className="px-4 py-3 text-muted">
-                    {item.scannedAt ? formatEventDateTime(item.scannedAt) : '—'}
+                    {item.scannedAt ? formatEventDateTime(item.scannedAt) : '-'}
                   </td>
                 </tr>
               ))}

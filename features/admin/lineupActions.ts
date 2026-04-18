@@ -7,7 +7,7 @@ import { requireAdmin } from '@/server/auth';
 import { captureError } from '@/server/observability';
 
 // Admin CRUD for LineupSlot (event subresource). Lineup slots have an
-// optional artistId — a slot can name a DJ/artist record, or just carry
+// optional artistId, a slot can name a DJ/artist record, or just carry
 // a free-form display name (e.g., a guest MC who doesn't need an artist
 // page). The public event detail page renders this list in `order`.
 

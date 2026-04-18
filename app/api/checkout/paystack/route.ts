@@ -81,14 +81,14 @@ export async function POST(req: Request) {
   //   (a) `sold` only moves on the Paystack webhook, so N concurrent
   //       checkouts all read the same pre-payment value, all pass, all
   //       get redirected to Paystack. Enough of them pay and sold ends
-  //       up > quota — a real oversell under drop-style load.
+  //       up > quota, a real oversell under drop-style load.
   //   (b) Even the pre-check could race with another order creating an
   //       item for the same tier, since order.create wasn't transactional.
   //
   // Fix: count pending-but-unpaid order items in the window against
   // quota too, and wrap the re-check + order.create in a $transaction
   // so they serialize within the request. A pending order holds
-  // capacity for PENDING_TTL_MS — long enough for a Paystack redirect
+  // capacity for PENDING_TTL_MS, long enough for a Paystack redirect
   // + completion, short enough that an abandoned checkout frees
   // inventory quickly. Abandoned pending orders past TTL are ignored
   // here; the availability math already excludes them.

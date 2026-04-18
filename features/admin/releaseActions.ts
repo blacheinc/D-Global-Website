@@ -68,7 +68,7 @@ export async function upsertRelease(
       error: 'That slug is taken.',
     };
   }
-  // Validate the artist exists before we try to write the FK — Prisma's
+  // Validate the artist exists before we try to write the FK, Prisma's
   // error would otherwise be an ungrouped "foreign key constraint" which
   // surfaces as a generic "Could not save."
   const artistExists = await db.artist.findUnique({
@@ -113,7 +113,7 @@ export async function upsertRelease(
     captureError('[admin:upsertRelease]', err, { id, slug: data.slug });
     return { ok: false, error: 'Could not save the release. Try again.' };
   }
-  // Fetch the new-artist slug so we can revalidate their detail page —
+  // Fetch the new-artist slug so we can revalidate their detail page -
   // their release list just grew (or changed) and the artist page
   // renders it. Also revalidate the PREVIOUS artist's page if the
   // release was reassigned (they no longer own this release).

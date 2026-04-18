@@ -25,7 +25,7 @@ export function buildBookingMessage(ctx: BookingContext): string {
     }.`,
   ];
   if (ctx.eventTitle) {
-    parts.push(`Event: ${ctx.eventTitle}${ctx.eventDate ? ` — ${ctx.eventDate}` : ''}`);
+    parts.push(`Event: ${ctx.eventTitle}${ctx.eventDate ? `, ${ctx.eventDate}` : ''}`);
   }
   parts.push(`Name: ${ctx.guestName}`);
   if (ctx.bookingCode) {
@@ -35,5 +35,5 @@ export function buildBookingMessage(ctx: BookingContext): string {
 }
 
 export function buildEventInquiryMessage(eventTitle: string): string {
-  return `Hi D-Global, I'd like more info about "${eventTitle}" — tickets and table availability.`;
+  return `Hi D-Global, I'd like more info about "${eventTitle}", tickets and table availability.`;
 }

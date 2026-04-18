@@ -1,5 +1,5 @@
 // NextAuth v5 catch-all handler. Re-exports the GET/POST handlers from
-// the root `auth.ts` config. Don't put any logic here — the config is
+// the root `auth.ts` config. Don't put any logic here, the config is
 // authoritative and this file should stay a thin re-export.
 import { handlers } from '@/auth';
 

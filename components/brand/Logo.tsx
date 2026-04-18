@@ -37,7 +37,7 @@ export function Logo({ size = 40, className, showWordmark = true, href = '/' }: 
   return (
     <Link
       href={href}
-      aria-label="D-Global — home"
+      aria-label="D-Global, home"
       className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded-md"
     >
       {content}

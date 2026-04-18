@@ -43,7 +43,7 @@ export function BookingForm({
           partySize,
           eventTitle: selectedEvent?.title ?? null,
           eventDate: selectedEvent ? new Date(selectedEvent.startsAt).toDateString() : null,
-          guestName: guestName || '—',
+          guestName: guestName || '-',
         }),
       )
     : buildWaLink('Hi D-Global, I want to book a VIP table.');

@@ -20,7 +20,7 @@ export async function createBooking(
 ): Promise<BookingActionState> {
   // Server actions are already origin-pinned by Next (built-in CSRF
   // defense) so we don't need an isSameOrigin check here. But a human
-  // never needs to submit 5 bookings in 10 minutes — a scripted spam
+  // never needs to submit 5 bookings in 10 minutes, a scripted spam
   // run clearly could. Cap it.
   const rl = rateLimitHeaders(await headers(), 'bookings', 5, 10 * 60 * 1000);
   if (!rl.ok) {
@@ -59,7 +59,7 @@ export async function createBooking(
     // flip it to false to retire a tier without deleting (delete would
     // trip the FK from historical Bookings). Without this check, a
     // retired tier stayed quietly bookable through the form even though
-    // the /bookings page had already hidden it — a race that turned
+    // the /bookings page had already hidden it, a race that turned
     // into a persistent UI-vs-API mismatch for anyone with the tier's
     // URL or a stale tab.
     if (!pkg || !pkg.active) {
@@ -92,7 +92,7 @@ export async function createBooking(
     };
   }
 
-  // redirect() throws NEXT_REDIRECT by design — keep it OUTSIDE the try/catch
+  // redirect() throws NEXT_REDIRECT by design, keep it OUTSIDE the try/catch
   // so the framework can intercept it.
   redirect(`/bookings/confirmation?code=${bookingCode}`);
 }

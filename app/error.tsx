@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/Button';
 
 // Per-segment error boundary. Catches errors from any RSC, client
 // component, or Server Action below this segment. This is the *common*
-// error path — global-error.tsx only fires when the root layout itself
+// error path, global-error.tsx only fires when the root layout itself
 // crashes. Both must explicitly capture; Sentry doesn't auto-instrument
 // React error boundaries.
 

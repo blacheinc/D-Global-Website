@@ -20,7 +20,7 @@ export type OrderConfirmationArgs = {
 };
 
 export async function sendOrderConfirmation(args: OrderConfirmationArgs): Promise<void> {
-  // Encode the order ID even though current cuids are [a-z0-9]+ — if the
+  // Encode the order ID even though current cuids are [a-z0-9]+, if the
   // ID format ever changes (ULID with dashes, uuid) this keeps the href
   // valid without another code change.
   const ticketsUrl = `${env.NEXT_PUBLIC_SITE_URL}/tickets/${encodeURIComponent(args.orderId)}`;
@@ -67,10 +67,10 @@ export async function sendOrderConfirmation(args: OrderConfirmationArgs): Promis
     </p>`;
 
   const textBody = [
-    `${args.eventTitle} — ${formatEventDateTime(args.eventStartsAt)} at ${args.venueName}`,
+    `${args.eventTitle}, ${formatEventDateTime(args.eventStartsAt)} at ${args.venueName}`,
     '',
     ...args.items.map(
-      (i) => `  ${i.quantity} × ${i.name} — ${formatPriceMinor(i.unitPriceMinor * i.quantity, args.currency)}`,
+      (i) => `  ${i.quantity} × ${i.name}, ${formatPriceMinor(i.unitPriceMinor * i.quantity, args.currency)}`,
     ),
     '',
     `Total: ${formatPriceMinor(args.totalMinor, args.currency)}`,
@@ -81,7 +81,7 @@ export async function sendOrderConfirmation(args: OrderConfirmationArgs): Promis
 
   await sendMail({
     to: args.to,
-    subject: `You're in — ${args.eventTitle}`,
+    subject: `You're in, ${args.eventTitle}`,
     html: emailLayout({
       preheader: `Your tickets to ${args.eventTitle} are confirmed.`,
       bodyHtml,

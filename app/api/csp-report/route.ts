@@ -4,7 +4,7 @@ import * as Sentry from '@sentry/nextjs';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// CSP violation collector. Browsers POST here when a directive fires —
+// CSP violation collector. Browsers POST here when a directive fires -
 // either the legacy `application/csp-report` shape (report-uri) or the
 // newer `application/reports+json` envelope wrapping a `csp-violation`
 // (Reporting API / report-to).
@@ -14,7 +14,7 @@ export const dynamic = 'force-dynamic';
 // the blocked origin. Tagging by violatedDirective is intentionally
 // low-cardinality; the URLs and document path go in extras.
 //
-// Without this endpoint, CSP failures are silent — operators can't see
+// Without this endpoint, CSP failures are silent, operators can't see
 // what new third-party origins broke after a deploy. The cost is a
 // handful of extra ingest events per day at most; spam from automated
 // scanners is rate-limited at Sentry.
@@ -74,7 +74,7 @@ function normalizeModern(envelope: ModernReport): Normalized | null {
 
 function normalize(payload: unknown): Normalized[] {
   // Modern Reporting API batches multiple report envelopes per POST.
-  // Extract every csp-violation in the batch — losing all-but-first is
+  // Extract every csp-violation in the batch, losing all-but-first is
   // a bug because a single page can fire many violations at once.
   if (Array.isArray(payload)) {
     return payload
@@ -111,7 +111,7 @@ function normalize(payload: unknown): Normalized[] {
 
 export async function POST(req: Request) {
   // try/finally ensures the captureMessage below ships before serverless
-  // freeze. CSP reports have no retry loop — if we drop them, we never
+  // freeze. CSP reports have no retry loop, if we drop them, we never
   // see what's breaking. flush() is a no-op when nothing is queued, so
   // the malformed-payload path pays no latency.
   try {
@@ -120,7 +120,7 @@ export async function POST(req: Request) {
       payload = await req.json();
     } catch {
       // Some browsers send malformed JSON for very early violations.
-      // Ignore — we'd just spam Sentry with parse errors.
+      // Ignore, we'd just spam Sentry with parse errors.
       return new NextResponse(null, { status: 204 });
     }
 

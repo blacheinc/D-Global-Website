@@ -6,7 +6,7 @@ import { listEvents, getAllCities, getAllGenres } from '@/features/events/querie
 
 export const metadata: Metadata = {
   title: 'Events',
-  description: 'Discover upcoming D-Global nights — afrobeats, amapiano, house and more.',
+  description: 'Discover upcoming D-Global nights, afrobeats, amapiano, house and more.',
 };
 
 interface PageProps {
@@ -36,7 +36,7 @@ export default async function EventsPage({ searchParams }: PageProps) {
             The nights that define the city.
           </h1>
           <p className="mt-4 text-muted md:text-lg max-w-xl">
-            Curated, produced and hosted by D-Global. Grab tickets early — the best sets sell out first.
+            Curated, produced and hosted by D-Global. Grab tickets early, the best sets sell out first.
           </p>
         </div>
 

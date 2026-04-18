@@ -59,7 +59,7 @@ export default async function AdminBookingsPage({
                   <td className="px-4 py-3">{b.guestName}</td>
                   <td className="px-4 py-3 text-muted">{b.guestPhone}</td>
                   <td className="px-4 py-3">{b.package.name}</td>
-                  <td className="px-4 py-3 text-muted">{b.event?.title ?? '—'}</td>
+                  <td className="px-4 py-3 text-muted">{b.event?.title ?? '-'}</td>
                   <td className="px-4 py-3">{b.partySize}</td>
                   <td className="px-4 py-3">
                     <Badge>{b.status}</Badge>

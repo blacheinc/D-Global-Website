@@ -54,9 +54,9 @@ function safeExtension(ext: string): string {
 
 export async function uploadToR2(args: UploadArgs): Promise<UploadResult> {
   if (!client || !env.R2_BUCKET || !env.R2_PUBLIC_URL) {
-    throw new Error('[r2] R2 is not configured — set R2_* env vars to enable uploads.');
+    throw new Error('[r2] R2 is not configured, set R2_* env vars to enable uploads.');
   }
-  // 16 random bytes → 32 hex chars. Collision-resistant and opaque —
+  // 16 random bytes → 32 hex chars. Collision-resistant and opaque -
   // object names don't leak the uploader or original filename.
   const key = `${args.category}/${Date.now().toString(36)}-${randomBytes(16).toString('hex')}.${safeExtension(args.extension)}`;
   await client.send(
@@ -66,7 +66,7 @@ export async function uploadToR2(args: UploadArgs): Promise<UploadResult> {
       Body: args.body,
       ContentType: args.contentType,
       // Year-long cache on the CDN. Object names are immutable (fresh
-      // random each upload), so immutable cache is safe — any edit
+      // random each upload), so immutable cache is safe, any edit
       // produces a new key.
       CacheControl: 'public, max-age=31536000, immutable',
     }),
@@ -78,7 +78,7 @@ export async function uploadToR2(args: UploadArgs): Promise<UploadResult> {
 }
 
 // Best-effort cleanup when an admin replaces an image. We don't block
-// on this — if R2 is slow or the object doesn't exist, the form save
+// on this, if R2 is slow or the object doesn't exist, the form save
 // still succeeds. Stale objects cost pennies per month; orphaned objects
 // get pruned by a lifecycle rule if operators want.
 export async function deleteFromR2(key: string): Promise<void> {
@@ -86,6 +86,6 @@ export async function deleteFromR2(key: string): Promise<void> {
   try {
     await client.send(new DeleteObjectCommand({ Bucket: env.R2_BUCKET, Key: key }));
   } catch {
-    // Swallow — see rationale above.
+    // Swallow, see rationale above.
   }
 }

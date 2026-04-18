@@ -38,7 +38,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     const Comp = asChild ? Slot : 'button';
     // Default native <button> to type="button" so consumers don't accidentally
     // submit surrounding forms. When rendered via `asChild`, the consumer's
-    // element (e.g. <a>) owns its own semantics — don't inject `type`.
+    // element (e.g. <a>) owns its own semantics, don't inject `type`.
     const resolvedType = asChild ? type : (type ?? 'button');
     return (
       <Comp

@@ -12,7 +12,7 @@ import { captureError } from '@/server/observability';
 // escape-hatch (refunds via Paystack dashboard + mark REFUNDED here,
 // manual resolution of stuck PENDING orders, etc.).
 //
-// We intentionally don't allow reverting PAID → PENDING from here —
+// We intentionally don't allow reverting PAID → PENDING from here -
 // that would desync the `sold` counter on TicketType (which the webhook
 // incremented). Refunds go PAID → REFUNDED.
 //
@@ -52,12 +52,12 @@ export async function updateOrderStatus(
 
   // Guard rail: refuse PAID → PENDING. The sold-counter side-effect
   // below handles every other direction, but there's no meaningful
-  // inventory semantic for "un-pay" — the ticket was valid, now it
+  // inventory semantic for "un-pay", the ticket was valid, now it
   // isn't? Use REFUNDED instead.
   if (order.status === 'PAID' && parsed.data.status === 'PENDING') {
     return {
       ok: false,
-      error: 'Can’t revert PAID to PENDING — use REFUNDED so the tickets-sold counter stays consistent.',
+      error: 'Can’t revert PAID to PENDING, use REFUNDED so the tickets-sold counter stays consistent.',
     };
   }
 
@@ -99,7 +99,7 @@ export async function updateOrderStatus(
   }
   revalidatePath('/admin/orders');
   revalidatePath(`/admin/orders/${id}`);
-  // Tier's `sold` just changed — the public event page and its /tickets
+  // Tier's `sold` just changed, the public event page and its /tickets
   // subpage both read remaining capacity (quota - sold) at render time.
   // Revalidate so the checkout surfaces the freed seats right away.
   if (leavingPaid || enteringPaid) {

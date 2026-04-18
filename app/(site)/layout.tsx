@@ -7,7 +7,7 @@ import { PlausibleScript } from '@/components/analytics/PlausibleScript';
 // doesn't inherit it. An admin on /admin/events shouldn't see the
 // public nav, the WhatsApp sticky CTA, or fire Plausible pageviews that
 // pollute the real-user analytics feed. Route groups (directories
-// wrapped in parens) don't affect URLs — only layout composition.
+// wrapped in parens) don't affect URLs, only layout composition.
 //
 // The skip-link + <main id="main"> land here too, since they're only
 // meaningful when there's a public <Header> to skip past.

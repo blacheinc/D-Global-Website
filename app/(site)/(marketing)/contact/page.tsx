@@ -15,7 +15,7 @@ export default function ContactPage() {
         <p className="eyebrow">Contact</p>
         <h1 className="mt-4 font-display text-display-xl text-balance">Let's talk.</h1>
         <p className="mt-4 text-muted md:text-lg">
-          For bookings, VIP tables and general inquiries — the fastest way to reach us is WhatsApp.
+          For bookings, VIP tables and general inquiries, the fastest way to reach us is WhatsApp.
           For press or partnerships, email the team directly.
         </p>
       </div>

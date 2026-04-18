@@ -38,7 +38,7 @@ export function LineupForm({
   const fe = state.fieldErrors ?? {};
   const formRef = useRef<HTMLFormElement>(null);
 
-  // See TicketTypeForm for the rationale — reset on CREATE, refresh
+  // See TicketTypeForm for the rationale, reset on CREATE, refresh
   // route so the list above picks up the new row, depend on state
   // object identity so repeated successes re-fire.
   useEffect(() => {
@@ -90,7 +90,7 @@ export function LineupForm({
             defaultValue={initial?.artistId ?? ''}
             className="w-full rounded-xl bg-elevated border border-white/10 px-4 py-3 text-foreground focus:outline-none focus:border-accent"
           >
-            <option value="">— none —</option>
+            <option value="">- none -</option>
             {artists.map((a) => (
               <option key={a.id} value={a.id}>
                 {a.stageName}

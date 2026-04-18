@@ -33,7 +33,7 @@ export async function POST(req: Request) {
   }
   const parsed = schema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: 'Invalid endpoint' }, { status: 400 });
-  // deleteMany rather than delete so missing rows aren't a 500 — the
+  // deleteMany rather than delete so missing rows aren't a 500, the
   // client may unsubscribe a row that was already pruned by the sender
   // when the push service returned 410.
   try {

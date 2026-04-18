@@ -3,7 +3,7 @@ import { brand } from '@/lib/brand';
 import { site } from '@/lib/site';
 
 // Minimal email-safe HTML shell. Uses table layout + inline styles because
-// Gmail/Outlook strip <style> tags inconsistently. Don't add web fonts —
+// Gmail/Outlook strip <style> tags inconsistently. Don't add web fonts -
 // they're stripped by most clients and the request leaks the recipient's
 // IP to font CDNs.
 

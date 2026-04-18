@@ -69,7 +69,7 @@ export function ReleaseForm({
             required
             className="w-full rounded-xl bg-elevated border border-white/10 px-4 py-3 text-foreground focus:outline-none focus:border-accent"
           >
-            <option value="">— select —</option>
+            <option value="">- select -</option>
             {artists.map((a) => (
               <option key={a.id} value={a.id}>
                 {a.stageName}

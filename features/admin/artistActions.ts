@@ -116,7 +116,7 @@ export async function deleteArtist(id: string): Promise<DeleteArtistResult> {
 
   // Releases cascade from Artist (`onDelete: Cascade` in schema), which
   // also removes their Tracks. Lineup slots reference Artist via an
-  // optional FK (SetNull default) — slots survive the artist removal,
+  // optional FK (SetNull default), slots survive the artist removal,
   // just with artistId cleared, so the event page will render the
   // slot's displayName without a link.
   //
@@ -157,7 +157,7 @@ export async function deleteArtist(id: string): Promise<DeleteArtistResult> {
   revalidatePath(`/artists/${artist.slug}`);
   revalidatePath('/releases');
   for (const r of artist.releases) revalidatePath(`/releases/${r.slug}`);
-  // Dedup — the same event can have multiple slots for the same artist.
+  // Dedup, the same event can have multiple slots for the same artist.
   const eventSlugs = new Set(artist.lineupSlots.map((s) => s.event.slug));
   for (const slug of eventSlugs) revalidatePath(`/events/${slug}`);
   revalidatePath('/');

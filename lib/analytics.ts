@@ -1,11 +1,11 @@
 // Lightweight Plausible wrapper. Calls window.plausible when the script
 // has been loaded; otherwise no-ops. The script is rendered conditionally
-// from <PlausibleScript /> in the root layout — if the env domain is
+// from <PlausibleScript /> in the root layout, if the env domain is
 // blank (dev, previews, self-hosted without analytics), there's no
 // global to call and we silently skip. Server callers also no-op since
 // `window` is undefined there.
 
-// Plausible's API accepts string | number for custom props — booleans,
+// Plausible's API accepts string | number for custom props, booleans,
 // null, and nested objects are rejected server-side. Keep `undefined` in
 // the union so callers can pass conditional props (`{ feature: flag ?
 // 'enabled' : undefined }`) and let us filter them out before sending.
@@ -26,7 +26,7 @@ export function track(event: string, props?: Props): void {
   // arrives. Either form is callable here.
   if (typeof window.plausible !== 'function') return;
 
-  // Strip undefined entries — Plausible would serialize them as the
+  // Strip undefined entries, Plausible would serialize them as the
   // literal string "undefined" otherwise, polluting the stats UI.
   const cleaned = props
     ? Object.fromEntries(Object.entries(props).filter(([, v]) => v !== undefined))

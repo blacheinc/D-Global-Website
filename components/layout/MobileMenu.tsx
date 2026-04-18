@@ -36,7 +36,7 @@ export function MobileMenu() {
 
   // The drawer is portalled to document.body so it escapes the header's
   // z-40 stacking context. Rendered inline, its z-30 would evaluate
-  // INSIDE the header's context — making it stack above the logo and
+  // INSIDE the header's context, making it stack above the logo and
   // toggle button (both at z-auto within the same parent) and hiding
   // them the moment the menu opened. Outside the header, the ordinary
   // z-index comparison works and the header floats on top of the drawer.
@@ -83,7 +83,7 @@ export function MobileMenu() {
         {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
       </button>
 
-      {/* createPortal requires a real DOM node — gate on mounted to
+      {/* createPortal requires a real DOM node, gate on mounted to
           avoid calling it during SSR. The drawer is hidden anyway until
           `open` toggles, so skipping it on the server render is fine. */}
       {mounted ? createPortal(drawer, document.body) : null}

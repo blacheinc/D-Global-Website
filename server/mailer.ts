@@ -4,7 +4,7 @@ import { Resend } from 'resend';
 import { env } from '@/lib/env';
 
 // Resend client cached for the process lifetime. In production, env.ts's
-// refinement requires RESEND_API_KEY — so this branch only evaluates to
+// refinement requires RESEND_API_KEY, so this branch only evaluates to
 // null in dev, where we fall back to logging the email (useful for
 // reading magic-link URLs off the console without an SMTP setup).
 const resend = env.RESEND_API_KEY ? new Resend(env.RESEND_API_KEY) : null;
@@ -23,7 +23,7 @@ const emailSchema = z.string().email();
 
 // Strip CR/LF from anything that becomes an email header value. Our current
 // callers all pass trusted or already-validated strings, but sendMail is a
-// public boundary — a future caller could pass user-controlled data. An
+// public boundary, a future caller could pass user-controlled data. An
 // eventTitle like "Night Out\r\nBcc: attacker@evil.com" is the classic SMTP
 // header-injection vector. Resend's API probably sanitizes, but "probably"
 // isn't a security posture; belt-and-suspenders.

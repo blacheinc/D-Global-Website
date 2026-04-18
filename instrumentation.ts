@@ -5,7 +5,7 @@ import * as Sentry from '@sentry/nextjs';
 // initialization (the client config is loaded automatically by the SDK
 // from sentry.client.config.ts).
 //
-// In Next.js 15 the instrumentation hook is enabled by default — we don't
+// In Next.js 15 the instrumentation hook is enabled by default, we don't
 // need experimental.instrumentationHook in next.config.
 
 export async function register() {

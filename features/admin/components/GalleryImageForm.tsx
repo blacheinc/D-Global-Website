@@ -80,7 +80,7 @@ export function GalleryImageForm({
             defaultValue={initial?.eventId ?? ''}
             className="w-full rounded-xl bg-elevated border border-white/10 px-4 py-3 text-foreground focus:outline-none focus:border-accent"
           >
-            <option value="">— none —</option>
+            <option value="">- none -</option>
             {events.map((e) => (
               <option key={e.id} value={e.id}>
                 {e.title}

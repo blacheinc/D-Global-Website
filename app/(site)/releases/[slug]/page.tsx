@@ -22,7 +22,7 @@ export async function generateMetadata({
   const release = await getReleaseBySlug(slug);
   if (!release) return { title: 'Release not found' };
   return {
-    title: `${release.title} — ${release.artist.stageName}`,
+    title: `${release.title}, ${release.artist.stageName}`,
     openGraph: { images: [release.coverImage] },
   };
 }
@@ -34,7 +34,7 @@ function extractSpotifyId(url: string): { id: string; kind: 'album' | 'track' } 
 }
 
 function formatDuration(seconds: number | null): string {
-  if (!seconds) return '—';
+  if (!seconds) return '-';
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
   return `${m}:${String(s).padStart(2, '0')}`;

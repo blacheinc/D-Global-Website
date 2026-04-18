@@ -6,7 +6,7 @@ import { site } from '@/lib/site';
 import { AdminNav, type AdminNavItem } from '@/components/admin/AdminNav';
 
 // All /admin routes share this layout. requireAdmin() runs on every
-// request — there's no edge middleware in front because the Email
+// request, there's no edge middleware in front because the Email
 // provider's verify step needs Node-runtime DB access. The redirect on
 // failure is the entire access control.
 //
@@ -35,8 +35,8 @@ const NAV: ReadonlyArray<AdminNavItem> = [
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   // requireAdmin() also tags the per-request Sentry scope with the admin's
-  // identity, so every error raised below this layout — including those
-  // from server actions — carries the user.
+  // identity, so every error raised below this layout, including those
+  // from server actions, carries the user.
   const user = await requireAdmin();
   return (
     <div className="min-h-screen bg-bg text-foreground">

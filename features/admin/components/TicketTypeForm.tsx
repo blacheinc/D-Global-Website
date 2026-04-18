@@ -41,7 +41,7 @@ export function TicketTypeForm({
   // the form so the admin can add another tier without clearing fields
   // by hand, and refresh the route so the tier list above the form
   // picks up the new row. Depend on the state object identity (not
-  // state.ok) so repeated successes re-trigger — the "Add a tier" form
+  // state.ok) so repeated successes re-trigger, the "Add a tier" form
   // stays mounted and is used multiple times in a row. Only reset on
   // CREATE; on EDIT we want the updated values to persist.
   useEffect(() => {

@@ -5,7 +5,7 @@ import { auth } from '@/auth';
 
 // Server helpers built on top of the NextAuth v5 `auth()` accessor. Use
 // these from RSCs, Route Handlers, and Server Actions. The unstable name
-// `auth()` is the official Auth.js v5 API — don't be tempted to rename
+// `auth()` is the official Auth.js v5 API, don't be tempted to rename
 // it via re-export.
 
 export async function getCurrentUser() {
@@ -18,13 +18,13 @@ export async function getCurrentUser() {
 //
 //   const user = await requireAdmin();
 //
-// — anything after the call has already been authorized.
+//, anything after the call has already been authorized.
 export async function requireAdmin() {
   const user = await getCurrentUser();
   if (!user) redirect('/api/auth/signin?callbackUrl=/admin');
   if (user.role !== 'ADMIN') redirect('/');
   // Tag the per-request Sentry scope so any error raised below this guard
-  // — in a layout, an RSC, OR a server action — carries the admin's
+  //, in a layout, an RSC, OR a server action, carries the admin's
   // identity. Server scope is per-request (AsyncLocalStorage), so there's
   // no cross-request leak.
   Sentry.setUser({ id: user.id, email: user.email ?? undefined });

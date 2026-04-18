@@ -74,7 +74,7 @@ export default async function AdminArtistBookingsPage({
                   <td className="px-4 py-3 text-muted">
                     {b.budgetMinor != null
                       ? formatPriceMinor(b.budgetMinor, b.currency)
-                      : '—'}
+                      : '-'}
                   </td>
                   <td className="px-4 py-3">
                     <Badge>{b.status}</Badge>

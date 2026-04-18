@@ -1,7 +1,7 @@
 // Shown while any /admin/* RSC is fetching its data (force-dynamic
 // means every admin page hits the DB on navigation). The structure
-// mirrors the common admin layout — a page header + a card/table
-// region — so the skeleton-to-real transition doesn't shift layout.
+// mirrors the common admin layout, a page header + a card/table
+// region, so the skeleton-to-real transition doesn't shift layout.
 // Tailwind's animate-pulse is the tell; exact dimensions don't need
 // to match the real content perfectly, only the vertical rhythm.
 

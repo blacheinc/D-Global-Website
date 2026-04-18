@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 
 // Client wrapper around the admin side-nav so the active route stays
 // highlighted. Small enough to live in a Client Component without
-// flipping the layout itself — the layout stays a Server Component
+// flipping the layout itself, the layout stays a Server Component
 // (needs requireAdmin), and this one just reads the current pathname.
 
 export type AdminNavItem = { href: string; label: string };

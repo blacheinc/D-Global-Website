@@ -68,7 +68,7 @@ export async function upsertTicketType(
     };
   }
 
-  // One tier per event — catch the collision here instead of leaving
+  // One tier per event, catch the collision here instead of leaving
   // Prisma to reject with a cryptic @@unique violation on [eventId, tier].
   const existing = await db.ticketType.findFirst({
     where: { eventId, tier: parsed.data.tier, NOT: id ? { id } : undefined },
@@ -109,7 +109,7 @@ export async function upsertTicketType(
     captureError('[admin:upsertTicketType]', err, { eventId, id });
     return { ok: false, error: 'Could not save the ticket tier. Try again.' };
   }
-  // Event slug lives one hop away — fetch to revalidate the public page.
+  // Event slug lives one hop away, fetch to revalidate the public page.
   const event = await db.event.findUnique({ where: { id: eventId }, select: { slug: true } });
   revalidatePath(`/admin/events/${eventId}/tickets`);
   if (event) {
@@ -133,7 +133,7 @@ export async function deleteTicketType(
   await requireAdmin();
 
   // Sold tickets reference the tier via OrderItem.ticketTypeId (required
-  // FK with default Restrict). Same pattern as Event.orders — can't
+  // FK with default Restrict). Same pattern as Event.orders, can't
   // delete a tier that has sales history, has to be zeroed-quota instead
   // or we'd lose the QR-token linkage.
   const orderItemCount = await db.orderItem.count({ where: { ticketTypeId: id } });
@@ -156,7 +156,7 @@ export async function deleteTicketType(
     revalidatePath(`/events/${event.slug}`);
     revalidatePath(`/events/${event.slug}/tickets`);
   }
-  // Same list-level revalidation as upsert — removing a tier changes
+  // Same list-level revalidation as upsert, removing a tier changes
   // the displayed minimum on /events and /.
   revalidatePath('/events');
   revalidatePath('/');

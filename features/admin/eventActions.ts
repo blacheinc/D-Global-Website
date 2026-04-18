@@ -36,8 +36,8 @@ const eventSchema = z
     status: z.enum(['DRAFT', 'PUBLISHED', 'SOLD_OUT', 'CANCELLED']).default('DRAFT'),
     featured: z.preprocess((v) => v === 'on' || v === true || v === 'true', z.boolean()),
   })
-  // Cross-field date ordering. Catches the classic typos — doors opening
-  // after the show starts, show ending before it begins — at the admin
+  // Cross-field date ordering. Catches the classic typos, doors opening
+  // after the show starts, show ending before it begins, at the admin
   // boundary instead of letting them render as negative durations on the
   // public page.
   .superRefine((val, ctx) => {
@@ -102,7 +102,7 @@ export async function upsertEvent(
     ? await db.event.findUnique({ where: { id }, select: { slug: true } })
     : null;
 
-  // Slug uniqueness — the unique constraint will reject this anyway, but
+  // Slug uniqueness, the unique constraint will reject this anyway, but
   // a friendly message beats a Prisma stack trace in the UI.
   const collision = await db.event.findFirst({
     where: { slug: data.slug, NOT: id ? { id } : undefined },
@@ -143,7 +143,7 @@ export async function upsertEvent(
     // of slug collisions, but two admins submitting the same slug at the
     // same moment can both pass the check and race into the write. Without
     // this, the admin sees "Could not save. Try again." which doesn't
-    // actually help — retrying the same slug hits the same collision.
+    // actually help, retrying the same slug hits the same collision.
     if (
       err instanceof Prisma.PrismaClientKnownRequestError &&
       err.code === 'P2002' &&
@@ -160,7 +160,7 @@ export async function upsertEvent(
     return { ok: false, error: 'Could not save the event. Try again.' };
   }
   // Revalidate every surface the event appears on. /events/[slug] uses
-  // `cache()` for the slug lookup so the dedup is per-request — the
+  // `cache()` for the slug lookup so the dedup is per-request, the
   // revalidatePath call invalidates the underlying RSC cache.
   revalidatePath('/admin/events');
   revalidatePath('/events');
@@ -168,7 +168,7 @@ export async function upsertEvent(
   // Homepage hero + UpcomingEventsGrid read the same DB table.
   revalidatePath('/');
   // If the admin renamed the event, the old slug's static HTML is now
-  // stale — wipe it so a visit there 404s instead of resurrecting.
+  // stale, wipe it so a visit there 404s instead of resurrecting.
   if (previous && previous.slug !== data.slug) {
     revalidatePath(`/events/${previous.slug}`);
   }
@@ -185,7 +185,7 @@ export async function deleteEvent(id: string): Promise<DeleteEventResult> {
   // that has any orders. Catch it here with a message that tells the admin
   // what to do instead (set status=CANCELLED preserves the audit trail).
   //
-  // Fetch slug in the same query — we'll need it for revalidatePath after
+  // Fetch slug in the same query, we'll need it for revalidatePath after
   // the delete succeeds, and we can't look it up post-delete.
   const event = await db.event.findUnique({
     where: { id },
@@ -195,7 +195,7 @@ export async function deleteEvent(id: string): Promise<DeleteEventResult> {
   if (event._count.orders > 0) {
     return {
       ok: false,
-      error: `This event has ${event._count.orders} order${event._count.orders === 1 ? '' : 's'} and can't be deleted. Set its status to Cancelled instead — tickets already sold keep working.`,
+      error: `This event has ${event._count.orders} order${event._count.orders === 1 ? '' : 's'} and can't be deleted. Set its status to Cancelled instead, tickets already sold keep working.`,
     };
   }
 

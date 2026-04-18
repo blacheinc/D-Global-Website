@@ -22,7 +22,7 @@ const schema = z
     QR_SECRET: z.string().min(8).default(DEV_QR_SECRET),
 
     // --- Auth (NextAuth) ---
-    // 32 chars minimum matches NextAuth v5's guidance — it's the secret
+    // 32 chars minimum matches NextAuth v5's guidance, it's the secret
     // that signs session cookies, and 8 chars is trivially brute-forceable
     // offline against an intercepted cookie. .env.example already tells
     // operators to generate via `openssl rand -base64 32` (44 chars after
@@ -36,7 +36,7 @@ const schema = z
 
     // --- Email (Resend) ---
     RESEND_API_KEY: z.string().optional(),
-    // Not z.string().email() — From values use the RFC 5322 address-spec
+    // Not z.string().email(), From values use the RFC 5322 address-spec
     // format ("Display Name <user@host>") which zod's email regex rejects.
     // Resend validates the shape at send time; min(1) is enough here to
     // catch an empty env.
@@ -52,7 +52,7 @@ const schema = z
     // --- Error tracking (Sentry) ---
     // DSN and environment are read at runtime by the Sentry SDK config
     // files (sentry.{client,server,edge}.config.ts). Release is NOT
-    // listed here because it's build-time only — the Sentry webpack
+    // listed here because it's build-time only, the Sentry webpack
     // plugin auto-injects it into Sentry.init calls.
     NEXT_PUBLIC_SENTRY_DSN: z.string().url().optional(),
     SENTRY_DSN: z.string().url().optional(),
@@ -91,7 +91,7 @@ const schema = z
         message: 'PAYSTACK_SECRET_KEY is required when PAYSTACK_MODE=api.',
       });
     }
-    // Web push needs both keys or neither — half-configured is a runtime
+    // Web push needs both keys or neither, half-configured is a runtime
     // foot-gun. This check is server-only because VAPID_PRIVATE_KEY is
     // never bundled to the client (no NEXT_PUBLIC_ prefix), so on the
     // browser it's always undefined while the public key is set, which
@@ -126,7 +126,7 @@ const schema = z
   })
   // Production safety net: refuse to start if any of the placeholder dev
   // defaults survived into a production build. The QR check in particular
-  // is security-critical — the dev secret is in source, so tickets signed
+  // is security-critical, the dev secret is in source, so tickets signed
   // with it could be forged by anyone reading the repo.
   //
   // Server-only: env.ts is bundled into the client too (via lib/whatsapp →
@@ -191,7 +191,7 @@ const schema = z
 //   2. If it's set as a bare hostname (a pitfall when pasting a Vercel
 //      URL from the dashboard), prepend https://.
 //   3. If it's unset and we're building on Vercel, fall back to the
-//      per-deployment VERCEL_URL that Vercel auto-populates — this is
+//      per-deployment VERCEL_URL that Vercel auto-populates, this is
 //      also schemeless, so normalize the same way. Previews and
 //      production deploys both build without an explicit env var.
 // Returning undefined lets the zod .default(FALLBACK_SITE_URL) fire in

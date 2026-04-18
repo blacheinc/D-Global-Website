@@ -4,7 +4,7 @@ import { db } from '@/server/db';
 import { EventStatus, type Prisma } from '@prisma/client';
 
 // NOTE: "upcoming" means startsAt >= NOW at query time. Do NOT lift the
-// `new Date()` to module scope — it would freeze to server boot time and
+// `new Date()` to module scope, it would freeze to server boot time and
 // stop advancing for the life of the Node process.
 const upcomingWhere = (): Prisma.EventWhereInput => ({
   status: EventStatus.PUBLISHED,

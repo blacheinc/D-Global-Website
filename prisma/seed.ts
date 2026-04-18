@@ -131,7 +131,7 @@ async function main() {
     {
       slug: 'kofi-wave',
       stageName: 'Kofi Wave',
-      bio: 'Producer/engineer who built the sound of the scene. Rarely on stage — always at the board.',
+      bio: 'Producer/engineer who built the sound of the scene. Rarely on stage, always at the board.',
       avatar: img('photo-1531297484001-80022131f5a1', 600, 600),
       heroImage: img('photo-1531297484001-80022131f5a1'),
       instagram: 'kofi.wave',
@@ -350,17 +350,17 @@ async function main() {
   });
 
   const galleryImages = [
-    { url: img('photo-1514525253161-7a46d19cd819'), category: GalleryCategory.EVENTS, caption: 'Opening night — the Boulevard', eventId: accraLabs.id },
+    { url: img('photo-1514525253161-7a46d19cd819'), category: GalleryCategory.EVENTS, caption: 'Opening night, the Boulevard', eventId: accraLabs.id },
     { url: img('photo-1470229722913-7c0e2dbbafd3'), category: GalleryCategory.EVENTS, caption: 'Main floor, 1am', eventId: accraLabs.id },
     { url: img('photo-1566737236500-c8ac43014a67'), category: GalleryCategory.VENUE, caption: 'VIP suite' },
-    { url: img('photo-1493225457124-a3eb161ffa5f'), category: GalleryCategory.ARTISTS, caption: 'Kwesi Nyame — live' },
-    { url: img('photo-1522327646852-4e28586a40dd'), category: GalleryCategory.ARTISTS, caption: 'Ama Black — backstage' },
+    { url: img('photo-1493225457124-a3eb161ffa5f'), category: GalleryCategory.ARTISTS, caption: 'Kwesi Nyame, live' },
+    { url: img('photo-1522327646852-4e28586a40dd'), category: GalleryCategory.ARTISTS, caption: 'Ama Black, backstage' },
     { url: img('photo-1511367461989-f85a21fda167'), category: GalleryCategory.BACKSTAGE, caption: 'The booth, Vol. 05' },
-    { url: img('photo-1531297484001-80022131f5a1'), category: GalleryCategory.ARTISTS, caption: 'Kofi Wave — studio' },
+    { url: img('photo-1531297484001-80022131f5a1'), category: GalleryCategory.ARTISTS, caption: 'Kofi Wave, studio' },
     { url: img('photo-1571266028243-d220c6a1f1e6'), category: GalleryCategory.VENUE, caption: 'The room, before doors' },
-    { url: img('photo-1459749411175-04bf5292ceea'), category: GalleryCategory.EVENTS, caption: 'Crowd — Vol. 06' },
-    { url: img('photo-1504509546545-e000b4a62425'), category: GalleryCategory.CAMPAIGN, caption: 'Campaign — 2025' },
-    { url: img('photo-1415201364774-f6f0bb35f28f'), category: GalleryCategory.EVENTS, caption: 'Closing — 4am' },
+    { url: img('photo-1459749411175-04bf5292ceea'), category: GalleryCategory.EVENTS, caption: 'Crowd, Vol. 06' },
+    { url: img('photo-1504509546545-e000b4a62425'), category: GalleryCategory.CAMPAIGN, caption: 'Campaign, 2025' },
+    { url: img('photo-1415201364774-f6f0bb35f28f'), category: GalleryCategory.EVENTS, caption: 'Closing, 4am' },
     { url: img('photo-1492684223066-81342ee5ff30'), category: GalleryCategory.CAMPAIGN, caption: 'Brand film stills' },
   ];
 
