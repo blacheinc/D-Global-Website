@@ -20,7 +20,11 @@ export type OrderConfirmationArgs = {
 };
 
 export async function sendOrderConfirmation(args: OrderConfirmationArgs): Promise<void> {
-  const ticketsUrl = `${env.NEXT_PUBLIC_SITE_URL}/tickets/${args.orderId}`;
+  // Encode the order ID even though current cuids are [a-z0-9]+ — if the
+  // ID format ever changes (ULID with dashes, uuid) this keeps the href
+  // valid without another code change.
+  const ticketsUrl = `${env.NEXT_PUBLIC_SITE_URL}/tickets/${encodeURIComponent(args.orderId)}`;
+  const firstName = args.buyerName.trim().split(/\s+/)[0] || 'Hey';
   const itemsHtml = args.items
     .map(
       (item) => `
@@ -39,7 +43,7 @@ export async function sendOrderConfirmation(args: OrderConfirmationArgs): Promis
   const bodyHtml = `
     <p style="margin:0 0 16px 0;font-size:12px;letter-spacing:0.22em;text-transform:uppercase;color:${brand.accent};">You're in</p>
     <h1 style="margin:0 0 16px 0;font-size:24px;line-height:1.2;font-weight:600;color:${brand.fg};">
-      ${escape(args.buyerName.split(' ')[0] || 'Hey')}, your tickets are confirmed.
+      ${escape(firstName)}, your tickets are confirmed.
     </h1>
     <p style="margin:0 0 24px 0;color:${brand.muted};">
       ${escape(args.eventTitle)} · ${escape(formatEventDateTime(args.eventStartsAt))} · ${escape(args.venueName)}

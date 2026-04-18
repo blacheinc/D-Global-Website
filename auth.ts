@@ -4,6 +4,7 @@ import { PrismaAdapter } from '@auth/prisma-adapter';
 import { db } from '@/server/db';
 import { env, adminEmails } from '@/lib/env';
 import { sendMagicLink } from '@/server/email/magicLink';
+import { captureError } from '@/server/observability';
 
 // NextAuth v5 (Auth.js) config. Magic-link only — no passwords, no OAuth.
 // The Nodemailer provider is the contract Auth.js exposes for email-based
@@ -30,7 +31,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       server: { host: 'unused', port: 0, auth: { user: 'unused', pass: 'unused' } },
       from: env.EMAIL_FROM,
       async sendVerificationRequest({ identifier, url }) {
-        await sendMagicLink({ to: identifier, url });
+        // If the send fails, NextAuth surfaces a generic "check your email"
+        // response to the user regardless — meaning the actual cause (Resend
+        // outage, bad API key, unverified sending domain) would be invisible
+        // without explicit capture. captureError logs + ships to Sentry, then
+        // rethrows so NextAuth still treats the sign-in attempt as failed.
+        try {
+          await sendMagicLink({ to: identifier, url });
+        } catch (err) {
+          captureError('[auth] magic link send failed', err, { identifier });
+          throw err;
+        }
       },
     }),
   ],
