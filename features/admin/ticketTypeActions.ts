@@ -116,6 +116,11 @@ export async function upsertTicketType(
     revalidatePath(`/events/${event.slug}`);
     revalidatePath(`/events/${event.slug}/tickets`);
   }
+  // EventCard on /events and the homepage renders "From <cheapest>",
+  // which recomputes when the tier's price or quota moves. Revalidate
+  // both list surfaces so the displayed minimum stays in sync.
+  revalidatePath('/events');
+  revalidatePath('/');
   return { ok: true };
 }
 
@@ -151,5 +156,9 @@ export async function deleteTicketType(
     revalidatePath(`/events/${event.slug}`);
     revalidatePath(`/events/${event.slug}/tickets`);
   }
+  // Same list-level revalidation as upsert — removing a tier changes
+  // the displayed minimum on /events and /.
+  revalidatePath('/events');
+  revalidatePath('/');
   return { ok: true };
 }

@@ -103,6 +103,8 @@ export async function upsertPackage(
   }
   revalidatePath('/admin/packages');
   revalidatePath('/bookings');
+  // Homepage VIPStrip section renders packages too.
+  revalidatePath('/');
   redirect('/admin/packages');
 }
 
@@ -130,5 +132,6 @@ export async function deletePackage(id: string): Promise<DeletePackageResult> {
   }
   revalidatePath('/admin/packages');
   revalidatePath('/bookings');
+  revalidatePath('/');
   return { ok: true };
 }

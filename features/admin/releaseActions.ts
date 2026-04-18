@@ -51,6 +51,12 @@ export async function upsertRelease(
     };
   }
   const data = parsed.data;
+  // Fetch old slug + old artistId before write. We need old slug for
+  // stale-URL revalidation when the admin renames; old artistId to
+  // revalidate the PREVIOUS artist's page if the release is reassigned.
+  const previous = id
+    ? await db.release.findUnique({ where: { id }, select: { slug: true, artistId: true } })
+    : null;
   const collision = await db.release.findFirst({
     where: { slug: data.slug, NOT: id ? { id } : undefined },
     select: { id: true },
@@ -107,9 +113,24 @@ export async function upsertRelease(
     captureError('[admin:upsertRelease]', err, { id, slug: data.slug });
     return { ok: false, error: 'Could not save the release. Try again.' };
   }
+  // Fetch the new-artist slug so we can revalidate their detail page —
+  // their release list just grew (or changed) and the artist page
+  // renders it. Also revalidate the PREVIOUS artist's page if the
+  // release was reassigned (they no longer own this release).
+  const [newArtist, prevArtist] = await Promise.all([
+    db.artist.findUnique({ where: { id: data.artistId }, select: { slug: true } }),
+    previous && previous.artistId !== data.artistId
+      ? db.artist.findUnique({ where: { id: previous.artistId }, select: { slug: true } })
+      : Promise.resolve(null),
+  ]);
   revalidatePath('/admin/releases');
   revalidatePath('/releases');
   revalidatePath(`/releases/${data.slug}`);
+  if (previous && previous.slug !== data.slug) {
+    revalidatePath(`/releases/${previous.slug}`);
+  }
+  if (newArtist) revalidatePath(`/artists/${newArtist.slug}`);
+  if (prevArtist) revalidatePath(`/artists/${prevArtist.slug}`);
   redirect('/admin/releases');
 }
 
@@ -117,6 +138,16 @@ export type DeleteReleaseResult = { ok: true } | { ok: false; error: string };
 
 export async function deleteRelease(id: string): Promise<DeleteReleaseResult> {
   await requireAdmin();
+
+  // Fetch slug + owning artist slug before the delete so we can
+  // revalidate both the release's static page AND the artist page
+  // (whose discography list just shrank).
+  const release = await db.release.findUnique({
+    where: { id },
+    select: { slug: true, artist: { select: { slug: true } } },
+  });
+  if (!release) return { ok: false, error: 'Release not found.' };
+
   // Tracks cascade from Release (onDelete: Cascade in schema).
   try {
     await db.release.delete({ where: { id } });
@@ -126,6 +157,8 @@ export async function deleteRelease(id: string): Promise<DeleteReleaseResult> {
   }
   revalidatePath('/admin/releases');
   revalidatePath('/releases');
+  revalidatePath(`/releases/${release.slug}`);
+  revalidatePath(`/artists/${release.artist.slug}`);
   return { ok: true };
 }
 

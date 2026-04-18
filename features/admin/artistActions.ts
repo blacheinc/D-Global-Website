@@ -52,6 +52,11 @@ export async function upsertArtist(
     };
   }
   const data = parsed.data;
+  // Fetch old slug before write so we can revalidate the stale URL if
+  // the admin renames the artist.
+  const previous = id
+    ? await db.artist.findUnique({ where: { id }, select: { slug: true } })
+    : null;
   const collision = await db.artist.findFirst({
     where: { slug: data.slug, NOT: id ? { id } : undefined },
     select: { id: true },
@@ -98,6 +103,9 @@ export async function upsertArtist(
   revalidatePath('/artists');
   revalidatePath(`/artists/${data.slug}`);
   revalidatePath('/');
+  if (previous && previous.slug !== data.slug) {
+    revalidatePath(`/artists/${previous.slug}`);
+  }
   redirect('/admin/artists');
 }
 
@@ -109,11 +117,24 @@ export async function deleteArtist(id: string): Promise<DeleteArtistResult> {
   // Releases cascade from Artist (`onDelete: Cascade` in schema), which
   // also removes their Tracks. Lineup slots reference Artist via an
   // optional FK (SetNull default) — slots survive the artist removal,
-  // just with artistId cleared.
+  // just with artistId cleared, so the event page will render the
+  // slot's displayName without a link.
   //
-  // No hard pre-check needed because no FK has Restrict here. But
-  // releases+tracks being cascade-deleted is destructive — flag it
-  // loudly via the caller's confirm().
+  // Fetch everything we'll need for revalidation in one round-trip:
+  // - slug for the artist's own static page
+  // - release slugs (cascade-deleted, their pages now 404)
+  // - distinct event slugs where this artist was in the lineup, so those
+  //   event pages re-render and drop the now-dangling artist link
+  const artist = await db.artist.findUnique({
+    where: { id },
+    select: {
+      slug: true,
+      releases: { select: { slug: true } },
+      lineupSlots: { select: { event: { select: { slug: true } } } },
+    },
+  });
+  if (!artist) return { ok: false, error: 'Artist not found.' };
+
   try {
     await db.artist.delete({ where: { id } });
   } catch (err) {
@@ -122,7 +143,12 @@ export async function deleteArtist(id: string): Promise<DeleteArtistResult> {
   }
   revalidatePath('/admin/artists');
   revalidatePath('/artists');
+  revalidatePath(`/artists/${artist.slug}`);
   revalidatePath('/releases');
+  for (const r of artist.releases) revalidatePath(`/releases/${r.slug}`);
+  // Dedup — the same event can have multiple slots for the same artist.
+  const eventSlugs = new Set(artist.lineupSlots.map((s) => s.event.slug));
+  for (const slug of eventSlugs) revalidatePath(`/events/${slug}`);
   revalidatePath('/');
   return { ok: true };
 }

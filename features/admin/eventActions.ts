@@ -95,6 +95,13 @@ export async function upsertEvent(
     };
   }
   const data = parsed.data;
+  // Fetch the previous slug BEFORE the write so we can revalidate the
+  // old URL if the admin renames the event. Without this, the stale
+  // HTML at /events/<old-slug> would keep serving from the static cache.
+  const previous = id
+    ? await db.event.findUnique({ where: { id }, select: { slug: true } })
+    : null;
+
   // Slug uniqueness — the unique constraint will reject this anyway, but
   // a friendly message beats a Prisma stack trace in the UI.
   const collision = await db.event.findFirst({
@@ -158,6 +165,13 @@ export async function upsertEvent(
   revalidatePath('/admin/events');
   revalidatePath('/events');
   revalidatePath(`/events/${data.slug}`);
+  // Homepage hero + UpcomingEventsGrid read the same DB table.
+  revalidatePath('/');
+  // If the admin renamed the event, the old slug's static HTML is now
+  // stale — wipe it so a visit there 404s instead of resurrecting.
+  if (previous && previous.slug !== data.slug) {
+    revalidatePath(`/events/${previous.slug}`);
+  }
   redirect('/admin/events');
 }
 
@@ -170,11 +184,18 @@ export async function deleteEvent(id: string): Promise<DeleteEventResult> {
   // so Prisma throws an opaque FK violation if we try to delete an event
   // that has any orders. Catch it here with a message that tells the admin
   // what to do instead (set status=CANCELLED preserves the audit trail).
-  const orderCount = await db.order.count({ where: { eventId: id } });
-  if (orderCount > 0) {
+  //
+  // Fetch slug in the same query — we'll need it for revalidatePath after
+  // the delete succeeds, and we can't look it up post-delete.
+  const event = await db.event.findUnique({
+    where: { id },
+    select: { slug: true, _count: { select: { orders: true } } },
+  });
+  if (!event) return { ok: false, error: 'Event not found.' };
+  if (event._count.orders > 0) {
     return {
       ok: false,
-      error: `This event has ${orderCount} order${orderCount === 1 ? '' : 's'} and can't be deleted. Set its status to Cancelled instead — tickets already sold keep working.`,
+      error: `This event has ${event._count.orders} order${event._count.orders === 1 ? '' : 's'} and can't be deleted. Set its status to Cancelled instead — tickets already sold keep working.`,
     };
   }
 
@@ -186,5 +207,10 @@ export async function deleteEvent(id: string): Promise<DeleteEventResult> {
   }
   revalidatePath('/admin/events');
   revalidatePath('/events');
+  // Invalidate the deleted event's static HTML so its URL starts
+  // 404-ing immediately. Without this, the cached page from the last
+  // build would keep resurrecting the deleted event.
+  revalidatePath(`/events/${event.slug}`);
+  revalidatePath('/');
   return { ok: true };
 }
