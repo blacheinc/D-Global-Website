@@ -37,10 +37,14 @@ export async function broadcastPush(
       title: parsed.data.title,
       body: parsed.data.body,
       url: parsed.data.url || undefined,
-      // Tag dedupes notifications: if we send a "doors open" alert
-      // twice for the same event by mistake, the second replaces the
-      // first instead of stacking.
-      tag: `broadcast-${Date.now()}`,
+      // Tag dedupes notifications: a same-title re-send (the "oops,
+      // clicked broadcast twice" case) collapses into the single most-
+      // recent alert on-device instead of stacking two copies of the
+      // same message. Different titles produce different tags and
+      // still stack — two distinct announcements should each be
+      // visible. Date.now() here (the previous implementation) always
+      // differed and so never actually deduped.
+      tag: `broadcast:${parsed.data.title}`,
     });
     return { ok: true, result };
   } catch (err) {
