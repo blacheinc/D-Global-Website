@@ -22,7 +22,12 @@ export function VideoHero() {
   }, [prefersReduced]);
 
   return (
-    <section className="relative h-[100svh] min-h-[640px] w-full overflow-hidden bg-background">
+    // -mt-16 / md:-mt-20 cancels the main element's top padding (which
+    // exists to keep normal pages clear of the fixed header) so the hero
+    // starts at the very top of the viewport. The transparent-gradient
+    // header then sits ON TOP of the video, and the brand-logo watermark
+    // + video itself bleed into the header area for a seamless edge.
+    <section className="relative -mt-16 md:-mt-20 h-[100svh] min-h-[640px] w-full overflow-hidden bg-background">
       <div className="absolute inset-0">
         <Image
           src="/brand/d-global-logo.png"

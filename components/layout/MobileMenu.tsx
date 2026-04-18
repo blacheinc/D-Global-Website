@@ -50,11 +50,21 @@ export function MobileMenu() {
         inert={!open}
         aria-hidden={!open}
         className={cn(
-          'lg:hidden fixed inset-0 top-16 md:top-20 z-30 bg-background/95 backdrop-blur-xl transition-opacity duration-300',
+          // Full-viewport drawer (top-0, not top-16). The transparent
+          // header sits ON this panel at z-40, so the menu reads as one
+          // continuous glass surface instead of a card with a strip of
+          // hero video peeking above it. bg-background/70 + heavy
+          // backdrop-blur gives the "frosted glass over whatever was
+          // behind" effect — opaque enough for nav text to stay high-
+          // contrast, transparent enough to feel like a modern drawer
+          // and not a solid black wall.
+          'lg:hidden fixed inset-0 top-0 z-30 bg-background/70 backdrop-blur-2xl transition-opacity duration-300',
           open ? 'opacity-100' : 'pointer-events-none opacity-0',
         )}
       >
-        <nav className="flex flex-col gap-2 px-6 pt-8" aria-label="Mobile">
+        {/* Push nav below the fixed header so the first item isn't
+            tucked behind the logo + close button. */}
+        <nav className="flex flex-col gap-2 px-6 pt-24 md:pt-28" aria-label="Mobile">
           {site.nav.map((item) => (
             <Link
               key={item.href}
