@@ -1,6 +1,7 @@
 'use server';
 
 import { z } from 'zod';
+import { Prisma } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { db } from '@/server/db';
@@ -9,27 +10,52 @@ import { captureError } from '@/server/observability';
 
 // Empty form fields arrive as '' from FormData; emptyToUndefined() below
 // strips them so .optional() does the right thing without a noisy union.
-const eventSchema = z.object({
-  slug: z
-    .string()
-    .min(2)
-    .max(80)
-    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Lowercase letters, digits, and dashes only'),
-  title: z.string().min(2).max(140),
-  subtitle: z.string().max(200).optional(),
-  description: z.string().min(10).max(4000),
-  startsAt: z.coerce.date(),
-  endsAt: z.coerce.date().optional(),
-  doorsAt: z.coerce.date().optional(),
-  venueName: z.string().min(2).max(120),
-  venueCity: z.string().min(2).max(80).default('Accra'),
-  venueAddress: z.string().max(240).optional(),
-  venueMapUrl: z.string().url().optional(),
-  heroImage: z.string().min(1).max(500),
-  genre: z.string().max(200).optional(),
-  status: z.enum(['DRAFT', 'PUBLISHED', 'SOLD_OUT', 'CANCELLED']).default('DRAFT'),
-  featured: z.preprocess((v) => v === 'on' || v === true || v === 'true', z.boolean()),
-});
+const eventSchema = z
+  .object({
+    slug: z
+      .string()
+      .min(2)
+      .max(80)
+      .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Lowercase letters, digits, and dashes only'),
+    title: z.string().min(2).max(140),
+    subtitle: z.string().max(200).optional(),
+    description: z.string().min(10).max(4000),
+    startsAt: z.coerce.date(),
+    endsAt: z.coerce.date().optional(),
+    doorsAt: z.coerce.date().optional(),
+    venueName: z.string().min(2).max(120),
+    venueCity: z.string().min(2).max(80).default('Accra'),
+    venueAddress: z.string().max(240).optional(),
+    venueMapUrl: z.string().url().optional(),
+    // URL-validate the hero image so bad data surfaces here, not 10 hops
+    // later at `next/image` with a cryptic "Invalid src prop" error on
+    // the public event page. next.config's remotePatterns still gates
+    // which hosts are actually fetched.
+    heroImage: z.string().url().max(500),
+    genre: z.string().max(200).optional(),
+    status: z.enum(['DRAFT', 'PUBLISHED', 'SOLD_OUT', 'CANCELLED']).default('DRAFT'),
+    featured: z.preprocess((v) => v === 'on' || v === true || v === 'true', z.boolean()),
+  })
+  // Cross-field date ordering. Catches the classic typos — doors opening
+  // after the show starts, show ending before it begins — at the admin
+  // boundary instead of letting them render as negative durations on the
+  // public page.
+  .superRefine((val, ctx) => {
+    if (val.doorsAt && val.doorsAt.getTime() > val.startsAt.getTime()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['doorsAt'],
+        message: 'Doors must open at or before the start time.',
+      });
+    }
+    if (val.endsAt && val.endsAt.getTime() <= val.startsAt.getTime()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['endsAt'],
+        message: 'End time must be after the start time.',
+      });
+    }
+  });
 
 export type EventFormState = {
   ok: boolean;
@@ -106,6 +132,23 @@ export async function upsertEvent(
       await db.event.create({ data: payload });
     }
   } catch (err) {
+    // P2002 = unique constraint violation. The pre-check above closes 99%
+    // of slug collisions, but two admins submitting the same slug at the
+    // same moment can both pass the check and race into the write. Without
+    // this, the admin sees "Could not save. Try again." which doesn't
+    // actually help — retrying the same slug hits the same collision.
+    if (
+      err instanceof Prisma.PrismaClientKnownRequestError &&
+      err.code === 'P2002' &&
+      Array.isArray(err.meta?.target) &&
+      (err.meta.target as string[]).includes('slug')
+    ) {
+      return {
+        ok: false,
+        fieldErrors: { slug: ['Slug is already in use.'] },
+        error: 'That slug is taken.',
+      };
+    }
     captureError('[admin:upsertEvent]', err, { id, slug: data.slug });
     return { ok: false, error: 'Could not save the event. Try again.' };
   }

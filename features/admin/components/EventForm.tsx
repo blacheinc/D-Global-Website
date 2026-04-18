@@ -105,7 +105,9 @@ export function EventForm({ initial }: { initial?: EventInitial }) {
             id="doorsAt"
             name="doorsAt"
             defaultValue={toLocalInput(initial?.doorsAt)}
+            aria-invalid={!!fe.doorsAt}
           />
+          <FieldError>{fe.doorsAt?.[0]}</FieldError>
         </div>
         <div>
           <Label htmlFor="endsAt">Ends at</Label>
@@ -114,7 +116,9 @@ export function EventForm({ initial }: { initial?: EventInitial }) {
             id="endsAt"
             name="endsAt"
             defaultValue={toLocalInput(initial?.endsAt)}
+            aria-invalid={!!fe.endsAt}
           />
+          <FieldError>{fe.endsAt?.[0]}</FieldError>
         </div>
       </div>
 
@@ -126,7 +130,14 @@ export function EventForm({ initial }: { initial?: EventInitial }) {
         </div>
         <div>
           <Label htmlFor="venueCity">Venue city</Label>
-          <Input id="venueCity" name="venueCity" defaultValue={initial?.venueCity ?? 'Accra'} required />
+          <Input
+            id="venueCity"
+            name="venueCity"
+            defaultValue={initial?.venueCity ?? 'Accra'}
+            required
+            aria-invalid={!!fe.venueCity}
+          />
+          <FieldError>{fe.venueCity?.[0]}</FieldError>
         </div>
       </div>
 
