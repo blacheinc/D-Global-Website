@@ -40,8 +40,14 @@ const schema = z
       .default('https://plausible.io/js/script.js'),
 
     // --- Error tracking (Sentry) ---
+    // DSN and environment are read at runtime by the Sentry SDK config
+    // files (sentry.{client,server,edge}.config.ts). Release is NOT
+    // listed here because it's build-time only — the Sentry webpack
+    // plugin auto-injects it into Sentry.init calls.
     NEXT_PUBLIC_SENTRY_DSN: z.string().url().optional(),
     SENTRY_DSN: z.string().url().optional(),
+    NEXT_PUBLIC_SENTRY_ENVIRONMENT: z.string().optional(),
+    SENTRY_ENVIRONMENT: z.string().optional(),
 
     // --- Web push (VAPID) ---
     NEXT_PUBLIC_VAPID_PUBLIC_KEY: z.string().optional(),
@@ -136,6 +142,8 @@ const parsed = schema.safeParse({
   NEXT_PUBLIC_PLAUSIBLE_SCRIPT_URL: process.env.NEXT_PUBLIC_PLAUSIBLE_SCRIPT_URL,
   NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN,
   SENTRY_DSN: process.env.SENTRY_DSN,
+  NEXT_PUBLIC_SENTRY_ENVIRONMENT: process.env.NEXT_PUBLIC_SENTRY_ENVIRONMENT,
+  SENTRY_ENVIRONMENT: process.env.SENTRY_ENVIRONMENT,
   NEXT_PUBLIC_VAPID_PUBLIC_KEY: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
   VAPID_PRIVATE_KEY: process.env.VAPID_PRIVATE_KEY,
   VAPID_SUBJECT: process.env.VAPID_SUBJECT,

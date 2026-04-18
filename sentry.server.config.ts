@@ -6,6 +6,8 @@ import * as Sentry from '@sentry/nextjs';
 const dsn = process.env.SENTRY_DSN;
 
 if (dsn) {
+  // `release` is auto-injected by the Sentry webpack plugin — see
+  // sentry.client.config.ts for the rationale.
   Sentry.init({
     dsn,
     environment: process.env.SENTRY_ENVIRONMENT ?? process.env.NODE_ENV,

@@ -27,3 +27,6 @@ next-env.d.ts
 
 prisma/*.db
 prisma/*.db-journal
+
+# Sentry CLI — `sentry-cli login` writes a token here; never commit.
+.sentryclirc
