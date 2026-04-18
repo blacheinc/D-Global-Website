@@ -15,7 +15,6 @@ export function PlausibleScript() {
         src={env.NEXT_PUBLIC_PLAUSIBLE_SCRIPT_URL}
         data-domain={domain}
         strategy="afterInteractive"
-        defer
       />
       <Script id="plausible-init" strategy="afterInteractive">
         {`window.plausible = window.plausible || function() { (window.plausible.q = window.plausible.q || []).push(arguments) }`}

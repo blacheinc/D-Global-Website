@@ -1,5 +1,26 @@
 import { withSentryConfig } from '@sentry/nextjs';
 
+// Derive the Plausible origin from the configured script URL so self-hosted
+// deployments (e.g. NEXT_PUBLIC_PLAUSIBLE_SCRIPT_URL="https://analytics.
+// mysite.com/js/script.js") get script-src + connect-src allowlisted
+// automatically. Plausible puts the event beacon (/api/event) on the
+// same origin as the script, so one derived value covers both.
+//
+// Defensive: require https:. `javascript:` and other non-HTTP(S) schemes
+// parse without throwing and would produce an `origin` of the literal
+// string "null", which would silently corrupt the CSP allowlist. Falling
+// back to plausible.io on anything unexpected keeps the policy valid.
+const plausibleOrigin = (() => {
+  const url = process.env.NEXT_PUBLIC_PLAUSIBLE_SCRIPT_URL ?? 'https://plausible.io/js/script.js';
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== 'https:') return 'https://plausible.io';
+    return parsed.origin;
+  } catch {
+    return 'https://plausible.io';
+  }
+})();
+
 // Content Security Policy. Allowlist of origins we either load from today
 // or have pre-authorized for the integration families this app ships with
 // (Spotify, Audiomack, YouTube, Google Maps, Paystack, Plausible, Sentry,
@@ -13,7 +34,9 @@ import { withSentryConfig } from '@sentry/nextjs';
 //     https://js.paystack.co            → pre-auth (Paystack inline popup;
 //                                          current flow is full-page redirect,
 //                                          not popup — keep for future UX)
-//     https://plausible.io              → used (PlausibleScript)
+//     <plausibleOrigin>                 → used (PlausibleScript); derived
+//                                          from NEXT_PUBLIC_PLAUSIBLE_SCRIPT_URL
+//                                          so self-hosted instances work
 //   frame-src
 //     https://open.spotify.com          → used (SpotifyEmbed)
 //     https://embed.audiomack.com       → used (AudiomackEmbed)
@@ -23,7 +46,7 @@ import { withSentryConfig } from '@sentry/nextjs';
 //     https://checkout.paystack.com     → pre-auth (inline-popup iframe;
 //     https://standard.paystack.co         current flow navigates instead)
 //   connect-src
-//     https://plausible.io              → used (tracking beacon)
+//     <plausibleOrigin>                 → used (tracking beacon)
 //     https://*.sentry.io               → used (fallback when tunnel fails)
 //     https://*.ingest.sentry.io        → used (regional ingest fallback)
 //     https://api.paystack.co           → pre-auth (all Paystack HTTP is
@@ -52,12 +75,12 @@ const cspDirectives = [
   "object-src 'none'",
   "frame-ancestors 'self'",
   "form-action 'self' https://checkout.paystack.com https://standard.paystack.co",
-  "script-src 'self' 'unsafe-inline' https://js.paystack.co https://plausible.io",
+  `script-src 'self' 'unsafe-inline' https://js.paystack.co ${plausibleOrigin}`,
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self' data:",
   "img-src 'self' data: blob: https://i.scdn.co https://assets.audiomack.com https://res.cloudinary.com https://images.unsplash.com https://*.googleapis.com https://*.gstatic.com",
   "media-src 'self'",
-  "connect-src 'self' https://api.paystack.co https://checkout.paystack.com https://plausible.io https://*.sentry.io https://*.ingest.sentry.io",
+  `connect-src 'self' https://api.paystack.co https://checkout.paystack.com ${plausibleOrigin} https://*.sentry.io https://*.ingest.sentry.io`,
   "frame-src 'self' https://open.spotify.com https://embed.audiomack.com https://www.google.com https://www.youtube.com https://www.youtube-nocookie.com https://checkout.paystack.com https://standard.paystack.co",
   "worker-src 'self' blob:",
   "manifest-src 'self'",
