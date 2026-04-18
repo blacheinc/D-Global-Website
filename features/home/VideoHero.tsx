@@ -72,7 +72,7 @@ export function VideoHero() {
             The <span className="text-accent">sound</span> of a generation.
           </h1>
           <p className="mt-5 text-lg md:text-xl text-muted max-w-lg leading-relaxed">
-            The label shaping West Africa's next wave.
+            The label shaping West Africa's next wave. Book one of ours. Hear the catalogue.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Button asChild variant="primary" size="lg">
