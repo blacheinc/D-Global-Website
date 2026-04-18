@@ -4,6 +4,7 @@ import { db } from '@/server/db';
 import { env } from '@/lib/env';
 import { initializeTransaction } from '@/server/paystack/client';
 import { checkoutSchema } from '@/features/tickets/schema';
+import { captureError } from '@/server/observability';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -84,7 +85,7 @@ export async function POST(req: Request) {
     });
     orderId = order.id;
   } catch (err) {
-    console.error('[checkout] order create failed:', err);
+    captureError('[checkout] order create failed', err, { reference, eventId: event.id });
     return NextResponse.json(
       { error: 'Could not create your order. Try again in a moment.' },
       { status: 500 },
@@ -115,9 +116,12 @@ export async function POST(req: Request) {
         data: { status: 'FAILED' },
       });
     } catch (updateErr) {
-      console.error('[checkout] failed to mark order FAILED after init error:', updateErr);
+      captureError('[checkout] failed to mark order FAILED after init error', updateErr, {
+        orderId,
+        reference,
+      });
     }
-    console.error('[checkout] paystack initialize failed:', err);
+    captureError('[checkout] paystack initialize failed', err, { orderId, reference });
     return NextResponse.json(
       { error: 'Payment provider is unreachable. Try again or message us on WhatsApp.' },
       { status: 502 },

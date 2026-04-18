@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { db } from '@/server/db';
 import { requireAdmin } from '@/server/auth';
+import { captureError } from '@/server/observability';
 
 // Empty form fields arrive as '' from FormData; emptyToUndefined() below
 // strips them so .optional() does the right thing without a noisy union.
@@ -105,7 +106,7 @@ export async function upsertEvent(
       await db.event.create({ data: payload });
     }
   } catch (err) {
-    console.error('[admin:upsertEvent]', err);
+    captureError('[admin:upsertEvent]', err, { id, slug: data.slug });
     return { ok: false, error: 'Could not save the event. Try again.' };
   }
   // Revalidate every surface the event appears on. /events/[slug] uses
@@ -122,7 +123,7 @@ export async function deleteEvent(id: string): Promise<void> {
   try {
     await db.event.delete({ where: { id } });
   } catch (err) {
-    console.error('[admin:deleteEvent]', err);
+    captureError('[admin:deleteEvent]', err, { id });
     throw new Error('Could not delete event.');
   }
   revalidatePath('/admin/events');

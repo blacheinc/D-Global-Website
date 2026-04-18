@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/server/db';
 import { bookingSchema } from '@/features/bookings/schema';
+import { captureError } from '@/server/observability';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -45,7 +46,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true, booking }, { status: 201 });
   } catch (err) {
-    console.error('[api/bookings] DB error:', err);
+    captureError('[api/bookings] DB error', err);
     return NextResponse.json(
       { error: "Something went wrong on our side. Try again, or message us on WhatsApp." },
       { status: 500 },

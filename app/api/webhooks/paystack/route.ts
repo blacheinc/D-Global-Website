@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
+import * as Sentry from '@sentry/nextjs';
 import { db } from '@/server/db';
 import { verifyPaystackSignature } from '@/server/paystack/verifyWebhook';
 import { signTicket } from '@/server/qr/signPayload';
 import { sendOrderConfirmation } from '@/server/email/orderConfirmation';
+import { captureError } from '@/server/observability';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -51,10 +53,16 @@ export async function POST(req: Request) {
         where: { id: order.id },
         data: { status: 'FAILED', paystackPayload: payload as unknown as object },
       });
-      console.error('[paystack webhook] amount mismatch', {
-        reference: payload.data.reference,
-        expected: order.totalMinor,
-        received: payload.data.amount,
+      // Surface to Sentry as a real event (not just an error log). An
+      // amount mismatch on a verified webhook means either a bug in
+      // re-pricing or a tampering attempt — both warrant a page-able alert.
+      Sentry.captureMessage('[paystack webhook] amount mismatch', {
+        level: 'error',
+        tags: { reference: payload.data.reference },
+        extra: {
+          expected: order.totalMinor,
+          received: payload.data.amount,
+        },
       });
       return NextResponse.json({ ok: true, ignored: 'amount mismatch' });
     }
@@ -115,7 +123,10 @@ export async function POST(req: Request) {
         })),
       });
     } catch (err) {
-      console.error('[paystack webhook] order confirmation email failed:', err);
+      captureError('[paystack webhook] order confirmation email failed', err, {
+        orderId: order.id,
+        reference: payload.data.reference,
+      });
     }
   }
 

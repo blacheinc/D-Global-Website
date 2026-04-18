@@ -3,6 +3,7 @@
 import { z } from 'zod';
 import { requireAdmin } from '@/server/auth';
 import { broadcast, type BroadcastResult } from '@/server/push/sender';
+import { captureError } from '@/server/observability';
 
 const broadcastSchema = z.object({
   title: z.string().min(2).max(120),
@@ -43,7 +44,7 @@ export async function broadcastPush(
     });
     return { ok: true, result };
   } catch (err) {
-    console.error('[admin:broadcastPush]', err);
+    captureError('[admin:broadcastPush]', err);
     return { ok: false, error: err instanceof Error ? err.message : 'Broadcast failed.' };
   }
 }

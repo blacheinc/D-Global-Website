@@ -1,6 +1,7 @@
 import QRCode from 'qrcode';
 import { db } from '@/server/db';
 import { verifyTicket } from '@/server/qr/signPayload';
+import { captureError } from '@/server/observability';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -40,7 +41,7 @@ export async function GET(
       color: { dark: '#000000', light: '#FFFFFF' },
     });
   } catch (err) {
-    console.error('[qr] encode failed:', err);
+    captureError('[qr] encode failed', err, { orderId, itemId });
     return new Response('QR generation failed', { status: 500 });
   }
 

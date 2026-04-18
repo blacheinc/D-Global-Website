@@ -3,6 +3,7 @@
 import { redirect } from 'next/navigation';
 import { db } from '@/server/db';
 import { bookingSchema } from './schema';
+import { captureError } from '@/server/observability';
 
 export type BookingActionState = {
   ok: boolean;
@@ -59,7 +60,9 @@ export async function createBooking(
     });
     bookingCode = booking.code;
   } catch (err) {
-    console.error('[createBooking] DB error:', err);
+    captureError('[createBooking] DB error', err, {
+      packageTier: parsed.data.packageTier,
+    });
     return {
       ok: false,
       error: "Something went wrong on our side. Try again, or message us on WhatsApp.",

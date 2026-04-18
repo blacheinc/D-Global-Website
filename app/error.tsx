@@ -1,9 +1,16 @@
 'use client';
 
 import { useEffect } from 'react';
+import * as Sentry from '@sentry/nextjs';
 import { Button } from '@/components/ui/Button';
 
-export default function GlobalError({
+// Per-segment error boundary. Catches errors from any RSC, client
+// component, or Server Action below this segment. This is the *common*
+// error path — global-error.tsx only fires when the root layout itself
+// crashes. Both must explicitly capture; Sentry doesn't auto-instrument
+// React error boundaries.
+
+export default function RouteError({
   error,
   reset,
 }: {
@@ -11,7 +18,12 @@ export default function GlobalError({
   reset: () => void;
 }) {
   useEffect(() => {
-    // eslint-disable-next-line no-console
+    // Tag with digest so this client-side capture can be cross-referenced
+    // with the matching server-side stack trace (Next.js ships only the
+    // digest to the browser; the full trace stays on the server).
+    Sentry.captureException(error, {
+      tags: { digest: error.digest ?? 'none', source: 'route-error' },
+    });
     console.error(error);
   }, [error]);
 

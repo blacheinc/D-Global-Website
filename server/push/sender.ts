@@ -2,6 +2,7 @@ import 'server-only';
 import webpush from 'web-push';
 import { db } from '@/server/db';
 import { env } from '@/lib/env';
+import { captureError } from '@/server/observability';
 
 // VAPID setup runs once per process. If keys aren't configured, every
 // send call is a no-op — the admin UI surfaces the missing config.
@@ -60,7 +61,7 @@ export async function broadcast(payload: PushPayload): Promise<BroadcastResult> 
         await db.pushSubscription.delete({ where: { endpoint: sub.endpoint } }).catch(() => {});
         removed += 1;
       } else {
-        console.error('[push:send] failed', { endpoint: sub.endpoint, err });
+        captureError('[push:send] failed', err, { endpoint: sub.endpoint });
         failed += 1;
       }
     }
