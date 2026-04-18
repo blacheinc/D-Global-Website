@@ -22,7 +22,12 @@ const schema = z
     QR_SECRET: z.string().min(8).default(DEV_QR_SECRET),
 
     // --- Auth (NextAuth) ---
-    AUTH_SECRET: z.string().min(8).default(DEV_AUTH_SECRET),
+    // 32 chars minimum matches NextAuth v5's guidance — it's the secret
+    // that signs session cookies, and 8 chars is trivially brute-forceable
+    // offline against an intercepted cookie. .env.example already tells
+    // operators to generate via `openssl rand -base64 32` (44 chars after
+    // encoding) so the tighter minimum doesn't break the happy path.
+    AUTH_SECRET: z.string().min(32).default(DEV_AUTH_SECRET),
     // Comma-separated email allowlist. Anyone not on this list who tries
     // to sign in still receives a magic link (we can't tell them apart at
     // request time without leaking which emails are admins), but the
