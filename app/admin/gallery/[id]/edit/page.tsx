@@ -10,7 +10,7 @@ export default async function AdminGalleryEditPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [img, events] = await Promise.all([
+  const [img, recentEvents] = await Promise.all([
     db.galleryImage.findUnique({ where: { id } }),
     db.event.findMany({
       orderBy: { startsAt: 'desc' },
@@ -19,6 +19,18 @@ export default async function AdminGalleryEditPage({
     }),
   ]);
   if (!img) notFound();
+  // Same concern as the Release edit page: if the gallery image links
+  // to an older event that's not in the 100-most-recent slice, it'd
+  // silently fall out of the dropdown and the admin could clear the
+  // association on save. Merge the linked event in if missing.
+  const currentEvent =
+    img.eventId && !recentEvents.some((e) => e.id === img.eventId)
+      ? await db.event.findUnique({
+          where: { id: img.eventId },
+          select: { id: true, title: true },
+        })
+      : null;
+  const events = currentEvent ? [...recentEvents, currentEvent] : recentEvents;
   return (
     <div>
       <header className="mb-8">

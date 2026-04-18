@@ -1,6 +1,7 @@
 'use client';
 
-import { useActionState, useState } from 'react';
+import { useActionState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import type { TicketTier, TicketType } from '@prisma/client';
 import { Input, Label, Textarea, FieldError } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
@@ -30,20 +31,30 @@ export function TicketTypeForm({
   initial?: Initial;
   onDone?: () => void;
 }) {
+  const router = useRouter();
   const action = upsertTicketType.bind(null, eventId, initial?.id ?? null);
   const [state, formAction, pending] = useActionState(action, initialState);
   const fe = state.fieldErrors ?? {};
+  const formRef = useRef<HTMLFormElement>(null);
 
-  // Close the dialog / inline form on success. `onDone` is optional — if
-  // the parent doesn't pass it we just show the saved state inline.
-  const [dismissed, setDismissed] = useState(false);
-  if (state.ok && !dismissed) {
-    setDismissed(true);
-    onDone?.();
-  }
+  // After each successful submission: fire onDone (if provided), reset
+  // the form so the admin can add another tier without clearing fields
+  // by hand, and refresh the route so the tier list above the form
+  // picks up the new row. Depend on the state object identity (not
+  // state.ok) so repeated successes re-trigger — the "Add a tier" form
+  // stays mounted and is used multiple times in a row. Only reset on
+  // CREATE; on EDIT we want the updated values to persist.
+  useEffect(() => {
+    if (state.ok) {
+      onDone?.();
+      if (!initial?.id) formRef.current?.reset();
+      router.refresh();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state]);
 
   return (
-    <form action={formAction} className="space-y-4">
+    <form ref={formRef} action={formAction} className="space-y-4">
       {state.error && (
         <div role="alert" className="rounded-lg border border-accent-hot/40 bg-accent-hot/10 px-3 py-2 text-xs">
           {state.error}
@@ -160,9 +171,16 @@ export function TicketTypeForm({
         />
         <FieldError>{fe.paymentLinkUrl?.[0]}</FieldError>
       </div>
-      <Button type="submit" disabled={pending} size="sm">
-        {pending ? 'Saving…' : initial?.id ? 'Save tier' : 'Add tier'}
-      </Button>
+      <div className="flex items-center gap-3">
+        <Button type="submit" disabled={pending} size="sm">
+          {pending ? 'Saving…' : initial?.id ? 'Save tier' : 'Add tier'}
+        </Button>
+        {state.ok && !pending && (
+          <span role="status" className="text-xs text-emerald-400">
+            Saved.
+          </span>
+        )}
+      </div>
     </form>
   );
 }

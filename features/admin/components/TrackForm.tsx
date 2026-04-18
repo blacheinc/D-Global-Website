@@ -1,6 +1,7 @@
 'use client';
 
-import { useActionState, useState } from 'react';
+import { useActionState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import type { Track } from '@prisma/client';
 import { Input, Label, FieldError } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
@@ -18,16 +19,25 @@ export function TrackForm({
   initial?: Initial;
   onDone?: () => void;
 }) {
+  const router = useRouter();
   const action = upsertTrack.bind(null, releaseId, initial?.id ?? null);
   const [state, formAction, pending] = useActionState(action, initialState);
   const fe = state.fieldErrors ?? {};
-  const [dismissed, setDismissed] = useState(false);
-  if (state.ok && !dismissed) {
-    setDismissed(true);
-    onDone?.();
-  }
+  const formRef = useRef<HTMLFormElement>(null);
+
+  // Same pattern as TicketTypeForm / LineupForm — reset on successful
+  // CREATE, refresh route so the list above picks up the new row.
+  useEffect(() => {
+    if (state.ok) {
+      onDone?.();
+      if (!initial?.id) formRef.current?.reset();
+      router.refresh();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state]);
+
   return (
-    <form action={formAction} className="space-y-3">
+    <form ref={formRef} action={formAction} className="space-y-3">
       {state.error && (
         <div role="alert" className="rounded-lg border border-accent-hot/40 bg-accent-hot/10 px-3 py-2 text-xs">
           {state.error}
@@ -76,9 +86,16 @@ export function TrackForm({
         />
         <FieldError>{fe.spotifyId?.[0]}</FieldError>
       </div>
-      <Button type="submit" disabled={pending} size="sm">
-        {pending ? 'Saving…' : initial?.id ? 'Save track' : 'Add track'}
-      </Button>
+      <div className="flex items-center gap-3">
+        <Button type="submit" disabled={pending} size="sm">
+          {pending ? 'Saving…' : initial?.id ? 'Save track' : 'Add track'}
+        </Button>
+        {state.ok && !pending && (
+          <span role="status" className="text-xs text-emerald-400">
+            Saved.
+          </span>
+        )}
+      </div>
     </form>
   );
 }

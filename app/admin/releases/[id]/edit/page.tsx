@@ -13,17 +13,30 @@ export default async function AdminReleaseEditPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [release, artists] = await Promise.all([
+  const [release, recentArtists] = await Promise.all([
     db.release.findUnique({
       where: { id },
       include: { tracks: { orderBy: { order: 'asc' } } },
     }),
+    // Cap the artist dropdown at 100 for page-size sanity. If the
+    // release's current artist isn't in that top slice (alphabetically
+    // later), they'd silently disappear from the dropdown and the admin
+    // could accidentally clear the association on save. Fetch the
+    // current artist separately and merge it in.
     db.artist.findMany({
       orderBy: { stageName: 'asc' },
+      take: 100,
       select: { id: true, stageName: true },
     }),
   ]);
   if (!release) notFound();
+  const currentArtist = recentArtists.some((a) => a.id === release.artistId)
+    ? null
+    : await db.artist.findUnique({
+        where: { id: release.artistId },
+        select: { id: true, stageName: true },
+      });
+  const artists = currentArtist ? [...recentArtists, currentArtist] : recentArtists;
   return (
     <div>
       <header className="mb-8">

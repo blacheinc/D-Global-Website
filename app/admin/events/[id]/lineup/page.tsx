@@ -22,6 +22,7 @@ export default async function AdminEventLineupPage({
     }),
     db.artist.findMany({
       orderBy: { stageName: 'asc' },
+      take: 100,
       select: { id: true, stageName: true },
     }),
   ]);

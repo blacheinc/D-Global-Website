@@ -144,7 +144,13 @@ export function EventForm({ initial }: { initial?: EventInitial }) {
 
       <div>
         <Label htmlFor="venueAddress">Venue address</Label>
-        <Input id="venueAddress" name="venueAddress" defaultValue={initial?.venueAddress ?? ''} />
+        <Input
+          id="venueAddress"
+          name="venueAddress"
+          defaultValue={initial?.venueAddress ?? ''}
+          aria-invalid={!!fe.venueAddress}
+        />
+        <FieldError>{fe.venueAddress?.[0]}</FieldError>
       </div>
 
       <div>
@@ -173,7 +179,14 @@ export function EventForm({ initial }: { initial?: EventInitial }) {
 
       <div>
         <Label htmlFor="genre">Genres (comma-separated)</Label>
-        <Input id="genre" name="genre" defaultValue={initial?.genre?.join(', ') ?? ''} placeholder="afrobeats, amapiano" />
+        <Input
+          id="genre"
+          name="genre"
+          defaultValue={initial?.genre?.join(', ') ?? ''}
+          placeholder="afrobeats, amapiano"
+          aria-invalid={!!fe.genre}
+        />
+        <FieldError>{fe.genre?.[0]}</FieldError>
       </div>
 
       <div className="grid gap-6 sm:grid-cols-2">

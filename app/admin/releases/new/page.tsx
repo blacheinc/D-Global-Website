@@ -5,6 +5,7 @@ import { ReleaseForm } from '@/features/admin/components/ReleaseForm';
 export default async function AdminReleaseNewPage() {
   const artists = await db.artist.findMany({
     orderBy: { stageName: 'asc' },
+    take: 100,
     select: { id: true, stageName: true },
   });
   if (artists.length === 0) {

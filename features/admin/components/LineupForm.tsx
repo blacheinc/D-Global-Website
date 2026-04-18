@@ -1,6 +1,7 @@
 'use client';
 
-import { useActionState, useState } from 'react';
+import { useActionState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import type { LineupSlot } from '@prisma/client';
 import { Input, Label, FieldError } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
@@ -31,17 +32,26 @@ export function LineupForm({
   initial?: Initial;
   onDone?: () => void;
 }) {
+  const router = useRouter();
   const action = upsertLineupSlot.bind(null, eventId, initial?.id ?? null);
   const [state, formAction, pending] = useActionState(action, initialState);
   const fe = state.fieldErrors ?? {};
-  const [dismissed, setDismissed] = useState(false);
-  if (state.ok && !dismissed) {
-    setDismissed(true);
-    onDone?.();
-  }
+  const formRef = useRef<HTMLFormElement>(null);
+
+  // See TicketTypeForm for the rationale — reset on CREATE, refresh
+  // route so the list above picks up the new row, depend on state
+  // object identity so repeated successes re-fire.
+  useEffect(() => {
+    if (state.ok) {
+      onDone?.();
+      if (!initial?.id) formRef.current?.reset();
+      router.refresh();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state]);
 
   return (
-    <form action={formAction} className="space-y-4">
+    <form ref={formRef} action={formAction} className="space-y-4">
       {state.error && (
         <div role="alert" className="rounded-lg border border-accent-hot/40 bg-accent-hot/10 px-3 py-2 text-xs">
           {state.error}
@@ -115,9 +125,16 @@ export function LineupForm({
         />
         <FieldError>{fe.order?.[0]}</FieldError>
       </div>
-      <Button type="submit" disabled={pending} size="sm">
-        {pending ? 'Saving…' : initial?.id ? 'Save slot' : 'Add slot'}
-      </Button>
+      <div className="flex items-center gap-3">
+        <Button type="submit" disabled={pending} size="sm">
+          {pending ? 'Saving…' : initial?.id ? 'Save slot' : 'Add slot'}
+        </Button>
+        {state.ok && !pending && (
+          <span role="status" className="text-xs text-emerald-400">
+            Saved.
+          </span>
+        )}
+      </div>
     </form>
   );
 }
