@@ -5,7 +5,6 @@ import { notFound } from 'next/navigation';
 import { Instagram, Twitter, Calendar } from 'lucide-react';
 import { getArtistBySlug, getAllArtistSlugs } from '@/features/artists/queries';
 import { SpotifyEmbed } from '@/features/artists/components/SpotifyEmbed';
-import { AudiomackEmbed } from '@/features/artists/components/AudiomackEmbed';
 import { Badge } from '@/components/ui/Badge';
 import { formatEventDate } from '@/lib/formatDate';
 

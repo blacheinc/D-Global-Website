@@ -68,9 +68,12 @@ export function SubscribeButton({ vapidPublicKey }: { vapidPublicKey?: string })
         return;
       }
       const reg = await navigator.serviceWorker.ready;
+      // @types/node's Uint8Array now carries ArrayBufferLike, while the
+      // DOM's BufferSource expects a pinned ArrayBuffer. .buffer narrows.
+      const key = urlBase64ToUint8Array(vapidPublicKey);
       const sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+        applicationServerKey: key.buffer as ArrayBuffer,
       });
       const res = await fetch('/api/push/subscribe', {
         method: 'POST',
