@@ -125,15 +125,26 @@ export async function deleteArtist(id: string): Promise<DeleteArtistResult> {
   // - release slugs (cascade-deleted, their pages now 404)
   // - distinct event slugs where this artist was in the lineup, so those
   //   event pages re-render and drop the now-dangling artist link
+  // - artistBooking count so we can block the delete with a useful
+  //   message when bookings exist (FK is Restrict; bookings are audit
+  //   data worth keeping, not worth cascading to /dev/null)
   const artist = await db.artist.findUnique({
     where: { id },
     select: {
       slug: true,
       releases: { select: { slug: true } },
       lineupSlots: { select: { event: { select: { slug: true } } } },
+      _count: { select: { artistBookings: true } },
     },
   });
   if (!artist) return { ok: false, error: 'Artist not found.' };
+
+  if (artist._count.artistBookings > 0) {
+    return {
+      ok: false,
+      error: `This artist has ${artist._count.artistBookings} booking request${artist._count.artistBookings === 1 ? '' : 's'} on file. Mark them declined or cancelled first, then delete the artist.`,
+    };
+  }
 
   try {
     await db.artist.delete({ where: { id } });

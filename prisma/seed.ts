@@ -29,6 +29,7 @@ async function main() {
   await db.orderItem.deleteMany();
   await db.order.deleteMany();
   await db.booking.deleteMany();
+  await db.artistBooking.deleteMany();
   await db.track.deleteMany();
   await db.release.deleteMany();
   await db.lineupSlot.deleteMany();

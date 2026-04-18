@@ -14,11 +14,11 @@ export const artistBookingSchema = z.object({
     .regex(/^\+?\d{8,15}$/, 'Enter a valid phone number, digits only with optional +.'),
   company: z.string().max(120).optional().or(z.literal('')),
   // datetime-local arrives as YYYY-MM-DDTHH:mm; z.coerce.date handles it.
-  // Refining for "in the future" is intentionally permissive — same-day
-  // private events happen; the only hard bar is not scheduling in the
-  // past, which is almost always a typo.
-  eventDate: z.coerce.date().refine((d) => d.getTime() > Date.now() - 24 * 60 * 60 * 1000, {
-    message: 'Pick a date today or later.',
+  // Refine against "now" — a real booking is always a future event, and
+  // the browser's min attribute already soft-blocks past dates on most
+  // UAs; this is the server's catch-all for anyone bypassing the widget.
+  eventDate: z.coerce.date().refine((d) => d.getTime() > Date.now(), {
+    message: 'Pick a date in the future.',
   }),
   venueName: z.string().min(2, 'Where is the show?').max(160),
   city: z.string().min(2).max(80),
