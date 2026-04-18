@@ -17,16 +17,23 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('push', (event) => {
-  if (!event.data) return;
-  let payload;
-  try {
-    payload = event.data.json();
-  } catch {
-    payload = { title: 'D-Global', body: event.data.text() };
+  // userVisibleOnly: true means the browser (Chrome especially) WILL
+  // surface a generic "this site has been updated in the background"
+  // notification if we don't call showNotification for every push. So
+  // even for a data-less or malformed payload, fall back to a neutral
+  // notification rather than returning early — otherwise real users
+  // see a confusing ghost notification we can't customize.
+  let payload = {};
+  if (event.data) {
+    try {
+      payload = event.data.json();
+    } catch {
+      payload = { body: event.data.text() };
+    }
   }
   const title = payload.title || 'D-Global';
   const options = {
-    body: payload.body || '',
+    body: payload.body || 'New update from D-Global.',
     icon: '/android-chrome-192x192.png',
     badge: '/favicon-32x32.png',
     data: { url: payload.url || '/' },
@@ -41,17 +48,32 @@ self.addEventListener('notificationclick', (event) => {
   const target = (event.notification.data && event.notification.data.url) || '/';
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windows) => {
-      // Reuse an existing tab if one is already on this origin —
-      // double-clicking a notification shouldn't open four copies.
-      // `client.navigate` isn't on Firefox; fall back to focus + openWindow.
-      for (const w of windows) {
-        if ('focus' in w) {
-          if (typeof w.navigate === 'function') {
-            return w.navigate(target).then(() => w.focus());
-          }
-          return w.focus();
+      // Preferred ordering:
+      //  1. A tab already at the target URL → just focus it. Don't
+      //     re-navigate (scroll/form state would be lost).
+      //  2. A tab somewhere else on our origin that can navigate() →
+      //     hijack that one. Saves a tab vs. opening yet another.
+      //  3. A focusable tab on a browser without client.navigate
+      //     (Firefox) → openWindow(target) instead; silently focusing
+      //     an unrelated tab leaves the user with no visible result
+      //     of the notification click.
+      //  4. Nothing open → openWindow(target).
+      //
+      // Resolve target against each client's origin so pathname
+      // comparison works for both relative ("/events/x") and absolute
+      // payload URLs.
+      const matching = windows.find((w) => {
+        try {
+          const resolved = new URL(target, w.url);
+          const current = new URL(w.url);
+          return resolved.origin === current.origin && resolved.pathname === current.pathname;
+        } catch {
+          return false;
         }
-      }
+      });
+      if (matching && 'focus' in matching) return matching.focus();
+      const navigable = windows.find((w) => 'focus' in w && typeof w.navigate === 'function');
+      if (navigable) return navigable.navigate(target).then((c) => (c || navigable).focus());
       return self.clients.openWindow(target);
     }),
   );

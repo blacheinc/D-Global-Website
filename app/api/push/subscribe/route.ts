@@ -2,15 +2,16 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { db } from '@/server/db';
 import { auth } from '@/auth';
+import { captureError } from '@/server/observability';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const subscribeSchema = z.object({
-  endpoint: z.string().url(),
+  endpoint: z.string().url().max(1000),
   keys: z.object({
-    p256dh: z.string().min(1),
-    auth: z.string().min(1),
+    p256dh: z.string().min(1).max(200),
+    auth: z.string().min(1).max(200),
   }),
 });
 
@@ -30,21 +31,44 @@ export async function POST(req: Request) {
   // upsert on endpoint: re-subscribing on the same browser shouldn't
   // create dupes, but updating keys/userAgent matters because browsers
   // can rotate keys when the user clears site data.
-  await db.pushSubscription.upsert({
-    where: { endpoint: parsed.data.endpoint },
-    create: {
-      endpoint: parsed.data.endpoint,
-      p256dh: parsed.data.keys.p256dh,
-      auth: parsed.data.keys.auth,
-      userAgent,
-      userId: session?.user?.id,
-    },
-    update: {
-      p256dh: parsed.data.keys.p256dh,
-      auth: parsed.data.keys.auth,
-      userAgent,
-      userId: session?.user?.id,
-    },
-  });
+  try {
+    await db.pushSubscription.upsert({
+      where: { endpoint: parsed.data.endpoint },
+      create: {
+        endpoint: parsed.data.endpoint,
+        p256dh: parsed.data.keys.p256dh,
+        auth: parsed.data.keys.auth,
+        userAgent,
+        userId: session?.user?.id,
+      },
+      update: {
+        p256dh: parsed.data.keys.p256dh,
+        auth: parsed.data.keys.auth,
+        userAgent,
+        userId: session?.user?.id,
+      },
+    });
+  } catch (err) {
+    // Capture so we know if the push pipeline is silently failing at
+    // the storage layer — without this, every SubscribeButton click
+    // would surface a generic "Couldn't enable notifications" from the
+    // client's Sentry tag but the root cause (DB, unique constraint,
+    // etc.) would be invisible on the server.
+    captureError('[api/push/subscribe] upsert failed', err, {
+      endpointHost: safeHost(parsed.data.endpoint),
+    });
+    return NextResponse.json({ error: 'Could not save subscription' }, { status: 500 });
+  }
   return NextResponse.json({ ok: true });
+}
+
+// URL.host is enough context for Sentry (fcm.googleapis.com vs
+// updates.push.services.mozilla.com) without leaking the per-browser
+// endpoint token.
+function safeHost(endpoint: string): string | undefined {
+  try {
+    return new URL(endpoint).host;
+  } catch {
+    return undefined;
+  }
 }
