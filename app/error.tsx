@@ -18,11 +18,13 @@ export default function RouteError({
   reset: () => void;
 }) {
   useEffect(() => {
-    // Tag with digest so this client-side capture can be cross-referenced
-    // with the matching server-side stack trace (Next.js ships only the
-    // digest to the browser; the full trace stays on the server).
+    // `source` is a low-cardinality categorical tag; `digest` is a
+    // per-error identifier (Next.js ships only the digest to the browser;
+    // the full stack stays on the server) and goes in `extra` to avoid
+    // blowing out Sentry's tag-value index.
     Sentry.captureException(error, {
-      tags: { digest: error.digest ?? 'none', source: 'route-error' },
+      tags: { source: 'route-error' },
+      extra: { digest: error.digest },
     });
     console.error(error);
   }, [error]);

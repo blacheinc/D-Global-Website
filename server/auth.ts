@@ -1,5 +1,6 @@
 import 'server-only';
 import { redirect } from 'next/navigation';
+import * as Sentry from '@sentry/nextjs';
 import { auth } from '@/auth';
 
 // Server helpers built on top of the NextAuth v5 `auth()` accessor. Use
@@ -22,5 +23,10 @@ export async function requireAdmin() {
   const user = await getCurrentUser();
   if (!user) redirect('/api/auth/signin?callbackUrl=/admin');
   if (user.role !== 'ADMIN') redirect('/');
+  // Tag the per-request Sentry scope so any error raised below this guard
+  // — in a layout, an RSC, OR a server action — carries the admin's
+  // identity. Server scope is per-request (AsyncLocalStorage), so there's
+  // no cross-request leak.
+  Sentry.setUser({ id: user.id, email: user.email ?? undefined });
   return user;
 }

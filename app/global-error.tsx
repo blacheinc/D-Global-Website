@@ -18,12 +18,13 @@ export default function GlobalError({
   useEffect(() => {
     // Sentry's error boundary integration only catches errors below the
     // root layout. Global errors (the ones that unmount the layout) need
-    // to be captured manually here. Tag with the digest so this client
-    // event can be correlated with the matching server-side stack trace
-    // in Sentry's UI. console.error keeps the message visible in host
-    // logs for ops who don't have Sentry access.
+    // to be captured manually here. `source` is a low-cardinality tag for
+    // filtering; `digest` is a per-error identifier and goes in `extra`
+    // (tagging by it would explode Sentry's tag-value index). console.error
+    // keeps the message visible in host logs for ops without Sentry access.
     Sentry.captureException(error, {
-      tags: { digest: error.digest ?? 'none', source: 'global-error' },
+      tags: { source: 'global-error' },
+      extra: { digest: error.digest },
     });
     console.error('[global-error]', error);
   }, [error]);

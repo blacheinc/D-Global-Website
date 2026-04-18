@@ -124,7 +124,9 @@ export async function deleteEvent(id: string): Promise<void> {
     await db.event.delete({ where: { id } });
   } catch (err) {
     captureError('[admin:deleteEvent]', err, { id });
-    throw new Error('Could not delete event.');
+    // Preserve the cause so Sentry's linkedErrorsIntegration ties this
+    // user-facing wrapper to the original DB error in the dashboard.
+    throw new Error('Could not delete event.', { cause: err });
   }
   revalidatePath('/admin/events');
   revalidatePath('/events');

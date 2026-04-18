@@ -56,10 +56,13 @@ export async function POST(req: Request) {
       // Surface to Sentry as a real event (not just an error log). An
       // amount mismatch on a verified webhook means either a bug in
       // re-pricing or a tampering attempt — both warrant a page-able alert.
+      // `reference` is a per-order identifier and goes in extra; the only
+      // tag is the categorical `kind` so dashboards can filter on it.
       Sentry.captureMessage('[paystack webhook] amount mismatch', {
         level: 'error',
-        tags: { reference: payload.data.reference },
+        tags: { kind: 'paystack-amount-mismatch' },
         extra: {
+          reference: payload.data.reference,
           expected: order.totalMinor,
           received: payload.data.amount,
         },

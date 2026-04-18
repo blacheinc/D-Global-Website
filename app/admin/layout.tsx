@@ -28,6 +28,9 @@ const NAV: ReadonlyArray<{ href: string; label: string }> = [
 ];
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+  // requireAdmin() also tags the per-request Sentry scope with the admin's
+  // identity, so every error raised below this layout — including those
+  // from server actions — carries the user.
   const user = await requireAdmin();
   return (
     <div className="min-h-screen bg-bg text-foreground">

@@ -24,9 +24,10 @@ export function captureError(
   // Console first so the event lands in host logs even if Sentry is
   // unconfigured or rate-limited.
   console.error(prefix, err, context ?? {});
-  Sentry.withScope((scope) => {
-    scope.setTag('prefix', prefix);
-    if (context) scope.setContext('extra', context);
-    Sentry.captureException(err);
+  // The captureException options arg builds a one-shot scope under the
+  // hood — equivalent to withScope(), with less ceremony.
+  Sentry.captureException(err, {
+    tags: { prefix },
+    extra: context,
   });
 }
