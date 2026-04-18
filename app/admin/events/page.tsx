@@ -5,27 +5,42 @@ import { Badge } from '@/components/ui/Badge';
 import { formatEventDateTime } from '@/lib/formatDate';
 import { DeleteEventButton } from '@/features/admin/components/DeleteEventButton';
 
+// Match the cap used on /admin/bookings and /admin/orders — keeps the
+// render cheap at any scale; a proper search + pagination UI is a
+// follow-up, but an unbounded findMany would page in every event on a
+// grown-up catalog.
+const EVENTS_PAGE_SIZE = 100;
+
 export default async function AdminEventsPage() {
-  const events = await db.event.findMany({
-    orderBy: { startsAt: 'desc' },
-    select: {
-      id: true,
-      slug: true,
-      title: true,
-      startsAt: true,
-      venueName: true,
-      status: true,
-      featured: true,
-      _count: { select: { ticketTypes: true, orders: true } },
-    },
-  });
+  const [events, total] = await Promise.all([
+    db.event.findMany({
+      orderBy: { startsAt: 'desc' },
+      take: EVENTS_PAGE_SIZE,
+      select: {
+        id: true,
+        slug: true,
+        title: true,
+        startsAt: true,
+        venueName: true,
+        status: true,
+        featured: true,
+        _count: { select: { ticketTypes: true, orders: true } },
+      },
+    }),
+    db.event.count(),
+  ]);
+  const clipped = total > events.length;
 
   return (
     <div>
       <header className="mb-8 flex items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight">Events</h1>
-          <p className="mt-2 text-sm text-muted">{events.length} total</p>
+          <p className="mt-2 text-sm text-muted">
+            {clipped
+              ? `Showing ${events.length} of ${total} — newest first`
+              : `${total} total`}
+          </p>
         </div>
         <Button asChild>
           <Link href="/admin/events/new">New event</Link>

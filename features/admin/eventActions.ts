@@ -118,16 +118,30 @@ export async function upsertEvent(
   redirect('/admin/events');
 }
 
-export async function deleteEvent(id: string): Promise<void> {
+export type DeleteEventResult = { ok: true } | { ok: false; error: string };
+
+export async function deleteEvent(id: string): Promise<DeleteEventResult> {
   await requireAdmin();
+
+  // Pre-check: Order.eventId is required with the default Restrict cascade,
+  // so Prisma throws an opaque FK violation if we try to delete an event
+  // that has any orders. Catch it here with a message that tells the admin
+  // what to do instead (set status=CANCELLED preserves the audit trail).
+  const orderCount = await db.order.count({ where: { eventId: id } });
+  if (orderCount > 0) {
+    return {
+      ok: false,
+      error: `This event has ${orderCount} order${orderCount === 1 ? '' : 's'} and can't be deleted. Set its status to Cancelled instead — tickets already sold keep working.`,
+    };
+  }
+
   try {
     await db.event.delete({ where: { id } });
   } catch (err) {
     captureError('[admin:deleteEvent]', err, { id });
-    // Preserve the cause so Sentry's linkedErrorsIntegration ties this
-    // user-facing wrapper to the original DB error in the dashboard.
-    throw new Error('Could not delete event.', { cause: err });
+    return { ok: false, error: 'Could not delete the event. Try again in a moment.' };
   }
   revalidatePath('/admin/events');
   revalidatePath('/events');
+  return { ok: true };
 }
