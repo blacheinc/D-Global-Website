@@ -10,8 +10,17 @@ import { Badge } from '@/components/ui/Badge';
 import { formatEventDate } from '@/lib/formatDate';
 
 export async function generateStaticParams() {
-  const slugs = await getAllArtistSlugs();
-  return slugs.map((slug) => ({ slug }));
+  // Swallow DB failures during build. On Vercel, Neon free tier can be
+  // cold / unreachable from the build runner (auto-suspend, connection
+  // timeout), which used to fail the whole build. Returning [] instead
+  // falls back to on-demand rendering for every slug — Next's default
+  // dynamicParams: true lets unknown slugs render at request time.
+  try {
+    const slugs = await getAllArtistSlugs();
+    return slugs.map((slug) => ({ slug }));
+  } catch {
+    return [];
+  }
 }
 
 export async function generateMetadata({

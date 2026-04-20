@@ -15,8 +15,15 @@ import { formatPriceMinor } from '@/lib/formatCurrency';
 import { buildWaLink, buildEventInquiryMessage } from '@/lib/whatsapp';
 
 export async function generateStaticParams() {
-  const slugs = await getAllEventSlugs();
-  return slugs.map((slug) => ({ slug }));
+  // See app/(site)/artists/[slug]/page.tsx for rationale: DB may be
+  // unreachable from the Vercel build runner (Neon auto-suspend etc.);
+  // fall back to on-demand rendering instead of failing the build.
+  try {
+    const slugs = await getAllEventSlugs();
+    return slugs.map((slug) => ({ slug }));
+  } catch {
+    return [];
+  }
 }
 
 export async function generateMetadata({
