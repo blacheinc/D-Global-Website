@@ -4,8 +4,9 @@ import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { motion, useReducedMotion } from 'framer-motion';
-import { Disc3, Headphones } from 'lucide-react';
+import { Ticket, Wine } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { buildWaLink } from '@/lib/whatsapp';
 
 export function VideoHero() {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -67,23 +68,27 @@ export function VideoHero() {
           transition={{ duration: 0.9, ease: [0.2, 0.7, 0.2, 1] }}
           className="max-w-4xl"
         >
-          <p className="eyebrow">Accra · Records</p>
+          <p className="eyebrow">Accra · Nightlife</p>
           <h1 className="mt-5 font-display text-[clamp(2.75rem,6vw,5.5rem)] leading-[1] tracking-[-0.02em] font-semibold text-balance">
-            The <span className="text-accent">sound</span> of a generation.
+            Step <span className="text-accent">inside</span> the night.
           </h1>
           <p className="mt-5 text-lg md:text-xl text-muted max-w-lg leading-relaxed">
-            The label shaping West Africa's next wave. Book one of ours. Hear the catalogue.
+            Events and VIP tables in the city after dark.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Button asChild variant="primary" size="lg">
-              <Link href="/artists">
-                <Disc3 aria-hidden className="h-4 w-4" /> Book an artist
+              <Link href="/events">
+                <Ticket aria-hidden className="h-4 w-4" /> Get Tickets
               </Link>
             </Button>
             <Button asChild variant="ghost" size="lg">
-              <Link href="/releases">
-                <Headphones aria-hidden className="h-4 w-4" /> Hear the catalogue
-              </Link>
+              <a
+                href={buildWaLink('Hi D Global Entertainment, I want to book a VIP table.')}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Wine aria-hidden className="h-4 w-4" /> Book a Table
+              </a>
             </Button>
           </div>
         </motion.div>

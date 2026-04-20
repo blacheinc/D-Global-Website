@@ -1,13 +1,12 @@
 'use client';
 
-import { useActionState, useState } from 'react';
-import { MessageCircle, Loader2 } from 'lucide-react';
+import { useState } from 'react';
+import { MessageCircle } from 'lucide-react';
 import { PackageCard } from './PackageCard';
 import { Button } from '@/components/ui/Button';
-import { Input, Label, Textarea, FieldError } from '@/components/ui/Input';
+import { Input, Label, Textarea } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
-import { createBooking, type BookingActionState } from '../actions';
-import { buildWaLink, buildBookingMessage } from '@/lib/whatsapp';
+import { buildWaLink } from '@/lib/whatsapp';
 import type { Event, Package } from '@prisma/client';
 
 interface BookingFormProps {
@@ -17,49 +16,52 @@ interface BookingFormProps {
   defaultEventId?: string;
 }
 
-const initial: BookingActionState = { ok: false };
-
+// VIP table booking is WhatsApp-only. We collect the basics inline,
+// pre-fill a WA message, and open wa.me — the rest (deposit, bottle
+// selection, arrival instructions) is handled in-chat with a human.
+// No DB write, no server action. features/bookings/actions.ts still
+// exists unchanged if we want to turn capture back on later.
 export function BookingForm({
   packages,
   events,
   defaultPackageTier,
   defaultEventId,
 }: BookingFormProps) {
-  const [state, formAction, pending] = useActionState(createBooking, initial);
   const [selectedPkgId, setSelectedPkgId] = useState<string | null>(
     packages.find((p) => p.tier === defaultPackageTier)?.id ?? packages[0]?.id ?? null,
   );
   const [partySize, setPartySize] = useState(4);
   const [eventId, setEventId] = useState(defaultEventId ?? '');
   const [guestName, setGuestName] = useState('');
+  const [guestPhone, setGuestPhone] = useState('');
+  const [guestEmail, setGuestEmail] = useState('');
+  const [notes, setNotes] = useState('');
 
   const selectedPkg = packages.find((p) => p.id === selectedPkgId) ?? null;
   const selectedEvent = events.find((e) => e.id === eventId) ?? null;
 
-  const waHref = selectedPkg
-    ? buildWaLink(
-        buildBookingMessage({
-          packageName: selectedPkg.name,
-          partySize,
-          eventTitle: selectedEvent?.title ?? null,
-          eventDate: selectedEvent ? new Date(selectedEvent.startsAt).toDateString() : null,
-          guestName: guestName || '-',
-        }),
-      )
-    : buildWaLink('Hi D Global Entertainment, I want to book a VIP table.');
-
-  // Wire zod field errors to each input via aria-invalid + aria-describedby so
-  // screen readers announce the validation message when focusing the field.
-  const fieldProps = (name: string) => {
-    const hasErr = Boolean(state.fieldErrors?.[name]);
-    return {
-      'aria-invalid': hasErr || undefined,
-      'aria-describedby': hasErr ? `${name}-err` : undefined,
-    };
-  };
+  // Inline-built message rather than buildBookingMessage() because the
+  // WA-only flow wants to carry optional extras (phone, email, notes)
+  // that the DB-backed helper never handled.
+  const lines = ['Hi D Global Entertainment 👋'];
+  lines.push(
+    selectedPkg
+      ? `I'd like to book a ${selectedPkg.name} table for ${partySize} ${partySize === 1 ? 'guest' : 'guests'}.`
+      : `I'd like to book a VIP table for ${partySize} ${partySize === 1 ? 'guest' : 'guests'}.`,
+  );
+  if (selectedEvent) {
+    lines.push(
+      `Event: ${selectedEvent.title} - ${new Date(selectedEvent.startsAt).toDateString()}`,
+    );
+  }
+  if (guestName.trim()) lines.push(`Name: ${guestName.trim()}`);
+  if (guestPhone.trim()) lines.push(`Phone: ${guestPhone.trim()}`);
+  if (guestEmail.trim()) lines.push(`Email: ${guestEmail.trim()}`);
+  if (notes.trim()) lines.push(`Notes: ${notes.trim()}`);
+  const waHref = buildWaLink(lines.join('\n'));
 
   return (
-    <form action={formAction} className="space-y-10">
+    <div className="space-y-10">
       <div>
         <p className="eyebrow mb-5">1. Choose a package</p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
@@ -72,10 +74,6 @@ export function BookingForm({
             />
           ))}
         </div>
-        <input type="hidden" name="packageTier" value={selectedPkg?.tier ?? ''} required />
-        {state.fieldErrors?.packageTier && (
-          <FieldError id="packageTier-err">{state.fieldErrors.packageTier}</FieldError>
-        )}
       </div>
 
       <div>
@@ -85,67 +83,55 @@ export function BookingForm({
             <Label htmlFor="guestName">Full name</Label>
             <Input
               id="guestName"
-              name="guestName"
-              required
               placeholder="As it should appear on the reservation"
               value={guestName}
               onChange={(e) => setGuestName(e.target.value)}
               autoComplete="name"
-              {...fieldProps('guestName')}
             />
-            <FieldError id="guestName-err">{state.fieldErrors?.guestName}</FieldError>
           </div>
 
           <div>
             <Label htmlFor="guestPhone">Phone (WhatsApp)</Label>
             <Input
               id="guestPhone"
-              name="guestPhone"
               type="tel"
               inputMode="tel"
               autoComplete="tel"
-              required
               placeholder="+233 XX XXX XXXX"
-              {...fieldProps('guestPhone')}
+              value={guestPhone}
+              onChange={(e) => setGuestPhone(e.target.value)}
             />
-            <FieldError id="guestPhone-err">{state.fieldErrors?.guestPhone}</FieldError>
           </div>
 
           <div>
             <Label htmlFor="guestEmail">Email (optional)</Label>
             <Input
               id="guestEmail"
-              name="guestEmail"
               type="email"
               autoComplete="email"
               placeholder="you@example.com"
-              {...fieldProps('guestEmail')}
+              value={guestEmail}
+              onChange={(e) => setGuestEmail(e.target.value)}
             />
-            <FieldError id="guestEmail-err">{state.fieldErrors?.guestEmail}</FieldError>
           </div>
 
           <div>
             <Label htmlFor="partySize">Party size</Label>
             <Input
               id="partySize"
-              name="partySize"
               type="number"
               inputMode="numeric"
               min={1}
               max={30}
-              required
               value={partySize}
               onChange={(e) => setPartySize(Number(e.target.value))}
-              {...fieldProps('partySize')}
             />
-            <FieldError id="partySize-err">{state.fieldErrors?.partySize}</FieldError>
           </div>
 
           <div>
             <Label htmlFor="eventId">Which night?</Label>
             <Select
               id="eventId"
-              name="eventId"
               value={eventId}
               onChange={(e) => setEventId(e.target.value)}
             >
@@ -162,52 +148,25 @@ export function BookingForm({
             <Label htmlFor="notes">Notes (optional)</Label>
             <Textarea
               id="notes"
-              name="notes"
               maxLength={500}
               placeholder="Birthdays, bottles, specific requests…"
-              {...fieldProps('notes')}
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
             />
-            <FieldError id="notes-err">{state.fieldErrors?.notes}</FieldError>
           </div>
         </div>
       </div>
 
-      {state.error && (
-        <div role="alert" className="rounded-xl border border-accent/40 bg-accent/10 p-4 text-sm">
-          {state.error}
-        </div>
-      )}
-
-      <div className="flex flex-col sm:flex-row gap-3">
-        <Button
-          type="submit"
-          variant="primary"
-          size="lg"
-          disabled={pending || !selectedPkg}
-          className="flex-1"
-        >
-          {pending ? (
-            <>
-              <Loader2 aria-hidden className="h-4 w-4 animate-spin" /> Sending request…
-            </>
-          ) : (
-            'Reserve table'
-          )}
-        </Button>
-        <a
-          href={waHref}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex-1 inline-flex items-center justify-center gap-2 h-14 rounded-full border border-white/15 bg-white/5 hover:bg-white/10 text-foreground font-medium"
-        >
+      <Button asChild variant="primary" size="lg" className="w-full sm:w-auto">
+        <a href={waHref} target="_blank" rel="noopener noreferrer">
           <MessageCircle aria-hidden className="h-4 w-4" /> Continue on WhatsApp
         </a>
-      </div>
+      </Button>
 
       <p className="text-xs text-muted">
         We'll confirm your reservation on WhatsApp within an hour. Deposit, bottle selection and
         arrival instructions are handled in-chat.
       </p>
-    </form>
+    </div>
   );
 }
