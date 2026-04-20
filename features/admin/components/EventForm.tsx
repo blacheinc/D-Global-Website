@@ -161,7 +161,12 @@ export function EventForm({ initial }: { initial?: EventInitial }) {
           name="venueMapUrl"
           defaultValue={initial?.venueMapUrl ?? ''}
           aria-invalid={!!fe.venueMapUrl}
+          placeholder="https://www.google.com/maps/embed?pb=..."
         />
+        <p className="mt-1.5 text-xs text-muted">
+          Use the "Embed a map" URL from Google Maps (Share → Embed a map → copy the src). Short-links
+          (maps.app.goo.gl/...) and place-page URLs open in a new tab instead of embedding.
+        </p>
         <FieldError>{fe.venueMapUrl?.[0]}</FieldError>
       </div>
 
