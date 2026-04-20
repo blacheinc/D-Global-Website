@@ -8,6 +8,11 @@ export const metadata: Metadata = {
   description: 'Meet the producers, selectors and performers behind the D Global Entertainment sound.',
 };
 
+// Same rationale as app/(site)/page.tsx: hit the DB per-request
+// rather than ship stale rows or fail the build when Neon isn't
+// reachable from the Vercel build runner.
+export const dynamic = 'force-dynamic';
+
 export default async function ArtistsPage() {
   const artists = await listArtists();
   return (

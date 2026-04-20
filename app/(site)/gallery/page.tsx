@@ -7,6 +7,9 @@ export const metadata: Metadata = {
   description: 'The nights, in frames. Events, backstage, artists and venue photography.',
 };
 
+// Same rationale as app/(site)/page.tsx.
+export const dynamic = 'force-dynamic';
+
 export default async function GalleryPage() {
   const images = await db.galleryImage.findMany({
     orderBy: [{ order: 'asc' }, { createdAt: 'desc' }],

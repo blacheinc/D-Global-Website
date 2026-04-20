@@ -9,8 +9,15 @@ import { Badge } from '@/components/ui/Badge';
 import { formatEventDate } from '@/lib/formatDate';
 
 export async function generateStaticParams() {
-  const slugs = await getAllReleaseSlugs();
-  return slugs.map((slug) => ({ slug }));
+  // See app/(site)/artists/[slug]/page.tsx for rationale: DB may be
+  // unreachable from the Vercel build runner (Neon auto-suspend etc.);
+  // fall back to on-demand rendering instead of failing the build.
+  try {
+    const slugs = await getAllReleaseSlugs();
+    return slugs.map((slug) => ({ slug }));
+  } catch {
+    return [];
+  }
 }
 
 export async function generateMetadata({

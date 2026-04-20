@@ -8,6 +8,9 @@ export const metadata: Metadata = {
   description: 'Singles, EPs, albums and mixes from D Global Entertainment Records.',
 };
 
+// Same rationale as app/(site)/page.tsx.
+export const dynamic = 'force-dynamic';
+
 export default async function ReleasesPage() {
   const releases = await listReleases();
   return (
