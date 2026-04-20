@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Ticket, Wine } from 'lucide-react';
-import { buildWaLink } from '@/lib/whatsapp';
 
 export function StickyMobileBar() {
   const pathname = usePathname();
@@ -21,15 +20,17 @@ export function StickyMobileBar() {
           <Ticket className="h-4 w-4" />
           Get Tickets
         </Link>
-        <a
-          href={buildWaLink('Hi D Global Entertainment, I want to book a VIP table.')}
-          target="_blank"
-          rel="noopener noreferrer"
+        {/* Route to /bookings (the table-picker form) instead of
+            firing a wa.me link directly. The form's own CTA continues
+            to WhatsApp once the admin has picked a package + filled
+            their details, so the chat that lands has real context. */}
+        <Link
+          href="/bookings"
           className="flex-1 inline-flex items-center justify-center gap-2 h-12 rounded-full border border-white/15 bg-white/10 backdrop-blur text-foreground text-sm font-medium hover:bg-white/15"
         >
           <Wine className="h-4 w-4" />
           Book Table
-        </a>
+        </Link>
       </div>
     </div>
   );

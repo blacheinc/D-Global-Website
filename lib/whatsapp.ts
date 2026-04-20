@@ -1,8 +1,14 @@
-import { env } from './env';
+// The business line. Hardcoded rather than read from env so a stale
+// NEXT_PUBLIC_WHATSAPP_NUMBER left over in a deploy's dashboard can't
+// silently override it. Every wa.me link on the platform funnels
+// through buildWaLink(), so this one constant guarantees consistency.
+// If the business number ever changes, update it here (and remove the
+// NEXT_PUBLIC_WHATSAPP_NUMBER env variable wherever it was set).
+export const BUSINESS_WHATSAPP_NUMBER = '233244963777';
 
 export function buildWaLink(
   text: string,
-  number: string = env.NEXT_PUBLIC_WHATSAPP_NUMBER,
+  number: string = BUSINESS_WHATSAPP_NUMBER,
 ): string {
   const cleanNumber = number.replace(/\D/g, '');
   return `https://wa.me/${cleanNumber}?text=${encodeURIComponent(text)}`;
