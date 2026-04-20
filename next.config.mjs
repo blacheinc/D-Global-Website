@@ -60,6 +60,11 @@ const r2PublicHost = r2PublicOrigin ? new URL(r2PublicOrigin).hostname : null;
 //     https://open.spotify.com          → used (SpotifyEmbed)
 //     https://embed.audiomack.com       → used (AudiomackEmbed)
 //     https://www.google.com            → used (EventMap → maps/embed)
+//     https://maps.google.com           → used (admins sometimes paste
+//     https://maps.app.goo.gl              a short-link or a maps.google
+//                                          embed; both land outside the
+//                                          www.google.com origin despite
+//                                          being "Google Maps")
 //     https://www.youtube.com           → pre-auth (release pages link to
 //     https://www.youtube-nocookie.com     YouTube today; iframe later)
 //     https://checkout.paystack.com     → pre-auth (inline-popup iframe;
@@ -101,7 +106,7 @@ const cspDirectives = [
   `img-src 'self' data: blob: https://i.scdn.co https://assets.audiomack.com https://res.cloudinary.com https://images.unsplash.com https://*.googleapis.com https://*.gstatic.com${r2PublicOrigin ? ` ${r2PublicOrigin}` : ''}`,
   "media-src 'self'",
   `connect-src 'self' https://api.paystack.co https://checkout.paystack.com ${plausibleOrigin} https://*.sentry.io https://*.ingest.sentry.io`,
-  "frame-src 'self' https://open.spotify.com https://embed.audiomack.com https://www.google.com https://www.youtube.com https://www.youtube-nocookie.com https://checkout.paystack.com https://standard.paystack.co",
+  "frame-src 'self' https://open.spotify.com https://embed.audiomack.com https://www.google.com https://maps.google.com https://maps.app.goo.gl https://www.youtube.com https://www.youtube-nocookie.com https://checkout.paystack.com https://standard.paystack.co",
   "worker-src 'self' blob:",
   "manifest-src 'self'",
   "upgrade-insecure-requests",
