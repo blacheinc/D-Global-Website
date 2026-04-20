@@ -195,4 +195,4 @@ Every booking flow has a WhatsApp deep-link fallback (`https://wa.me/<number>?te
 
 ## License
 
-Proprietary. © D Global Entertainment, Accra.
+Proprietary. © D Global Entertainment, Accra
