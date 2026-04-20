@@ -18,10 +18,10 @@ export const site = {
     { href: '/gallery', label: 'Gallery' },
   ],
   socials: {
-    instagram: 'https://instagram.com/d_globalentertainmentgh',
-    twitter: 'https://twitter.com/d_globalentertainmentgh',
-    tiktok: 'https://tiktok.com/@d_globalentertainmentgh',
-    youtube: 'https://youtube.com/@d_globalentertainmentgh',
+    instagram: 'https://instagram.com/dglobalevents',
+    twitter: 'https://twitter.com/dglobalevents',
+    tiktok: 'https://tiktok.com/@dglobalevents',
+    youtube: 'https://youtube.com/@dglobalevents',
   },
-  contactEmail: 'dglobalentertainment@gmail.com',
+  contactEmail: 'dglobalevents2021@gmail.com',
 } as const;
