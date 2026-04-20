@@ -13,7 +13,13 @@ const packageSchema = z.object({
   name: z.string().min(1).max(120),
   tagline: z.string().max(200).optional(),
   description: z.string().max(4000).optional(),
-  priceMinor: z.coerce.number().int().min(0).max(100_000_000),
+  // Admin enters GHS (decimal) for ergonomics; stored as pesewas (int)
+  // for exact math. Round so 19.99 becomes 1999 not 1998.9999.
+  priceMinor: z.preprocess((v) => {
+    if (v === '' || v == null) return undefined;
+    const n = Number(v);
+    return Number.isFinite(n) ? Math.round(n * 100) : undefined;
+  }, z.number().int().min(0).max(100_000_000)),
   currency: z.string().length(3).default('GHS'),
   // Perks arrive as a textarea (one per line) for ergonomics; we split
   // and filter blanks.

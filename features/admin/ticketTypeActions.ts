@@ -22,7 +22,16 @@ const ticketTypeSchema = z
     tier: z.nativeEnum(TicketTier),
     name: z.string().min(2).max(80),
     description: z.string().max(300).optional(),
-    priceMinor: z.coerce.number().int().min(0).max(100_000_00),
+    // The form collects GHS (decimal) for ergonomic reasons; we store
+    // pesewas (integer) internally so all downstream math stays exact.
+    // preprocess multiplies by 100 + rounds to nearest pesewa; empty /
+    // invalid becomes undefined so the `.number()` error message fires
+    // cleanly instead of NaN propagating.
+    priceMinor: z.preprocess((v) => {
+      if (v === '' || v == null) return undefined;
+      const n = Number(v);
+      return Number.isFinite(n) ? Math.round(n * 100) : undefined;
+    }, z.number().int().min(0).max(100_000_00)),
     currency: z.string().length(3).default('GHS'),
     quota: z.coerce.number().int().min(0).max(100_000),
     salesStart: z.coerce.date().optional(),

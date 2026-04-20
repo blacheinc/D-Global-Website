@@ -95,15 +95,19 @@ export function TicketTypeForm({
       </div>
       <div className="grid gap-3 sm:grid-cols-3">
         <div>
-          <Label htmlFor="priceMinor">Price (in minor units)</Label>
+          <Label htmlFor="priceMinor">Price (GHS)</Label>
           <Input
             type="number"
-            inputMode="numeric"
+            inputMode="decimal"
+            step="0.01"
             min={0}
             id="priceMinor"
             name="priceMinor"
             required
-            defaultValue={initial?.priceMinor ?? ''}
+            // Stored as pesewas (priceMinor); rendered back as GHS so
+            // the admin sees and edits the amount in the currency
+            // customers see on the ticket page. Server action converts.
+            defaultValue={initial?.priceMinor != null ? initial.priceMinor / 100 : ''}
             aria-invalid={!!fe.priceMinor}
           />
           <FieldError>{fe.priceMinor?.[0]}</FieldError>

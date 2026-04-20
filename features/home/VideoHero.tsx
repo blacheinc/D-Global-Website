@@ -6,7 +6,6 @@ import Link from 'next/link';
 import { motion, useReducedMotion } from 'framer-motion';
 import { Ticket, Wine } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import { buildWaLink } from '@/lib/whatsapp';
 
 export function VideoHero() {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -82,13 +81,9 @@ export function VideoHero() {
               </Link>
             </Button>
             <Button asChild variant="ghost" size="lg">
-              <a
-                href={buildWaLink('Hi D Global Entertainment, I want to book a VIP table.')}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
+              <Link href="/bookings">
                 <Wine aria-hidden className="h-4 w-4" /> Book a Table
-              </a>
+              </Link>
             </Button>
           </div>
         </motion.div>

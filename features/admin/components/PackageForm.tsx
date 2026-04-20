@@ -73,14 +73,19 @@ export function PackageForm({ initial }: { initial?: Initial }) {
 
       <div className="grid gap-6 sm:grid-cols-3">
         <div>
-          <Label htmlFor="priceMinor">Price (minor)</Label>
+          <Label htmlFor="priceMinor">Price (GHS)</Label>
           <Input
             type="number"
+            inputMode="decimal"
+            step="0.01"
             min={0}
             id="priceMinor"
             name="priceMinor"
             required
-            defaultValue={initial?.priceMinor ?? ''}
+            // Same pesewa→GHS shift as TicketTypeForm: admin types the
+            // amount in the currency customers see; the action rounds
+            // it back to pesewas before Prisma write.
+            defaultValue={initial?.priceMinor != null ? initial.priceMinor / 100 : ''}
             aria-invalid={!!fe.priceMinor}
           />
           <FieldError>{fe.priceMinor?.[0]}</FieldError>
