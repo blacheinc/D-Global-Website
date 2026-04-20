@@ -31,9 +31,9 @@ self.addEventListener('push', (event) => {
       payload = { body: event.data.text() };
     }
   }
-  const title = payload.title || 'D-Global';
+  const title = payload.title || 'D Global Entertainment';
   const options = {
-    body: payload.body || 'New update from D-Global.',
+    body: payload.body || 'New update from D Global Entertainment.',
     icon: '/android-chrome-192x192.png',
     badge: '/favicon-32x32.png',
     data: { url: payload.url || '/' },

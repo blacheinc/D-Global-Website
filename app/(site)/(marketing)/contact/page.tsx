@@ -5,7 +5,7 @@ import { site } from '@/lib/site';
 
 export const metadata: Metadata = {
   title: 'Contact',
-  description: 'Reach D-Global for bookings, press and partnerships.',
+  description: 'Reach D Global Entertainment for bookings, press and partnerships.',
 };
 
 export default function ContactPage() {
@@ -22,7 +22,7 @@ export default function ContactPage() {
 
       <div className="mt-10 grid grid-cols-1 md:grid-cols-3 gap-5">
         <a
-          href={buildWaLink('Hi D-Global 👋')}
+          href={buildWaLink('Hi D Global Entertainment 👋')}
           target="_blank"
           rel="noopener noreferrer"
           className="group rounded-2xl border border-white/10 bg-surface p-6 card-lift"

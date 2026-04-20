@@ -34,7 +34,7 @@ export function GalleryClient({ images }: GalleryClientProps) {
 
   const slides = filtered.map((i) => ({
     src: i.url,
-    alt: i.caption ?? 'D-Global',
+    alt: i.caption ?? 'D Global Entertainment',
     description: i.caption ?? undefined,
   }));
 

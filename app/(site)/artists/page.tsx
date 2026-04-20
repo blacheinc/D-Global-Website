@@ -5,7 +5,7 @@ import { Reveal } from '@/components/motion/Reveal';
 
 export const metadata: Metadata = {
   title: 'Artists',
-  description: 'Meet the producers, selectors and performers behind the D-Global sound.',
+  description: 'Meet the producers, selectors and performers behind the D Global Entertainment sound.',
 };
 
 export default async function ArtistsPage() {

@@ -4,7 +4,7 @@ const DEV_QR_SECRET = 'dev-only-qr-secret-change-me-in-prod';
 const DEV_AUTH_SECRET = 'dev-only-auth-secret-change-me-in-prod';
 const FALLBACK_SITE_URL = 'http://localhost:3000';
 const FALLBACK_WHATSAPP = '233000000000';
-const FALLBACK_EMAIL_FROM = 'D-Global <noreply@d-global.example>';
+const FALLBACK_EMAIL_FROM = 'D Global Entertainment <noreply@d-global.example>';
 
 const schema = z
   .object({

@@ -5,7 +5,7 @@ import { Reveal } from '@/components/motion/Reveal';
 
 export const metadata: Metadata = {
   title: 'Releases',
-  description: 'Singles, EPs, albums and mixes from D-Global Records.',
+  description: 'Singles, EPs, albums and mixes from D Global Entertainment Records.',
 };
 
 export default async function ReleasesPage() {
