@@ -3,7 +3,13 @@ import { z } from 'zod';
 const DEV_QR_SECRET = 'dev-only-qr-secret-change-me-in-prod';
 const DEV_AUTH_SECRET = 'dev-only-auth-secret-change-me-in-prod';
 const FALLBACK_SITE_URL = 'http://localhost:3000';
-const FALLBACK_WHATSAPP = '233000000000';
+// Real business number. Previous value was '233000000000' (all zeros)
+// so a missing env would produce visibly-broken WA links. The number
+// is now a real one, so the prod refine that flagged the fallback as
+// "must be set in production" has been removed in the refine block
+// below. Operators can still override via NEXT_PUBLIC_WHATSAPP_NUMBER
+// if the business line ever changes.
+const FALLBACK_WHATSAPP = '233244963777';
 const FALLBACK_EMAIL_FROM = 'D Global Entertainment <noreply@d-global.example>';
 
 const schema = z
@@ -157,13 +163,9 @@ const schema = z
         message: 'NEXT_PUBLIC_SITE_URL must be set in production.',
       });
     }
-    if (val.NEXT_PUBLIC_WHATSAPP_NUMBER === FALLBACK_WHATSAPP) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['NEXT_PUBLIC_WHATSAPP_NUMBER'],
-        message: 'NEXT_PUBLIC_WHATSAPP_NUMBER must be set in production.',
-      });
-    }
+    // FALLBACK_WHATSAPP is now the live business number, not a
+    // placeholder, so not setting the env var in prod is acceptable.
+    // Left intentionally unguarded.
     // Without RESEND_API_KEY in prod, every transactional email (magic-link
     // sign-in, order confirmation) silently drops. Fail startup instead of
     // shipping a deploy where sign-in looks like it worked but nobody ever
