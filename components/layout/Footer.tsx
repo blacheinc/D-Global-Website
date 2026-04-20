@@ -17,7 +17,7 @@ export function Footer() {
               {site.description}
             </p>
             <a
-              href={buildWaLink('Hi D-Global, I have a question.')}
+              href={buildWaLink('Hi D Global Entertainment, I have a question.')}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 text-sm text-accent hover:text-accent-hot"
@@ -67,7 +67,7 @@ export function Footer() {
 
         <div className="mt-12 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-t border-white/5 pt-8">
           <p className="text-xs text-muted">
-            © {new Date().getFullYear()} D-Global. All rights reserved. Accra, Ghana.
+            © {new Date().getFullYear()} D Global Entertainment. All rights reserved. Accra, Ghana.
           </p>
           <div className="flex items-center gap-6 text-xs text-muted">
             <Link href="/about" className="hover:text-foreground">About</Link>

@@ -51,7 +51,7 @@ export function TicketCheckout({ eventId, ticketTypes, paystackMode }: TicketChe
         return;
       }
       setError(
-        'This event has no hosted payment link configured. Ask D-Global on WhatsApp or contact the venue to complete purchase.',
+        'This event has no hosted payment link configured. Ask D Global Entertainment on WhatsApp or contact the venue to complete purchase.',
       );
       return;
     }
@@ -207,7 +207,7 @@ export function TicketCheckout({ eventId, ticketTypes, paystackMode }: TicketChe
 
       <p className="text-xs text-muted">
         By continuing you agree to our terms. Tickets are delivered instantly after payment, you'll
-        get a QR code valid at the door. Need help? Message D-Global on WhatsApp.
+        get a QR code valid at the door. Need help? Message D Global Entertainment on WhatsApp.
       </p>
     </form>
   );

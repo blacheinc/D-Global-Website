@@ -1,14 +1,14 @@
-# D-Global
+# D Global Entertainment
 
 > **Digital nightlife ecosystem**, events discovery, VIP table booking, and a record label home. Built for Accra, engineered to scale.
 
-![D-Global](public/brand/d-global-logo.png)
+![D Global Entertainment](public/brand/d-global-logo.png)
 
 ---
 
 ## What this is
 
-D-Global is a production-grade Next.js platform that combines three products into one immersive brand experience:
+D Global Entertainment is a production-grade Next.js platform that combines three products into one immersive brand experience:
 
 1. **Events**, browse, countdown, and buy tickets (Early Bird / Regular / VIP).
 2. **VIP Tables**, Silver / Gold / Platinum packages with a WhatsApp-first booking flow (critical for Ghana).
@@ -195,4 +195,4 @@ Every booking flow has a WhatsApp deep-link fallback (`https://wa.me/<number>?te
 
 ## License
 
-Proprietary. © D-Global, Accra.
+Proprietary. © D Global Entertainment, Accra.

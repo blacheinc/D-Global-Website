@@ -18,7 +18,7 @@ export function ArtistBookingForm({ artistId, artistName }: ArtistBookingFormPro
   const [state, formAction, pending] = useActionState(createArtistBooking, initial);
 
   const waHref = buildWaLink(
-    `Hi D-Global, I'd like to book ${artistName}. Can we chat?`,
+    `Hi D Global Entertainment, I'd like to book ${artistName}. Can we chat?`,
   );
 
   // Mirror features/bookings: wire zod error keys to each input via
@@ -195,7 +195,7 @@ export function ArtistBookingForm({ artistId, artistName }: ArtistBookingFormPro
       </div>
 
       <p className="text-xs text-muted">
-        We'll reply within 24 hours with availability and a quote. D-Global handles the contract,
+        We'll reply within 24 hours with availability and a quote. D Global Entertainment handles the contract,
         logistics, and rider end-to-end.
       </p>
     </form>

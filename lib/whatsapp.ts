@@ -19,7 +19,7 @@ type BookingContext = {
 
 export function buildBookingMessage(ctx: BookingContext): string {
   const parts = [
-    `Hi D-Global 👋`,
+    `Hi D Global Entertainment 👋`,
     `I'd like to book a ${ctx.packageName} table for ${ctx.partySize} ${
       ctx.partySize === 1 ? 'guest' : 'guests'
     }.`,
@@ -35,5 +35,5 @@ export function buildBookingMessage(ctx: BookingContext): string {
 }
 
 export function buildEventInquiryMessage(eventTitle: string): string {
-  return `Hi D-Global, I'd like more info about "${eventTitle}", tickets and table availability.`;
+  return `Hi D Global Entertainment, I'd like more info about "${eventTitle}", tickets and table availability.`;
 }

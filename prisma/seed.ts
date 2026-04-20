@@ -24,7 +24,7 @@ const img = (id: string, w = 1600, h = 900) =>
   `https://images.unsplash.com/${id}?auto=format&fit=crop&w=${w}&h=${h}&q=80`;
 
 async function main() {
-  console.log('Seeding D-Global database…');
+  console.log('Seeding D Global Entertainment database…');
 
   await db.orderItem.deleteMany();
   await db.order.deleteMany();
@@ -122,7 +122,7 @@ async function main() {
     {
       slug: 'dj-mensah',
       stageName: 'DJ Mensah',
-      bio: 'Resident selector for D-Global. Amapiano-to-afro-house without a seatbelt.',
+      bio: 'Resident selector for D Global Entertainment. Amapiano-to-afro-house without a seatbelt.',
       avatar: img('photo-1511367461989-f85a21fda167', 600, 600),
       heroImage: img('photo-1511367461989-f85a21fda167'),
       instagram: 'dj.mensah',
@@ -205,7 +205,7 @@ async function main() {
       title: 'Accra Labs Vol. 07',
       subtitle: 'Afrobeats × Amapiano × Future',
       description:
-        'The seventh edition of the city\'s most anticipated underground series. A full-spectrum night of afrobeats, amapiano, and future-sound experiments from D-Global\'s resident roster and a special-guest headliner.',
+        'The seventh edition of the city\'s most anticipated underground series. A full-spectrum night of afrobeats, amapiano, and future-sound experiments from D Global Entertainment\'s resident roster and a special-guest headliner.',
       startsAt: labsStart,
       endsAt: daysFromNow(15),
       doorsAt: new Date(labsStart.getTime() - 2 * 60 * 60 * 1000),
@@ -263,10 +263,10 @@ async function main() {
       title: 'Black Room Sessions',
       subtitle: 'Intimate listening. Full system.',
       description:
-        'A stripped-back, listening-first evening in the Black Room. Seated capacity only, D-Global records on rotation, the best system in the country.',
+        'A stripped-back, listening-first evening in the Black Room. Seated capacity only, D Global Entertainment records on rotation, the best system in the country.',
       startsAt: blackRoomStart,
       doorsAt: new Date(blackRoomStart.getTime() - 1 * 60 * 60 * 1000),
-      venueName: 'D-Global HQ',
+      venueName: 'D Global Entertainment HQ',
       venueCity: 'Accra',
       venueAddress: 'East Legon, Accra',
       heroImage: img('photo-1470229722913-7c0e2dbbafd3'),
@@ -306,7 +306,7 @@ async function main() {
       title: 'Independence Weekender',
       subtitle: 'Three nights. One city.',
       description:
-        'The city-wide takeover. Three consecutive nights across D-Global\'s flagship venues with a rotating lineup of residents, headliners and international guests.',
+        'The city-wide takeover. Three consecutive nights across D Global Entertainment\'s flagship venues with a rotating lineup of residents, headliners and international guests.',
       startsAt: daysFromNow(60),
       endsAt: daysFromNow(63),
       heroImage: img('photo-1566737236500-c8ac43014a67'),

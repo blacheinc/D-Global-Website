@@ -6,7 +6,7 @@ import { EventStatus } from '@prisma/client';
 export const metadata: Metadata = {
   title: 'Book a VIP Table',
   description:
-    'Reserve a VIP table at the next D-Global night. Silver, Gold or Platinum, your call.',
+    'Reserve a VIP table at the next D Global Entertainment night. Silver, Gold or Platinum, your call.',
 };
 
 interface PageProps {
@@ -49,7 +49,7 @@ export default async function BookingsPage({ searchParams }: PageProps) {
           {packages.length === 0 ? (
             <div className="rounded-2xl border border-white/10 bg-surface p-8 md:p-12 text-center">
               <p className="text-muted">
-                VIP bookings are temporarily unavailable. Message D-Global on WhatsApp and we'll
+                VIP bookings are temporarily unavailable. Message D Global Entertainment on WhatsApp and we'll
                 take your reservation directly.
               </p>
             </div>

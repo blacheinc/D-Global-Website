@@ -24,7 +24,7 @@ export async function generateMetadata({
   if (!artist) return { title: 'Artist not found' };
   return {
     title: artist.stageName,
-    description: artist.bio ?? `${artist.stageName} on D-Global Records.`,
+    description: artist.bio ?? `${artist.stageName} on D Global Entertainment Records.`,
   };
 }
 

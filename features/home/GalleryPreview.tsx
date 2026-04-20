@@ -35,7 +35,7 @@ export async function GalleryPreview() {
             <Link href="/gallery" className="relative block aspect-[4/5] overflow-hidden rounded-xl group">
               <Image
                 src={img.url}
-                alt={img.caption ?? 'D-Global night'}
+                alt={img.caption ?? 'D Global Entertainment night'}
                 fill
                 sizes="(min-width: 768px) 33vw, 50vw"
                 className="object-cover transition-transform duration-700 group-hover:scale-110"

@@ -41,7 +41,7 @@ export default async function TicketPage({
         {isPending && (
           <div className="rounded-2xl border border-accent/40 bg-accent/10 p-5 text-sm">
             Payment is being confirmed. This page will update automatically. If it doesn't within a
-            minute, check your email or contact D-Global on WhatsApp with reference{' '}
+            minute, check your email or contact D Global Entertainment on WhatsApp with reference{' '}
             <span className="font-mono">{order.reference.slice(0, 10)}</span>.
           </div>
         )}

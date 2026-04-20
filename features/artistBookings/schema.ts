@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 // Inbound artist-booking request (label side). This is the form buyers
-// fill out to ask D-Global to quote for one of our artists, distinct
+// fill out to ask D Global Entertainment to quote for one of our artists, distinct
 // from features/bookings/schema.ts (VIP table reservations at our own
 // nights), so the shapes don't share fields.
 

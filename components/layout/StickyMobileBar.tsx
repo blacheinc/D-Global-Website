@@ -22,7 +22,7 @@ export function StickyMobileBar() {
           Get Tickets
         </Link>
         <a
-          href={buildWaLink('Hi D-Global, I want to book a VIP table.')}
+          href={buildWaLink('Hi D Global Entertainment, I want to book a VIP table.')}
           target="_blank"
           rel="noopener noreferrer"
           className="flex-1 inline-flex items-center justify-center gap-2 h-12 rounded-full border border-white/15 bg-white/10 backdrop-blur text-foreground text-sm font-medium hover:bg-white/15"

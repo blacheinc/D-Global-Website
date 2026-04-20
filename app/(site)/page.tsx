@@ -6,6 +6,16 @@ import { ArtistCarouselSection } from '@/features/home/ArtistCarouselSection';
 import { GalleryPreview } from '@/features/home/GalleryPreview';
 import { Skeleton } from '@/components/ui/Skeleton';
 
+// Force a fresh DB read on every request. The home page surfaces
+// admin-curated content (events, packages, artists, gallery) that
+// changes whenever an admin publishes/edits/deletes. Default static
+// rendering left rows that had been deleted via Prisma Studio (or any
+// out-of-band edit that didn't run through the server actions'
+// revalidatePath) visible until the next deploy. Force-dynamic is the
+// safer default for a low-traffic content page; if traffic grows,
+// switch to `revalidate = 60` for ISR.
+export const dynamic = 'force-dynamic';
+
 function SectionFallback() {
   return (
     <div className="container container-px section-y">

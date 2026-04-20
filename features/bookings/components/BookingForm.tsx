@@ -46,7 +46,7 @@ export function BookingForm({
           guestName: guestName || '-',
         }),
       )
-    : buildWaLink('Hi D-Global, I want to book a VIP table.');
+    : buildWaLink('Hi D Global Entertainment, I want to book a VIP table.');
 
   // Wire zod field errors to each input via aria-invalid + aria-describedby so
   // screen readers announce the validation message when focusing the field.

@@ -36,7 +36,7 @@ export default async function ArtistBookingConfirmationPage({
   if (!booking) notFound();
 
   const waHref = buildWaLink(
-    `Hi D-Global, following up on my booking request for ${booking.artist.stageName}. Reference: ${booking.code.slice(0, 8).toUpperCase()}`,
+    `Hi D Global Entertainment, following up on my booking request for ${booking.artist.stageName}. Reference: ${booking.code.slice(0, 8).toUpperCase()}`,
   );
 
   return (

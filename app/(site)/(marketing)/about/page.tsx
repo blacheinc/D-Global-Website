@@ -4,7 +4,7 @@ import { Reveal } from '@/components/motion/Reveal';
 
 export const metadata: Metadata = {
   title: 'About',
-  description: 'D-Global is a nightlife and record label platform based in Accra.',
+  description: 'D Global Entertainment is a nightlife and record label platform based in Accra.',
 };
 
 export default function AboutPage() {
@@ -16,7 +16,7 @@ export default function AboutPage() {
           We throw the nights we wanted to go to.
         </h1>
         <p className="mt-6 text-muted md:text-lg leading-relaxed">
-          D-Global is a nightlife and record label platform headquartered in Accra. We build event
+          D Global Entertainment is a nightlife and record label platform headquartered in Accra. We build event
           experiences, sign artists, and operate the flagship venues where the next wave of West
           African sound is being shaped.
         </p>
