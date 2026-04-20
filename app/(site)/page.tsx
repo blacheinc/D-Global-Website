@@ -2,7 +2,9 @@ import { Suspense } from 'react';
 import { VideoHero } from '@/features/home/VideoHero';
 import { UpcomingEventsGrid } from '@/features/home/UpcomingEventsGrid';
 import { VIPStrip } from '@/features/home/VIPStrip';
-import { ArtistCarouselSection } from '@/features/home/ArtistCarouselSection';
+// ArtistCarouselSection is temporarily removed from the home page while
+// the record-label side is paused. Re-import + re-mount below to restore.
+// import { ArtistCarouselSection } from '@/features/home/ArtistCarouselSection';
 import { GalleryPreview } from '@/features/home/GalleryPreview';
 import { Skeleton } from '@/components/ui/Skeleton';
 
@@ -39,9 +41,10 @@ export default function HomePage() {
       <Suspense fallback={<SectionFallback />}>
         <VIPStrip />
       </Suspense>
-      <Suspense fallback={<SectionFallback />}>
-        <ArtistCarouselSection />
-      </Suspense>
+      {/* Artists section hidden while the record-label side is paused.
+          <Suspense fallback={<SectionFallback />}>
+            <ArtistCarouselSection />
+          </Suspense> */}
       <Suspense fallback={<SectionFallback />}>
         <GalleryPreview />
       </Suspense>

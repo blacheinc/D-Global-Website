@@ -7,11 +7,14 @@ export const site = {
   tagline: 'The sound of the night.',
   description:
     'D Global Entertainment, digital nightlife ecosystem. Discover events, reserve VIP tables, and step inside the sound shaping the city after dark.',
+  // Public nav. Artists + Releases entries are temporarily hidden while
+  // the record-label side is paused; routes, pages, and admin CRUD all
+  // stay — just drop them back into this array when the label relaunches.
+  //   { href: '/artists', label: 'Artists' },
+  //   { href: '/releases', label: 'Releases' },
   nav: [
     { href: '/events', label: 'Events' },
     { href: '/bookings', label: 'VIP Tables' },
-    { href: '/artists', label: 'Artists' },
-    { href: '/releases', label: 'Releases' },
     { href: '/gallery', label: 'Gallery' },
   ],
   socials: {
