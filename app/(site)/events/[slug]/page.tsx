@@ -25,6 +25,13 @@ export async function generateStaticParams() {
   }
 }
 
+// Same rationale as app/(site)/page.tsx and the other public list
+// pages: when an admin edits the event (lineup slot image, ticket
+// tier, venue details), the change should be visible on the next
+// request without depending on every single action correctly firing
+// revalidatePath. Per-request DB reads are cheap at this traffic.
+export const dynamic = 'force-dynamic';
+
 export async function generateMetadata({
   params,
 }: {
