@@ -13,7 +13,13 @@ export function LineupList({ lineup }: LineupListProps) {
       {lineup.map((slot) => (
         <li key={slot.id} className="flex items-center gap-4 p-4 md:p-5">
           <div className="relative h-14 w-14 md:h-16 md:w-16 shrink-0 overflow-hidden rounded-full border border-white/10 bg-elevated">
-            {slot.artist?.avatar ? (
+            {/* Picture source preference:
+                1. Slot's own image (admin-uploaded per-event headshot)
+                2. Linked artist's avatar (for slots linked to a roster artist)
+                3. Initial-letter fallback */}
+            {slot.image ? (
+              <Image src={slot.image} alt="" aria-hidden fill sizes="64px" className="object-cover" />
+            ) : slot.artist?.avatar ? (
               <Image
                 src={slot.artist.avatar}
                 alt=""

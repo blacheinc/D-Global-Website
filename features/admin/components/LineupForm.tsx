@@ -5,10 +5,11 @@ import { useRouter } from 'next/navigation';
 import type { LineupSlot } from '@prisma/client';
 import { Input, Label, FieldError } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
+import { ImageUpload } from '@/components/admin/ImageUpload';
 import { upsertLineupSlot, type LineupFormState } from '../lineupActions';
 
 type Initial = Partial<
-  Pick<LineupSlot, 'id' | 'displayName' | 'role' | 'slotStart' | 'order' | 'artistId'>
+  Pick<LineupSlot, 'id' | 'displayName' | 'role' | 'image' | 'slotStart' | 'order' | 'artistId'>
 >;
 
 type ArtistOption = { id: string; stageName: string };
@@ -124,6 +125,18 @@ export function LineupForm({
           aria-invalid={!!fe.order}
         />
         <FieldError>{fe.order?.[0]}</FieldError>
+      </div>
+      <div>
+        {/* Profile picture. Reuses the artists R2 folder since lineup
+            slot headshots are the same shape of asset as artist avatars. */}
+        <ImageUpload
+          name="image"
+          label="Profile picture (optional)"
+          category="artists"
+          defaultValue={initial?.image ?? ''}
+          ariaInvalid={!!fe.image}
+        />
+        <FieldError>{fe.image?.[0]}</FieldError>
       </div>
       <div className="flex items-center gap-3">
         <Button type="submit" disabled={pending} size="sm">
