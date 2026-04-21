@@ -17,6 +17,10 @@ const lineupSchema = z.object({
   slotStart: z.coerce.date().optional(),
   order: z.coerce.number().int().min(0).max(1000).default(0),
   artistId: z.string().min(1).optional(),
+  // Profile picture for the slot (uploaded via R2 or pasted URL).
+  // Same shape we use for artist avatars; shown on the public event
+  // lineup list. Max 500 to match the DB column + block garbage.
+  image: z.string().url().max(500).optional(),
 });
 
 export type LineupFormState = {
@@ -52,6 +56,7 @@ export async function upsertLineupSlot(
     eventId,
     displayName: data.displayName,
     role: data.role ?? null,
+    image: data.image ?? null,
     slotStart: data.slotStart ?? null,
     order: data.order,
     artistId: data.artistId ?? null,
