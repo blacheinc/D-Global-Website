@@ -2,7 +2,7 @@
 
 > **Digital nightlife ecosystem**, events discovery, VIP table booking, and a record label home. Built for Accra, engineered to scale.
 
-![D Global Entertainment](public/brand/d-global-logo.png)
+![D Global Entertainment](public/brand/dglobal-logo.png)
 
 ---
 

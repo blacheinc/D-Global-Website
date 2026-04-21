@@ -3,21 +3,19 @@ import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { site } from '@/lib/site';
 
-// Actual logo asset dimensions (public/brand/d-global-logo.png).
+// Actual logo asset dimensions (public/brand/dglobal-logo.png).
 // next/image uses these for layout-shift-free rendering; the element is then
 // height-scaled to the requested size via the `height` prop.
-const LOGO_INTRINSIC_WIDTH = 3072;
-const LOGO_INTRINSIC_HEIGHT = 2600;
+const LOGO_INTRINSIC_WIDTH = 370;
+const LOGO_INTRINSIC_HEIGHT = 512;
 const LOGO_ASPECT = LOGO_INTRINSIC_WIDTH / LOGO_INTRINSIC_HEIGHT;
 
-// The PNG ships with a fair amount of transparent padding around the
-// glyph, which made the rendered mark feel tiny inside its layout box.
-// scale-[1.4] lets the visible glyph fill closer to the bounding box
-// without us re-cutting the asset; the wrapping span is overflow-visible
-// so the scaled image extends slightly outside its layout footprint
-// instead of getting clipped. Combined with a larger default size, the
-// brand mark reads at the weight it deserves in the header.
-const LOGO_TRIM_SCALE = 1.4;
+// The trim-scale used to be 1.4 because the old landscape PNG had a
+// lot of transparent padding around its glyph. The new dglobal-logo.png
+// is cropped tight, so no CSS trim is needed — render at 1:1. Kept as a
+// constant so if a future asset drop needs trimming again, only this
+// number has to change.
+const LOGO_TRIM_SCALE = 1;
 
 interface LogoProps {
   size?: number;
@@ -31,7 +29,7 @@ export function Logo({ size = 56, className, showWordmark = true, href = '/' }: 
   const content = (
     <span className={cn('inline-flex items-center gap-3 overflow-visible', className)}>
       <Image
-        src="/brand/d-global-logo.png"
+        src="/brand/dglobal-logo.png"
         alt={showWordmark ? '' : site.name}
         aria-hidden={showWordmark ? true : undefined}
         width={width}
