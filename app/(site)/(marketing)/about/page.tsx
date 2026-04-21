@@ -46,7 +46,7 @@ export default function AboutPage() {
       <Reveal>
         <div className="mt-16 relative aspect-[16/9] overflow-hidden rounded-2xl border border-white/5">
           <Image
-            src="/brand/d-global-logo.png"
+            src="/brand/dglobal-logo.png"
             alt=""
             fill
             aria-hidden

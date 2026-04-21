@@ -29,7 +29,7 @@ export function VideoHero() {
     <section className="relative -mt-16 md:-mt-20 h-[100svh] min-h-[640px] w-full overflow-hidden bg-background">
       <div className="absolute inset-0">
         <Image
-          src="/brand/d-global-logo.png"
+          src="/brand/dglobal-logo.png"
           alt=""
           fill
           priority
