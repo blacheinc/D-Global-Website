@@ -92,8 +92,10 @@ export async function upsertTicketType(
   }
 
   const data = parsed.data;
-  const payload = {
-    eventId,
+  // Same pattern as lineupActions: eventId can only live in the create
+  // payload. On update, Prisma's required-relation type rejects the raw
+  // scalar FK; the slot doesn't move events, so we just omit it.
+  const common = {
     tier: data.tier,
     name: data.name,
     description: data.description ?? null,
@@ -106,9 +108,9 @@ export async function upsertTicketType(
   };
   try {
     if (id) {
-      await db.ticketType.update({ where: { id }, data: payload });
+      await db.ticketType.update({ where: { id }, data: common });
     } else {
-      await db.ticketType.create({ data: payload });
+      await db.ticketType.create({ data: { ...common, eventId } });
     }
   } catch (err) {
     // Belt-and-suspenders against the same race the pre-check closes.

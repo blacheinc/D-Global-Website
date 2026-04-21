@@ -52,8 +52,12 @@ export async function upsertLineupSlot(
     };
   }
   const data = parsed.data;
-  const payload = {
-    eventId,
+  // Shape the payload without eventId first. Prisma's update input for
+  // a required relation (LineupSlot.event) rejects the raw scalar FK —
+  // on update you reach the parent via `event: { connect }` or just
+  // leave it out because the slot doesn't move events. eventId only
+  // belongs in the create payload.
+  const common = {
     displayName: data.displayName,
     role: data.role ?? null,
     image: data.image ?? null,
@@ -63,9 +67,9 @@ export async function upsertLineupSlot(
   };
   try {
     if (id) {
-      await db.lineupSlot.update({ where: { id }, data: payload });
+      await db.lineupSlot.update({ where: { id }, data: common });
     } else {
-      await db.lineupSlot.create({ data: payload });
+      await db.lineupSlot.create({ data: { ...common, eventId } });
     }
   } catch (err) {
     captureError('[admin:upsertLineupSlot]', err, { eventId, id });
