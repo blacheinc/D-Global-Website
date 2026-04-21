@@ -12,7 +12,6 @@ import { Badge } from '@/components/ui/Badge';
 import { Reveal } from '@/components/motion/Reveal';
 import { formatEventDate, formatEventDateTime, formatEventTime } from '@/lib/formatDate';
 import { formatPriceMinor } from '@/lib/formatCurrency';
-import { buildWaLink, buildEventInquiryMessage } from '@/lib/whatsapp';
 
 export async function generateStaticParams() {
   // See app/(site)/artists/[slug]/page.tsx for rationale: DB may be
@@ -176,14 +175,6 @@ export default async function EventDetailPage({
               <Button asChild variant="ghost" size="lg">
                 <Link href={`/bookings?event=${event.slug}`}>Book VIP Table</Link>
               </Button>
-              <a
-                href={buildWaLink(buildEventInquiryMessage(event.title))}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-center text-xs text-muted hover:text-foreground underline underline-offset-4"
-              >
-                Or ask on WhatsApp <span aria-hidden>→</span>
-              </a>
             </div>
           </div>
         </aside>

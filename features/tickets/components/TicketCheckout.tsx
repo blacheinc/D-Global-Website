@@ -110,10 +110,7 @@ export function TicketCheckout({ eventId, ticketTypes, paystackMode }: TicketChe
                 </div>
               </div>
 
-              <div className="mt-5 flex items-center justify-between">
-                <span className="text-xs text-muted">
-                  {Math.max(0, t.quota - t.sold)} remaining
-                </span>
+              <div className="mt-5 flex items-center justify-end">
                 <div className="inline-flex items-center gap-3 rounded-full border border-white/10 bg-elevated px-3 py-2">
                   <button
                     type="button"
@@ -206,8 +203,8 @@ export function TicketCheckout({ eventId, ticketTypes, paystackMode }: TicketChe
       <FieldError>{error}</FieldError>
 
       <p className="text-xs text-muted">
-        By continuing you agree to our terms. Tickets are delivered instantly after payment, you'll
-        get a QR code valid at the door. Need help? Message D Global Entertainment on WhatsApp.
+        By continuing you agree to our terms. Tickets are delivered instantly after payment; you'll
+        get a QR code valid at the door.
       </p>
     </form>
   );
