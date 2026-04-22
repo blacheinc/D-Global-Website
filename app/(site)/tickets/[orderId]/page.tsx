@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { formatEventDateTime } from '@/lib/formatDate';
 import { formatPriceMinor } from '@/lib/formatCurrency';
+import { PendingStatusPoller } from '@/features/tickets/components/PendingStatusPoller';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,11 +40,17 @@ export default async function TicketPage({
         </p>
 
         {isPending && (
-          <div className="rounded-2xl border border-accent/40 bg-accent/10 p-5 text-sm">
-            Payment is being confirmed. This page will update automatically. If it doesn't within a
-            minute, check your email or contact D Global Entertainment on WhatsApp with reference{' '}
-            <span className="font-mono">{order.reference.slice(0, 10)}</span>.
-          </div>
+          <>
+            {/* Actively verifies with Paystack + refreshes the page so
+                the status flip lands without the user hitting reload.
+                See component for cadence + cap. */}
+            <PendingStatusPoller orderId={order.id} />
+            <div className="rounded-2xl border border-accent/40 bg-accent/10 p-5 text-sm">
+              Payment is being confirmed. This page will update automatically. If it doesn't within a
+              minute, check your email or contact D Global Entertainment on WhatsApp with reference{' '}
+              <span className="font-mono">{order.reference.slice(0, 10)}</span>.
+            </div>
+          </>
         )}
 
         <div className="space-y-4">
