@@ -5,6 +5,7 @@ import { Minus, Plus, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input, Label, FieldError } from '@/components/ui/Input';
 import { formatPriceMinor } from '@/lib/formatCurrency';
+import { isStrictEmail, normaliseEmail } from '@/lib/email';
 import { cn } from '@/lib/utils';
 import type { TicketType } from '@prisma/client';
 
@@ -56,6 +57,16 @@ export function TicketCheckout({ eventId, ticketTypes, paystackMode }: TicketChe
       return;
     }
 
+    // Pre-validate the email on the client so we never fire the
+    // server round-trip (and its Paystack round-trip) with an address
+    // our own validator rejects. isStrictEmail mirrors what the server
+    // applies at the Zod boundary.
+    const cleanEmail = normaliseEmail(buyer.email);
+    if (!isStrictEmail(cleanEmail)) {
+      setError('Enter a valid email address before continuing.');
+      return;
+    }
+
     setSubmitting(true);
     try {
       const items = ticketTypes
@@ -65,7 +76,11 @@ export function TicketCheckout({ eventId, ticketTypes, paystackMode }: TicketChe
       const res = await fetch('/api/checkout/paystack', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ eventId, items, buyer }),
+        body: JSON.stringify({
+          eventId,
+          items,
+          buyer: { ...buyer, email: cleanEmail },
+        }),
       });
       const json = await res.json();
       if (!res.ok) {
