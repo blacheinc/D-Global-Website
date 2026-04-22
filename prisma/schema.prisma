@@ -160,15 +160,16 @@ model Event {
   longitude     Float?
   heroImage     String
   genre         String[]       @default([])
-  status        EventStatus    @default(DRAFT)
-  featured      Boolean        @default(false)
+  status        EventStatus       @default(DRAFT)
+  featured      Boolean           @default(false)
   ticketTypes   TicketType[]
   lineup        LineupSlot[]
   bookings      Booking[]
   orders        Order[]
   galleryImages GalleryImage[]
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  scanTokens    EventScanToken[]
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
 
   @@index([startsAt])
   @@index([status, featured, startsAt])
@@ -294,6 +295,26 @@ model OrderItem {
   scannedAt      DateTime?
 
   @@index([orderId])
+}
+
+// Tokenised scanner link for an event. Admins hand the URL to the
+// gate crew; the scanner page loads on their phone and validates QR
+// codes against the event. Each token is its own unguessable cuid so
+// compromise is revocable per-gate without rotating secrets globally.
+// onDelete: Cascade because tokens are meaningless once the event is
+// gone (admin deleteEvent already refuses while Orders exist, so this
+// cascade only fires on empty-event cleanup).
+model EventScanToken {
+  id        String    @id @default(cuid())
+  token     String    @unique @default(cuid())
+  eventId   String
+  event     Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  label     String?
+  createdAt DateTime  @default(now())
+  expiresAt DateTime?
+  revokedAt DateTime?
+
+  @@index([eventId])
 }
 
 model Artist {
