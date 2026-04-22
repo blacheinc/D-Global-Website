@@ -14,7 +14,7 @@ export default async function AdminEventEditPage({ params }: { params: Promise<{
       <header className="mb-8">
         <h1 className="text-3xl font-semibold tracking-tight">Edit event</h1>
         <p className="mt-2 text-sm text-muted">{event.title}</p>
-        <div className="mt-4 flex gap-4 text-xs uppercase tracking-[0.18em]">
+        <div className="mt-4 flex flex-wrap gap-4 text-xs uppercase tracking-[0.18em]">
           <Link
             href={`/admin/events/${id}/tickets`}
             className="text-accent hover:text-accent-hot"
@@ -26,6 +26,12 @@ export default async function AdminEventEditPage({ params }: { params: Promise<{
             className="text-accent hover:text-accent-hot"
           >
             Lineup →
+          </Link>
+          <Link
+            href={`/admin/events/${id}/scan`}
+            className="text-accent hover:text-accent-hot"
+          >
+            Scanner links →
           </Link>
           <Link
             href={`/events/${event.slug}`}
