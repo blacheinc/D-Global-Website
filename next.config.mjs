@@ -132,7 +132,12 @@ const cspHeaderName = cspReportOnly
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
-  serverExternalPackages: ['@prisma/client'],
+  // pdfkit is externalised for the same reason @prisma/client is:
+  // webpack-bundling it would break its filesystem-relative requires
+  // of the bundled Helvetica/Courier AFM files. Left unbundled, Node
+  // resolves those from node_modules at runtime and ticket PDFs render
+  // with their default fonts instead of crashing on ENOENT.
+  serverExternalPackages: ['@prisma/client', 'pdfkit'],
   images: {
     formats: ['image/avif', 'image/webp'],
     remotePatterns: [

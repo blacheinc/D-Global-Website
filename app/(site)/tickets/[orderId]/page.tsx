@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import { Download } from 'lucide-react';
 import { db } from '@/server/db';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -91,11 +92,26 @@ export default async function TicketPage({
           ))}
         </div>
 
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
+          {order.status === 'PAID' && (
+            <Button asChild variant="primary">
+              {/* Plain <a> (not Next <Link>) because the server route
+                  streams a PDF with Content-Disposition: attachment.
+                  <Link> would try to client-navigate and miss the
+                  download prompt. `download` attr is belt-and-braces;
+                  the server header is the real lever. */}
+              <a
+                href={`/api/tickets/${order.id}/download`}
+                download={`dglobal-${order.reference}.pdf`}
+              >
+                <Download aria-hidden className="h-4 w-4" /> Download ticket
+              </a>
+            </Button>
+          )}
           <Button asChild variant="ghost">
             <Link href={`/events/${order.event.slug}`}>Event details</Link>
           </Button>
-          <Button asChild variant="primary">
+          <Button asChild variant="ghost">
             <Link href="/events">More events</Link>
           </Button>
         </div>
