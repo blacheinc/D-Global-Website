@@ -3,17 +3,21 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Check, X, AlertTriangle, Camera, RefreshCw } from 'lucide-react';
 
-// Camera-based QR scanner for gate crew. Uses the native
-// BarcodeDetector API — supported on Chrome / Edge / Safari (iOS 17+).
-// No dep on a third-party QR lib; on unsupported browsers we fall
-// back to a message asking the admin to open a manual-entry form.
+// Camera-based QR scanner for gate crew.
 //
-// Start-on-gesture: mobile Safari flakes out when getUserMedia() is
-// called without a user gesture (and once a user picks "Don't Allow"
-// on auto-prompt, there's no way to re-prompt without them going
-// into Settings). We render a "Start scanner" button first and only
-// call getUserMedia() after a click, which is both more reliable and
-// gives us a clean "Retry" affordance when permission was denied.
+// Detection backends (tried in order):
+//   1. Native BarcodeDetector — Chrome, recent Edge, some Android.
+//      Hardware-accelerated where supported, cheaper on battery.
+//   2. jsqr fallback — pure JS, ~40KB gzipped, lazy-loaded the first
+//      time a browser without BarcodeDetector hits the page. Works on
+//      Safari / iOS Safari / Firefox / anything with getUserMedia.
+//
+// Permission flow: getUserMedia is always called on the user-gesture
+// click of the Start button, BEFORE any capability decision — so the
+// OS-level camera prompt appears even on browsers where the JS
+// decoder story is weird. Detection backend is picked after the
+// stream is running; if neither works we fall through to a clear
+// "your browser can't decode QR" error rather than a silent dead end.
 
 type ServerOk = {
   ok: true;
@@ -35,9 +39,9 @@ type Phase =
   | { stage: 'idle' }
   | { stage: 'starting' }
   | { stage: 'running' }
-  | { stage: 'error'; kind: 'denied' | 'hardware' | 'unsupported' | 'insecure'; message: string };
+  | { stage: 'error'; kind: 'denied' | 'hardware' | 'no-decoder' | 'insecure'; message: string };
 
-const SCAN_INTERVAL_MS = 125;
+const SCAN_INTERVAL_MS = 150;
 const DEBOUNCE_MS = 2500;
 
 interface BarcodeDetectorLike {
@@ -49,11 +53,14 @@ declare global {
   }
 }
 
+type DecodeFn = () => Promise<string | null>;
+
 export function Scanner({ token, eventTitle }: { token: string; eventTitle: string }) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const detectorRef = useRef<BarcodeDetectorLike | null>(null);
+  const decodeRef = useRef<DecodeFn | null>(null);
   const lastScanRef = useRef<{ value: string; at: number } | null>(null);
 
   const [phase, setPhase] = useState<Phase>({ stage: 'idle' });
@@ -69,11 +76,8 @@ export function Scanner({ token, eventTitle }: { token: string; eventTitle: stri
           cache: 'no-store',
         });
         const json = (await res.json()) as ServerResult;
-        if (json.ok) {
-          setShown({ kind: json.alreadyScanned ? 'already' : 'ok', result: json });
-        } else {
-          setShown({ kind: 'fail', message: json.message });
-        }
+        if (json.ok) setShown({ kind: json.alreadyScanned ? 'already' : 'ok', result: json });
+        else setShown({ kind: 'fail', message: json.message });
       } catch {
         setShown({ kind: 'fail', message: 'Network error — try again.' });
       }
@@ -92,9 +96,56 @@ export function Scanner({ token, eventTitle }: { token: string; eventTitle: stri
     }
   }, []);
 
+  // Decoder picker — runs AFTER getUserMedia so permission has already
+  // been prompted. Prefers native BarcodeDetector; falls back to jsqr
+  // (dynamic-imported so the ~40KB only ships to browsers that need it).
+  const pickDecoder = useCallback(async (): Promise<DecodeFn | null> => {
+    const video = videoRef.current;
+    if (!video) return null;
+
+    if (typeof window !== 'undefined' && window.BarcodeDetector) {
+      try {
+        const detector = new window.BarcodeDetector({ formats: ['qr_code'] });
+        return async () => {
+          if (video.readyState < 2) return null;
+          try {
+            const codes = await detector.detect(video);
+            return codes[0]?.rawValue ?? null;
+          } catch {
+            return null;
+          }
+        };
+      } catch {
+        // Constructor can throw on partially-implemented builds — fall
+        // through to jsqr.
+      }
+    }
+
+    try {
+      const { default: jsQR } = await import('jsqr');
+      const canvas =
+        canvasRef.current ?? (canvasRef.current = document.createElement('canvas'));
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      if (!ctx) return null;
+      return async () => {
+        if (video.readyState < 2 || !video.videoWidth || !video.videoHeight) return null;
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const image = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const res = jsQR(image.data, image.width, image.height, {
+          // dontInvert speeds up scanning; QRs on tickets are always
+          // dark-on-light, not inverted.
+          inversionAttempts: 'dontInvert',
+        });
+        return res?.data ?? null;
+      };
+    } catch {
+      return null;
+    }
+  }, []);
+
   const start = useCallback(async () => {
-    // Up-front capability checks so the error we show is accurate
-    // instead of a generic "camera denied" that masks the real cause.
     if (typeof window === 'undefined') return;
     if (!window.isSecureContext) {
       setPhase({
@@ -107,56 +158,25 @@ export function Scanner({ token, eventTitle }: { token: string; eventTitle: stri
     if (!navigator.mediaDevices?.getUserMedia) {
       setPhase({
         stage: 'error',
-        kind: 'unsupported',
-        message: 'This browser doesn’t expose a camera API. Use Chrome, Edge, or Safari (iOS 17+).',
-      });
-      return;
-    }
-    if (!window.BarcodeDetector) {
-      setPhase({
-        stage: 'error',
-        kind: 'unsupported',
-        message: 'This browser doesn’t support the QR scanner API. Use Chrome, Edge, or Safari (iOS 17+).',
+        kind: 'no-decoder',
+        message:
+          'This browser doesn’t expose a camera API. Use a recent Chrome, Edge, Safari, or Firefox.',
       });
       return;
     }
 
     setPhase({ stage: 'starting' });
+
+    let stream: MediaStream;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
+      // Camera permission prompt fires here, always. Decoder choice is
+      // deferred until after the stream is live so an unsupported
+      // decoder can't silently block the prompt.
+      stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: { ideal: 'environment' } },
         audio: false,
       });
-      streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play().catch(() => undefined);
-      }
-      if (!detectorRef.current) {
-        detectorRef.current = new window.BarcodeDetector!({ formats: ['qr_code'] });
-      }
-      setPhase({ stage: 'running' });
-
-      intervalRef.current = setInterval(async () => {
-        const v = videoRef.current;
-        const d = detectorRef.current;
-        if (!v || !d || v.readyState < 2) return;
-        try {
-          const codes = await d.detect(v);
-          if (codes.length === 0) return;
-          const value = codes[0]!.rawValue;
-          const now = Date.now();
-          const last = lastScanRef.current;
-          if (last && last.value === value && now - last.at < DEBOUNCE_MS) return;
-          lastScanRef.current = { value, at: now };
-          submit(value);
-        } catch {
-          // Transient decode failure — next tick will retry.
-        }
-      }, SCAN_INTERVAL_MS);
     } catch (err) {
-      // Distinguish "user denied" from "no camera / busy / unknown"
-      // so the UI can guide the person to the right recovery path.
       if (err instanceof DOMException && err.name === 'NotAllowedError') {
         setPhase({
           stage: 'error',
@@ -172,8 +192,42 @@ export function Scanner({ token, eventTitle }: { token: string; eventTitle: stri
             'Couldn’t start the camera. Close other apps that may be using it and try again.',
         });
       }
+      return;
     }
-  }, [submit]);
+
+    streamRef.current = stream;
+    const v = videoRef.current;
+    if (v) {
+      v.srcObject = stream;
+      await v.play().catch(() => undefined);
+    }
+
+    const decode = await pickDecoder();
+    if (!decode) {
+      stop();
+      setPhase({
+        stage: 'error',
+        kind: 'no-decoder',
+        message:
+          'Couldn’t load the QR decoder on this browser. Try Chrome, Edge, or Safari (iOS 17+).',
+      });
+      return;
+    }
+    decodeRef.current = decode;
+    setPhase({ stage: 'running' });
+
+    intervalRef.current = setInterval(async () => {
+      const fn = decodeRef.current;
+      if (!fn) return;
+      const value = await fn();
+      if (!value) return;
+      const now = Date.now();
+      const last = lastScanRef.current;
+      if (last && last.value === value && now - last.at < DEBOUNCE_MS) return;
+      lastScanRef.current = { value, at: now };
+      submit(value);
+    }, SCAN_INTERVAL_MS);
+  }, [pickDecoder, stop, submit]);
 
   useEffect(() => {
     return () => stop();
@@ -183,8 +237,6 @@ export function Scanner({ token, eventTitle }: { token: string; eventTitle: stri
     setShown(null);
     lastScanRef.current = null;
   }
-
-  // ---- render ----
 
   const running = phase.stage === 'running';
   const starting = phase.stage === 'starting';
