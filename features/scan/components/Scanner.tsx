@@ -62,6 +62,10 @@ export function Scanner({ token, eventTitle }: { token: string; eventTitle: stri
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const decodeRef = useRef<DecodeFn | null>(null);
   const lastScanRef = useRef<{ value: string; at: number } | null>(null);
+  // Mirror of `shown` that the interval callback can read without
+  // retriggering useEffect. While a result modal is up we gate the
+  // submit path so a stray second QR in frame can't overwrite it.
+  const shownRef = useRef<ShownResult | null>(null);
 
   const [phase, setPhase] = useState<Phase>({ stage: 'idle' });
   const [shown, setShown] = useState<ShownResult | null>(null);
@@ -76,10 +80,23 @@ export function Scanner({ token, eventTitle }: { token: string; eventTitle: stri
           cache: 'no-store',
         });
         const json = (await res.json()) as ServerResult;
-        if (json.ok) setShown({ kind: json.alreadyScanned ? 'already' : 'ok', result: json });
-        else setShown({ kind: 'fail', message: json.message });
+        const next: ShownResult = json.ok
+          ? { kind: json.alreadyScanned ? 'already' : 'ok', result: json }
+          : { kind: 'fail', message: json.message };
+        shownRef.current = next;
+        setShown(next);
+        // Haptic pulse so gate crew get a tactile signal even if the
+        // phone is on silent. Fire-and-forget; not every device has
+        // navigator.vibrate and that's fine.
+        if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+          if (next.kind === 'ok') navigator.vibrate(80);
+          else if (next.kind === 'already') navigator.vibrate([60, 40, 60]);
+          else navigator.vibrate([120, 60, 120]);
+        }
       } catch {
-        setShown({ kind: 'fail', message: 'Network error — try again.' });
+        const fail: ShownResult = { kind: 'fail', message: 'Network error — try again.' };
+        shownRef.current = fail;
+        setShown(fail);
       }
     },
     [token],
@@ -217,6 +234,10 @@ export function Scanner({ token, eventTitle }: { token: string; eventTitle: stri
     setPhase({ stage: 'running' });
 
     intervalRef.current = setInterval(async () => {
+      // Freeze scanning while a result modal is up. Gate crew should
+      // finish reviewing (and tap Next) before a new QR in frame can
+      // steal the panel.
+      if (shownRef.current) return;
       const fn = decodeRef.current;
       if (!fn) return;
       const value = await fn();
@@ -234,6 +255,7 @@ export function Scanner({ token, eventTitle }: { token: string; eventTitle: stri
   }, [stop]);
 
   function clearResult() {
+    shownRef.current = null;
     setShown(null);
     lastScanRef.current = null;
   }
@@ -333,6 +355,29 @@ export function Scanner({ token, eventTitle }: { token: string; eventTitle: stri
 }
 
 function ResultPanel({ shown, onDismiss }: { shown: ShownResult; onDismiss: () => void }) {
+  const dismissRef = useRef<HTMLButtonElement>(null);
+
+  // Auto-focus the Next button so Enter dismisses from a keyboard,
+  // and Esc dismisses via the keydown handler below. Door staff on
+  // phones tap Next; keyboard support is for desk testing + a11y.
+  useEffect(() => {
+    dismissRef.current?.focus();
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onDismiss();
+      }
+    }
+    window.addEventListener('keydown', onKey);
+    // Prevent the body scrolling behind the modal on iOS.
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [onDismiss]);
+
   const { tone, Icon, headline, body } = (() => {
     if (shown.kind === 'ok') {
       return {
@@ -341,7 +386,7 @@ function ResultPanel({ shown, onDismiss }: { shown: ShownResult; onDismiss: () =
         headline: 'Valid — let them in',
         body: (
           <>
-            <p className="text-base font-medium text-foreground">{shown.result.attendee}</p>
+            <p className="text-lg font-medium text-foreground">{shown.result.attendee}</p>
             <p className="text-sm text-muted">
               {shown.result.ticketName} · {shown.result.tier}
             </p>
@@ -356,7 +401,7 @@ function ResultPanel({ shown, onDismiss }: { shown: ShownResult; onDismiss: () =
         headline: 'Already scanned',
         body: (
           <>
-            <p className="text-base font-medium text-foreground">{shown.result.attendee}</p>
+            <p className="text-lg font-medium text-foreground">{shown.result.attendee}</p>
             <p className="text-sm text-muted">
               First entry {new Date(shown.result.scannedAt).toLocaleTimeString()}. Verify before
               letting them through.
@@ -373,32 +418,68 @@ function ResultPanel({ shown, onDismiss }: { shown: ShownResult; onDismiss: () =
     } as const;
   })();
 
-  const toneClass =
+  const toneBackdrop =
     tone === 'ok'
-      ? 'border-emerald-500/40 bg-emerald-500/10'
+      ? 'bg-emerald-500/15'
       : tone === 'warn'
-        ? 'border-amber-500/40 bg-amber-500/10'
-        : 'border-accent-hot/40 bg-accent-hot/10';
-  const iconClass =
-    tone === 'ok' ? 'text-emerald-400' : tone === 'warn' ? 'text-amber-400' : 'text-accent-hot';
+        ? 'bg-amber-500/15'
+        : 'bg-accent-hot/15';
+  const toneBorder =
+    tone === 'ok'
+      ? 'border-emerald-500/50'
+      : tone === 'warn'
+        ? 'border-amber-500/50'
+        : 'border-accent-hot/50';
+  const iconBg =
+    tone === 'ok'
+      ? 'bg-emerald-500/20 text-emerald-300'
+      : tone === 'warn'
+        ? 'bg-amber-500/20 text-amber-300'
+        : 'bg-accent-hot/20 text-accent-hot';
 
   return (
-    <div className={`rounded-2xl border p-5 ${toneClass}`} role="status" aria-live="polite">
-      <div className="flex items-start gap-4">
-        <div className="mt-0.5">
-          <Icon aria-hidden className={`h-6 w-6 ${iconClass}`} />
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="scan-result-headline"
+      className="fixed inset-0 z-50 flex items-end justify-center sm:items-center"
+    >
+      {/* Backdrop. Clicking it dismisses — staff can tap anywhere
+          outside the card to return to scanning. Tinted to the result
+          tone so the colour reads at a glance from across the door. */}
+      <button
+        type="button"
+        aria-label="Dismiss"
+        onClick={onDismiss}
+        className={`absolute inset-0 backdrop-blur-md ${toneBackdrop}`}
+      />
+      <div
+        className={`relative mx-3 mb-3 sm:mx-0 sm:mb-0 w-full sm:max-w-md rounded-3xl border-2 ${toneBorder} bg-bg p-6 md:p-8 shadow-2xl`}
+      >
+        <div className="flex flex-col items-center text-center gap-4">
+          <div
+            className={`inline-flex h-16 w-16 items-center justify-center rounded-full ${iconBg}`}
+          >
+            <Icon aria-hidden className="h-8 w-8" />
+          </div>
+          <div>
+            <p
+              id="scan-result-headline"
+              className="font-display text-2xl md:text-3xl leading-tight"
+            >
+              {headline}
+            </p>
+            <div className="mt-3 space-y-1">{body}</div>
+          </div>
+          <button
+            ref={dismissRef}
+            type="button"
+            onClick={onDismiss}
+            className="mt-2 w-full rounded-full bg-accent px-6 py-3 text-sm font-medium text-white hover:bg-accent-hot focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+          >
+            Next ticket
+          </button>
         </div>
-        <div className="flex-1">
-          <p className="font-display text-xl leading-tight">{headline}</p>
-          <div className="mt-2 space-y-1">{body}</div>
-        </div>
-        <button
-          type="button"
-          onClick={onDismiss}
-          className="shrink-0 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs uppercase tracking-[0.18em] text-muted hover:bg-white/10 hover:text-foreground"
-        >
-          Next
-        </button>
       </div>
     </div>
   );
