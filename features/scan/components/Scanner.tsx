@@ -39,10 +39,33 @@ type Phase =
   | { stage: 'idle' }
   | { stage: 'starting' }
   | { stage: 'running' }
-  | { stage: 'error'; kind: 'denied' | 'hardware' | 'no-decoder' | 'insecure'; message: string };
+  | {
+      stage: 'error';
+      kind: 'denied' | 'hardware' | 'no-decoder' | 'insecure' | 'in-app-browser';
+      message: string;
+    };
 
 const SCAN_INTERVAL_MS = 150;
 const DEBOUNCE_MS = 2500;
+
+// Detect user agents that are known-problematic for getUserMedia on
+// Android. These in-app WebViews either don't declare the CAMERA
+// permission in their host app's manifest or disable the API at the
+// WebView level. The list is deliberately Android-focused — iOS
+// "in-app" browsers use SFSafariViewController or standard WKWebView
+// which inherit the OS camera grant and work fine.
+function isProblemInAppBrowser(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent || '';
+  // Only fire the guard on Android — iOS paths go to Safari.
+  if (!/Android/i.test(ua)) return false;
+  // WhatsApp, Facebook (FBAN/FBAV), Instagram, TikTok, Line, WeChat,
+  // Messenger. LinkedIn / Twitter also ship their own; catch the common
+  // tokens.
+  return /WhatsApp|FBAN|FBAV|Instagram|TikTok|Line|MicroMessenger|Messenger|LinkedInApp|Twitter/i.test(
+    ua,
+  );
+}
 
 interface BarcodeDetectorLike {
   detect(source: CanvasImageSource): Promise<Array<{ rawValue: string }>>;
@@ -62,6 +85,10 @@ export function Scanner({ token, eventTitle }: { token: string; eventTitle: stri
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const decodeRef = useRef<DecodeFn | null>(null);
   const lastScanRef = useRef<{ value: string; at: number } | null>(null);
+  // Mirror of `shown` that the interval callback can read without
+  // retriggering useEffect. While a result modal is up we gate the
+  // submit path so a stray second QR in frame can't overwrite it.
+  const shownRef = useRef<ShownResult | null>(null);
 
   const [phase, setPhase] = useState<Phase>({ stage: 'idle' });
   const [shown, setShown] = useState<ShownResult | null>(null);
@@ -76,10 +103,23 @@ export function Scanner({ token, eventTitle }: { token: string; eventTitle: stri
           cache: 'no-store',
         });
         const json = (await res.json()) as ServerResult;
-        if (json.ok) setShown({ kind: json.alreadyScanned ? 'already' : 'ok', result: json });
-        else setShown({ kind: 'fail', message: json.message });
+        const next: ShownResult = json.ok
+          ? { kind: json.alreadyScanned ? 'already' : 'ok', result: json }
+          : { kind: 'fail', message: json.message };
+        shownRef.current = next;
+        setShown(next);
+        // Haptic pulse so gate crew get a tactile signal even if the
+        // phone is on silent. Fire-and-forget; not every device has
+        // navigator.vibrate and that's fine.
+        if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+          if (next.kind === 'ok') navigator.vibrate(80);
+          else if (next.kind === 'already') navigator.vibrate([60, 40, 60]);
+          else navigator.vibrate([120, 60, 120]);
+        }
       } catch {
-        setShown({ kind: 'fail', message: 'Network error — try again.' });
+        const fail: ShownResult = { kind: 'fail', message: 'Network error — try again.' };
+        shownRef.current = fail;
+        setShown(fail);
       }
     },
     [token],
@@ -155,6 +195,23 @@ export function Scanner({ token, eventTitle }: { token: string; eventTitle: stri
       });
       return;
     }
+    // In-app browsers on Android (WhatsApp / Facebook / Instagram /
+    // TikTok web views) frequently block getUserMedia: either the host
+    // app didn't declare CAMERA permission, or its WebView has the
+    // feature disabled. The prompt never fires and everything looks
+    // broken. Catch this before trying so we can route the user to
+    // their system browser. iOS doesn't have the same issue — in-app
+    // browsers there run through SFSafariViewController / real WKWebView
+    // which inherit the OS camera grant.
+    if (isProblemInAppBrowser()) {
+      setPhase({
+        stage: 'error',
+        kind: 'in-app-browser',
+        message:
+          'Scanners don’t work inside in-app browsers. Open this page in Chrome (tap the ⋮ menu → Open in browser).',
+      });
+      return;
+    }
     if (!navigator.mediaDevices?.getUserMedia) {
       setPhase({
         stage: 'error',
@@ -172,17 +229,33 @@ export function Scanner({ token, eventTitle }: { token: string; eventTitle: stri
       // Camera permission prompt fires here, always. Decoder choice is
       // deferred until after the stream is live so an unsupported
       // decoder can't silently block the prompt.
-      stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' } },
-        audio: false,
-      });
+      //
+      // Try environment-facing camera first; some Android devices
+      // (front-camera-only tablets, devices without back cam) reject
+      // even the `ideal` hint with OverconstrainedError, so fall back
+      // to any camera before giving up.
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: 'environment' } },
+          audio: false,
+        });
+      } catch (innerErr) {
+        if (
+          innerErr instanceof DOMException &&
+          (innerErr.name === 'OverconstrainedError' || innerErr.name === 'NotFoundError')
+        ) {
+          stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        } else {
+          throw innerErr;
+        }
+      }
     } catch (err) {
       if (err instanceof DOMException && err.name === 'NotAllowedError') {
         setPhase({
           stage: 'error',
           kind: 'denied',
           message:
-            'Camera access was blocked. Open the address bar’s camera icon (or Site Settings) and allow camera for this page, then tap Retry.',
+            'Camera access was blocked for this site. Allow camera in your browser settings, then tap Retry.',
         });
       } else {
         setPhase({
@@ -217,6 +290,10 @@ export function Scanner({ token, eventTitle }: { token: string; eventTitle: stri
     setPhase({ stage: 'running' });
 
     intervalRef.current = setInterval(async () => {
+      // Freeze scanning while a result modal is up. Gate crew should
+      // finish reviewing (and tap Next) before a new QR in frame can
+      // steal the panel.
+      if (shownRef.current) return;
       const fn = decodeRef.current;
       if (!fn) return;
       const value = await fn();
@@ -234,6 +311,7 @@ export function Scanner({ token, eventTitle }: { token: string; eventTitle: stri
   }, [stop]);
 
   function clearResult() {
+    shownRef.current = null;
     setShown(null);
     lastScanRef.current = null;
   }
@@ -296,10 +374,11 @@ export function Scanner({ token, eventTitle }: { token: string; eventTitle: stri
               <p className="text-sm text-foreground">{phase.message}</p>
               {phase.kind === 'denied' && (
                 <p className="text-[11px] text-muted leading-relaxed">
-                  On iPhone: Settings → Safari → Camera → Allow. On Chrome: tap the lock icon next
-                  to the URL → Site settings → Camera → Allow, then reload.
+                  On Android Chrome: long-press the URL bar → Site settings → Camera → Allow, then
+                  reload. On iPhone: Settings → Safari → Camera → Allow.
                 </p>
               )}
+              {phase.kind === 'in-app-browser' && <OpenInBrowserHelper />}
               {(phase.kind === 'denied' || phase.kind === 'hardware') && (
                 <button
                   type="button"
@@ -332,7 +411,77 @@ export function Scanner({ token, eventTitle }: { token: string; eventTitle: stri
   );
 }
 
+// Rendered inside the in-app-browser error state. Offers (a) a direct
+// Android intent:// link that forces Chrome to handle it, and (b) a
+// copy-URL button for fallback cases where the intent handler doesn't
+// fire (Android 14+ sometimes blocks unverified intents). On tap of
+// either, the user moves to a real browser where getUserMedia works.
+function OpenInBrowserHelper() {
+  const [copied, setCopied] = useState(false);
+
+  async function copy() {
+    const url = typeof window !== 'undefined' ? window.location.href : '';
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    } catch {
+      prompt('Copy this link and paste it into Chrome:', url);
+    }
+  }
+
+  const chromeIntent =
+    typeof window !== 'undefined'
+      ? `intent://${window.location.host}${window.location.pathname}#Intent;scheme=https;package=com.android.chrome;end`
+      : '#';
+
+  return (
+    <div className="space-y-3">
+      <a
+        href={chromeIntent}
+        className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-accent px-5 py-3 text-sm font-medium text-white hover:bg-accent-hot"
+      >
+        Open in Chrome
+      </a>
+      <button
+        type="button"
+        onClick={copy}
+        className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/15 bg-white/5 px-5 py-3 text-sm font-medium text-foreground hover:bg-white/10"
+      >
+        {copied ? 'Link copied — paste into Chrome' : 'Copy link'}
+      </button>
+      <p className="text-[11px] text-muted leading-relaxed">
+        The tap may ask you to pick a browser — choose Chrome, Samsung Internet, Firefox, or
+        another browser that supports camera access.
+      </p>
+    </div>
+  );
+}
+
 function ResultPanel({ shown, onDismiss }: { shown: ShownResult; onDismiss: () => void }) {
+  const dismissRef = useRef<HTMLButtonElement>(null);
+
+  // Auto-focus the Next button so Enter dismisses from a keyboard,
+  // and Esc dismisses via the keydown handler below. Door staff on
+  // phones tap Next; keyboard support is for desk testing + a11y.
+  useEffect(() => {
+    dismissRef.current?.focus();
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onDismiss();
+      }
+    }
+    window.addEventListener('keydown', onKey);
+    // Prevent the body scrolling behind the modal on iOS.
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [onDismiss]);
+
   const { tone, Icon, headline, body } = (() => {
     if (shown.kind === 'ok') {
       return {
@@ -341,7 +490,7 @@ function ResultPanel({ shown, onDismiss }: { shown: ShownResult; onDismiss: () =
         headline: 'Valid — let them in',
         body: (
           <>
-            <p className="text-base font-medium text-foreground">{shown.result.attendee}</p>
+            <p className="text-lg font-medium text-foreground">{shown.result.attendee}</p>
             <p className="text-sm text-muted">
               {shown.result.ticketName} · {shown.result.tier}
             </p>
@@ -356,7 +505,7 @@ function ResultPanel({ shown, onDismiss }: { shown: ShownResult; onDismiss: () =
         headline: 'Already scanned',
         body: (
           <>
-            <p className="text-base font-medium text-foreground">{shown.result.attendee}</p>
+            <p className="text-lg font-medium text-foreground">{shown.result.attendee}</p>
             <p className="text-sm text-muted">
               First entry {new Date(shown.result.scannedAt).toLocaleTimeString()}. Verify before
               letting them through.
@@ -373,32 +522,68 @@ function ResultPanel({ shown, onDismiss }: { shown: ShownResult; onDismiss: () =
     } as const;
   })();
 
-  const toneClass =
+  const toneBackdrop =
     tone === 'ok'
-      ? 'border-emerald-500/40 bg-emerald-500/10'
+      ? 'bg-emerald-500/15'
       : tone === 'warn'
-        ? 'border-amber-500/40 bg-amber-500/10'
-        : 'border-accent-hot/40 bg-accent-hot/10';
-  const iconClass =
-    tone === 'ok' ? 'text-emerald-400' : tone === 'warn' ? 'text-amber-400' : 'text-accent-hot';
+        ? 'bg-amber-500/15'
+        : 'bg-accent-hot/15';
+  const toneBorder =
+    tone === 'ok'
+      ? 'border-emerald-500/50'
+      : tone === 'warn'
+        ? 'border-amber-500/50'
+        : 'border-accent-hot/50';
+  const iconBg =
+    tone === 'ok'
+      ? 'bg-emerald-500/20 text-emerald-300'
+      : tone === 'warn'
+        ? 'bg-amber-500/20 text-amber-300'
+        : 'bg-accent-hot/20 text-accent-hot';
 
   return (
-    <div className={`rounded-2xl border p-5 ${toneClass}`} role="status" aria-live="polite">
-      <div className="flex items-start gap-4">
-        <div className="mt-0.5">
-          <Icon aria-hidden className={`h-6 w-6 ${iconClass}`} />
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="scan-result-headline"
+      className="fixed inset-0 z-50 flex items-end justify-center sm:items-center"
+    >
+      {/* Backdrop. Clicking it dismisses — staff can tap anywhere
+          outside the card to return to scanning. Tinted to the result
+          tone so the colour reads at a glance from across the door. */}
+      <button
+        type="button"
+        aria-label="Dismiss"
+        onClick={onDismiss}
+        className={`absolute inset-0 backdrop-blur-md ${toneBackdrop}`}
+      />
+      <div
+        className={`relative mx-3 mb-3 sm:mx-0 sm:mb-0 w-full sm:max-w-md rounded-3xl border-2 ${toneBorder} bg-bg p-6 md:p-8 shadow-2xl`}
+      >
+        <div className="flex flex-col items-center text-center gap-4">
+          <div
+            className={`inline-flex h-16 w-16 items-center justify-center rounded-full ${iconBg}`}
+          >
+            <Icon aria-hidden className="h-8 w-8" />
+          </div>
+          <div>
+            <p
+              id="scan-result-headline"
+              className="font-display text-2xl md:text-3xl leading-tight"
+            >
+              {headline}
+            </p>
+            <div className="mt-3 space-y-1">{body}</div>
+          </div>
+          <button
+            ref={dismissRef}
+            type="button"
+            onClick={onDismiss}
+            className="mt-2 w-full rounded-full bg-accent px-6 py-3 text-sm font-medium text-white hover:bg-accent-hot focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+          >
+            Next ticket
+          </button>
         </div>
-        <div className="flex-1">
-          <p className="font-display text-xl leading-tight">{headline}</p>
-          <div className="mt-2 space-y-1">{body}</div>
-        </div>
-        <button
-          type="button"
-          onClick={onDismiss}
-          className="shrink-0 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs uppercase tracking-[0.18em] text-muted hover:bg-white/10 hover:text-foreground"
-        >
-          Next
-        </button>
       </div>
     </div>
   );
