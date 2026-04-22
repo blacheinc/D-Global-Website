@@ -36,10 +36,20 @@ export function isSameOrigin(req: Request): boolean {
 
 function sameHost(a: string, b: string): boolean {
   try {
-    return new URL(a).host === new URL(b).host;
+    return normalizeHost(new URL(a).host) === normalizeHost(new URL(b).host);
   } catch {
     return false;
   }
+}
+
+// Strip a leading "www." so the same-origin check matches regardless of
+// whether the user browses the apex or the www subdomain. Real cross-
+// origin POSTs still fail (attacker.com after normalization is still
+// attacker.com); this just bridges the apex-vs-www mismatch that comes
+// up when NEXT_PUBLIC_SITE_URL is set to one and the browser loaded the
+// other.
+function normalizeHost(host: string): string {
+  return host.toLowerCase().replace(/^www\./, '');
 }
 
 // ----- Rate limit -----
