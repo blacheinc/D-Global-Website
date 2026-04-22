@@ -39,10 +39,33 @@ type Phase =
   | { stage: 'idle' }
   | { stage: 'starting' }
   | { stage: 'running' }
-  | { stage: 'error'; kind: 'denied' | 'hardware' | 'no-decoder' | 'insecure'; message: string };
+  | {
+      stage: 'error';
+      kind: 'denied' | 'hardware' | 'no-decoder' | 'insecure' | 'in-app-browser';
+      message: string;
+    };
 
 const SCAN_INTERVAL_MS = 150;
 const DEBOUNCE_MS = 2500;
+
+// Detect user agents that are known-problematic for getUserMedia on
+// Android. These in-app WebViews either don't declare the CAMERA
+// permission in their host app's manifest or disable the API at the
+// WebView level. The list is deliberately Android-focused — iOS
+// "in-app" browsers use SFSafariViewController or standard WKWebView
+// which inherit the OS camera grant and work fine.
+function isProblemInAppBrowser(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent || '';
+  // Only fire the guard on Android — iOS paths go to Safari.
+  if (!/Android/i.test(ua)) return false;
+  // WhatsApp, Facebook (FBAN/FBAV), Instagram, TikTok, Line, WeChat,
+  // Messenger. LinkedIn / Twitter also ship their own; catch the common
+  // tokens.
+  return /WhatsApp|FBAN|FBAV|Instagram|TikTok|Line|MicroMessenger|Messenger|LinkedInApp|Twitter/i.test(
+    ua,
+  );
+}
 
 interface BarcodeDetectorLike {
   detect(source: CanvasImageSource): Promise<Array<{ rawValue: string }>>;
@@ -172,6 +195,23 @@ export function Scanner({ token, eventTitle }: { token: string; eventTitle: stri
       });
       return;
     }
+    // In-app browsers on Android (WhatsApp / Facebook / Instagram /
+    // TikTok web views) frequently block getUserMedia: either the host
+    // app didn't declare CAMERA permission, or its WebView has the
+    // feature disabled. The prompt never fires and everything looks
+    // broken. Catch this before trying so we can route the user to
+    // their system browser. iOS doesn't have the same issue — in-app
+    // browsers there run through SFSafariViewController / real WKWebView
+    // which inherit the OS camera grant.
+    if (isProblemInAppBrowser()) {
+      setPhase({
+        stage: 'error',
+        kind: 'in-app-browser',
+        message:
+          'Scanners don’t work inside in-app browsers. Open this page in Chrome (tap the ⋮ menu → Open in browser).',
+      });
+      return;
+    }
     if (!navigator.mediaDevices?.getUserMedia) {
       setPhase({
         stage: 'error',
@@ -189,17 +229,33 @@ export function Scanner({ token, eventTitle }: { token: string; eventTitle: stri
       // Camera permission prompt fires here, always. Decoder choice is
       // deferred until after the stream is live so an unsupported
       // decoder can't silently block the prompt.
-      stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' } },
-        audio: false,
-      });
+      //
+      // Try environment-facing camera first; some Android devices
+      // (front-camera-only tablets, devices without back cam) reject
+      // even the `ideal` hint with OverconstrainedError, so fall back
+      // to any camera before giving up.
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: 'environment' } },
+          audio: false,
+        });
+      } catch (innerErr) {
+        if (
+          innerErr instanceof DOMException &&
+          (innerErr.name === 'OverconstrainedError' || innerErr.name === 'NotFoundError')
+        ) {
+          stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        } else {
+          throw innerErr;
+        }
+      }
     } catch (err) {
       if (err instanceof DOMException && err.name === 'NotAllowedError') {
         setPhase({
           stage: 'error',
           kind: 'denied',
           message:
-            'Camera access was blocked. Open the address bar’s camera icon (or Site Settings) and allow camera for this page, then tap Retry.',
+            'Camera access was blocked for this site. Allow camera in your browser settings, then tap Retry.',
         });
       } else {
         setPhase({
@@ -318,10 +374,11 @@ export function Scanner({ token, eventTitle }: { token: string; eventTitle: stri
               <p className="text-sm text-foreground">{phase.message}</p>
               {phase.kind === 'denied' && (
                 <p className="text-[11px] text-muted leading-relaxed">
-                  On iPhone: Settings → Safari → Camera → Allow. On Chrome: tap the lock icon next
-                  to the URL → Site settings → Camera → Allow, then reload.
+                  On Android Chrome: long-press the URL bar → Site settings → Camera → Allow, then
+                  reload. On iPhone: Settings → Safari → Camera → Allow.
                 </p>
               )}
+              {phase.kind === 'in-app-browser' && <OpenInBrowserHelper />}
               {(phase.kind === 'denied' || phase.kind === 'hardware') && (
                 <button
                   type="button"
@@ -350,6 +407,53 @@ export function Scanner({ token, eventTitle }: { token: string; eventTitle: stri
       </p>
 
       {shown && <ResultPanel shown={shown} onDismiss={clearResult} />}
+    </div>
+  );
+}
+
+// Rendered inside the in-app-browser error state. Offers (a) a direct
+// Android intent:// link that forces Chrome to handle it, and (b) a
+// copy-URL button for fallback cases where the intent handler doesn't
+// fire (Android 14+ sometimes blocks unverified intents). On tap of
+// either, the user moves to a real browser where getUserMedia works.
+function OpenInBrowserHelper() {
+  const [copied, setCopied] = useState(false);
+
+  async function copy() {
+    const url = typeof window !== 'undefined' ? window.location.href : '';
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    } catch {
+      prompt('Copy this link and paste it into Chrome:', url);
+    }
+  }
+
+  const chromeIntent =
+    typeof window !== 'undefined'
+      ? `intent://${window.location.host}${window.location.pathname}#Intent;scheme=https;package=com.android.chrome;end`
+      : '#';
+
+  return (
+    <div className="space-y-3">
+      <a
+        href={chromeIntent}
+        className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-accent px-5 py-3 text-sm font-medium text-white hover:bg-accent-hot"
+      >
+        Open in Chrome
+      </a>
+      <button
+        type="button"
+        onClick={copy}
+        className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/15 bg-white/5 px-5 py-3 text-sm font-medium text-foreground hover:bg-white/10"
+      >
+        {copied ? 'Link copied — paste into Chrome' : 'Copy link'}
+      </button>
+      <p className="text-[11px] text-muted leading-relaxed">
+        The tap may ask you to pick a browser — choose Chrome, Samsung Internet, Firefox, or
+        another browser that supports camera access.
+      </p>
     </div>
   );
 }
