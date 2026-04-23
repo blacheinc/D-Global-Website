@@ -7,6 +7,7 @@ import { formatEventDateTime } from '@/lib/formatDate';
 import { formatPriceMinor } from '@/lib/formatCurrency';
 import { StatusSelect } from '@/features/admin/components/StatusSelect';
 import { ResendTicketButton } from '@/features/admin/components/ResendTicketButton';
+import { RecheckPaymentButton } from '@/features/admin/components/RecheckPaymentButton';
 import { updateOrderStatus } from '@/features/admin/orderActions';
 
 export const dynamic = 'force-dynamic';
@@ -110,6 +111,20 @@ export default async function AdminOrderDetailPage({
           </table>
         </div>
       </section>
+
+      {order.status === 'PENDING' && (
+        <section className="mt-12 border-t border-white/10 pt-10 max-w-2xl">
+          <h2 className="mb-4 text-lg font-semibold">Recheck payment</h2>
+          <p className="mb-4 text-xs text-muted">
+            Asks Paystack directly whether reference{' '}
+            <span className="font-mono">{order.reference.slice(0, 14)}</span> has been paid. If it has,
+            the order flips to PAID, QR tickets are issued, and the buyer gets the confirmation
+            email with the PDF attached. Safe to click repeatedly — it's a no-op once the order
+            is PAID.
+          </p>
+          <RecheckPaymentButton orderId={order.id} />
+        </section>
+      )}
 
       <section className="mt-12 border-t border-white/10 pt-10 max-w-2xl">
         <h2 className="mb-4 text-lg font-semibold">Update status</h2>
