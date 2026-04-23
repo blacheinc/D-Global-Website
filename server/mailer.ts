@@ -1,7 +1,20 @@
 import 'server-only';
+import * as Sentry from '@sentry/nextjs';
 import { z } from 'zod';
 import { Resend } from 'resend';
 import { env } from '@/lib/env';
+
+// Error thrown when Resend's API is the problem, not us. Callers can
+// branch on this to show "mail provider is down, try again in a few
+// minutes" instead of a generic "could not send email" that reads
+// like a bug in our code.
+export class MailProviderUnavailableError extends Error {
+  readonly providerName = 'resend';
+  constructor(message: string) {
+    super(message);
+    this.name = 'MailProviderUnavailableError';
+  }
+}
 
 // Resend client cached for the process lifetime. In production, env.ts's
 // refinement requires RESEND_API_KEY, so this branch only evaluates to
@@ -110,24 +123,52 @@ export async function sendMail(args: SendMailArgs): Promise<void> {
     attachments,
   };
 
-  // One retry on transient 5xx with ~800ms backoff. Two attempts is the
-  // sweet spot: catches the overwhelming majority of Resend's hiccups
-  // without multiplying our webhook/action latency when the outage is
-  // sustained. If both fail the caller decides whether to degrade
-  // (sendOrderConfirmation drops the attachment and tries again) or
-  // bubble up to the user.
-  const { error } = await resend.emails.send(payload);
-  if (!error) return;
+  // Retry transient 5xx with exponential backoff. Three attempts (one
+  // original + two retries) at 500ms/1500ms rides out ~2s Resend
+  // wobbles, which is the majority of their hiccups. A sustained
+  // outage longer than that will still surface — callers
+  // (sendOrderConfirmation) can then decide whether to degrade.
+  // Non-transient errors (bad email, payload too large, auth) fail
+  // immediately since retrying them is pointless.
+  const backoffs = [500, 1500];
+  let lastError: { name?: string; message?: string } | null = null;
+  let sawTransient = false;
+  for (let attempt = 0; attempt <= backoffs.length; attempt++) {
+    const result = await resend.emails.send(payload);
+    if (!result.error) return;
+    lastError = result.error;
+    if (!isTransientResendError(result.error)) break;
+    sawTransient = true;
+    if (attempt < backoffs.length) await sleep(backoffs[attempt]!);
+  }
 
-  if (isTransientResendError(error)) {
-    await sleep(800);
-    const retry = await resend.emails.send(payload);
-    if (!retry.error) return;
-    throw new Error(
-      `[mailer] send failed after retry (${subject}) [${retry.error.name ?? 'error'}]: ${retry.error.message}`,
+  const err = lastError!;
+  // Tag Sentry on our own schedule so dashboards can slice Resend
+  // noise apart from real application bugs. We capture here rather
+  // than letting the throw propagate because every caller wraps us
+  // in a try/catch, callers only see the Error message, not the
+  // tags/extras we want on the event.
+  Sentry.captureMessage(
+    sawTransient ? '[mailer] resend upstream sustained outage' : '[mailer] resend rejected payload',
+    {
+      level: 'error',
+      tags: { upstream: 'resend', kind: sawTransient ? 'transient' : 'validation' },
+      extra: {
+        subject,
+        errorName: err.name ?? 'error',
+        errorMessage: err.message ?? '',
+        attempts: sawTransient ? backoffs.length + 1 : 1,
+        hasAttachment: Boolean(attachments?.length),
+      },
+    },
+  );
+
+  if (sawTransient) {
+    throw new MailProviderUnavailableError(
+      `[mailer] resend unavailable after ${backoffs.length + 1} attempts (${subject}) [${err.name ?? 'error'}]: ${err.message}`,
     );
   }
   throw new Error(
-    `[mailer] send failed (${subject}) [${error.name ?? 'error'}]: ${error.message}`,
+    `[mailer] send failed (${subject}) [${err.name ?? 'error'}]: ${err.message}`,
   );
 }
