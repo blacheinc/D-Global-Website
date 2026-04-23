@@ -41,6 +41,27 @@ function sanitizeHeader(value: string): string {
   return value.replace(/[\r\n]+/g, ' ').trim();
 }
 
+// Resend's API occasionally returns 5xx under load ("Internal server
+// error. We are unable to process your request right now, please try
+// again later.") and sometimes chokes on specific attachment payloads.
+// Neither is deterministic — the same request will usually succeed on
+// a second attempt. Classify based on the error message so we only
+// retry transient failures, not validation errors (bad email, attachment
+// too large, etc.) that will fail the same way every time.
+function isTransientResendError(err: { name?: string; message?: string }): boolean {
+  const text = `${err.name ?? ''} ${err.message ?? ''}`.toLowerCase();
+  return (
+    text.includes('internal server error') ||
+    text.includes('try again later') ||
+    text.includes('temporarily unavailable') ||
+    text.includes('rate limit') ||
+    text.includes('timeout') ||
+    text.includes('network')
+  );
+}
+
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
 export async function sendMail(args: SendMailArgs): Promise<void> {
   const to = sanitizeHeader(args.to);
   const subject = sanitizeHeader(args.subject);
@@ -66,6 +87,7 @@ export async function sendMail(args: SendMailArgs): Promise<void> {
     console.info('[mailer:dev:html]\n' + args.html);
     return;
   }
+
   // Resend's SDK accepts Node Buffer for attachment content on the
   // server. We pass the filename through sanitizeHeader, not because it
   // ends up in an RFC 2822 header (the SDK base64-encodes the body),
@@ -77,7 +99,8 @@ export async function sendMail(args: SendMailArgs): Promise<void> {
     content: a.content,
     contentType: a.contentType,
   }));
-  const { error } = await resend.emails.send({
+
+  const payload = {
     from: env.EMAIL_FROM,
     to,
     subject,
@@ -85,8 +108,26 @@ export async function sendMail(args: SendMailArgs): Promise<void> {
     text: args.text,
     replyTo,
     attachments,
-  });
-  if (error) {
-    throw new Error(`[mailer] send failed (${subject}): ${error.message}`);
+  };
+
+  // One retry on transient 5xx with ~800ms backoff. Two attempts is the
+  // sweet spot: catches the overwhelming majority of Resend's hiccups
+  // without multiplying our webhook/action latency when the outage is
+  // sustained. If both fail the caller decides whether to degrade
+  // (sendOrderConfirmation drops the attachment and tries again) or
+  // bubble up to the user.
+  const { error } = await resend.emails.send(payload);
+  if (!error) return;
+
+  if (isTransientResendError(error)) {
+    await sleep(800);
+    const retry = await resend.emails.send(payload);
+    if (!retry.error) return;
+    throw new Error(
+      `[mailer] send failed after retry (${subject}) [${retry.error.name ?? 'error'}]: ${retry.error.message}`,
+    );
   }
+  throw new Error(
+    `[mailer] send failed (${subject}) [${error.name ?? 'error'}]: ${error.message}`,
+  );
 }
