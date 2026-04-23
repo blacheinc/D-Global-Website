@@ -8,6 +8,7 @@ import { requireAdmin } from '@/server/auth';
 import { captureError } from '@/server/observability';
 import { sendOrderConfirmation } from '@/server/email/orderConfirmation';
 import { buildTicketPdf } from '@/server/tickets/ticketPdf';
+import { reconcilePaymentWithPaystack } from '@/server/tickets/reconcilePayment';
 
 // Manual order status override. The Paystack webhook does the happy-path
 // flip PENDING → PAID automatically; this action covers the ops
@@ -176,4 +177,73 @@ export async function resendTicketEmail(orderId: string): Promise<ResendTicketRe
     return { ok: false, error: 'Could not send email. Try again.' };
   }
   return { ok: true };
+}
+
+// Admin-triggered Paystack recheck. Same code path the buyer-side
+// /verify endpoint uses — hits Paystack's /transaction/verify, flips
+// the order to PAID if the charge succeeded (and amount matches),
+// issues QR tokens, sends the confirmation email with PDF attached.
+// Non-PAID terminal states (FAILED / REFUNDED / EXPIRED) get a
+// descriptive message without hitting Paystack so ops aren't tricked
+// into re-issuing tickets on a refunded order.
+
+export type RecheckPaymentResult = { ok: true; message: string } | { ok: false; error: string };
+
+export async function recheckPaystackStatus(orderId: string): Promise<RecheckPaymentResult> {
+  await requireAdmin();
+  const outcome = await reconcilePaymentWithPaystack(orderId);
+
+  // Revalidate liberally on any outcome that might have moved the
+  // sold counter (now-paid) or the order row (failed). Cheap, keeps
+  // the admin UI in sync without the button having to know which
+  // paths to poke.
+  revalidatePath('/admin/orders');
+  revalidatePath(`/admin/orders/${orderId}`);
+
+  switch (outcome.kind) {
+    case 'already-paid':
+      return { ok: true, message: 'Order is already PAID — nothing to do.' };
+    case 'now-paid': {
+      const order = await db.order.findUnique({
+        where: { id: orderId },
+        select: { eventId: true, event: { select: { slug: true } } },
+      });
+      if (order?.event) {
+        revalidatePath(`/events/${order.event.slug}`);
+        revalidatePath(`/events/${order.event.slug}/tickets`);
+      }
+      revalidatePath('/events');
+      revalidatePath('/');
+      return {
+        ok: true,
+        message: 'Paystack confirmed the charge. Order is now PAID; buyer emailed with tickets.',
+      };
+    }
+    case 'still-pending':
+      return {
+        ok: true,
+        message: `Paystack still reports the transaction as ${outcome.upstreamStatus}. Try again in a minute.`,
+      };
+    case 'failed': {
+      const reasons: Record<typeof outcome.reason, string> = {
+        'amount-mismatch':
+          'Paystack confirmed a charge but the amount did not match the order. Flagged as FAILED for review.',
+        declined: 'Paystack declined the charge. Order marked FAILED.',
+        reversed: 'Paystack reversed the charge (chargeback). Order marked FAILED.',
+        abandoned: 'Buyer abandoned the Paystack checkout without paying. Order marked FAILED.',
+      };
+      return { ok: true, message: reasons[outcome.reason] };
+    }
+    case 'terminal':
+      return {
+        ok: true,
+        message: `Order is ${outcome.status}. Use the status selector below if you need to change it.`,
+      };
+    case 'paystack-error':
+      return { ok: false, error: outcome.message };
+    default: {
+      const _exhaustive: never = outcome;
+      return { ok: false, error: 'Unexpected reconcile outcome.' };
+    }
+  }
 }
