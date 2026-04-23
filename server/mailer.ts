@@ -9,6 +9,15 @@ import { env } from '@/lib/env';
 // reading magic-link URLs off the console without an SMTP setup).
 const resend = env.RESEND_API_KEY ? new Resend(env.RESEND_API_KEY) : null;
 
+export type MailAttachment = {
+  filename: string;
+  content: Buffer;
+  // contentType is optional — Resend infers from the extension when
+  // absent, but we set it explicitly for ticket PDFs so inline previews
+  // work in Gmail / Apple Mail.
+  contentType?: string;
+};
+
 export type SendMailArgs = {
   to: string;
   subject: string;
@@ -17,6 +26,7 @@ export type SendMailArgs = {
   // ReplyTo is useful for support flows where the user might hit reply
   // expecting a human; defaults to the from address otherwise.
   replyTo?: string;
+  attachments?: ReadonlyArray<MailAttachment>;
 };
 
 const emailSchema = z.string().email();
@@ -49,10 +59,24 @@ export async function sendMail(args: SendMailArgs): Promise<void> {
     // RESEND_API_KEY so this branch can't execute in a production build
     // without the boot already having failed. Print the email so
     // operators can pick up magic links without running an SMTP server.
-    console.info('[mailer:dev]', { to, subject });
+    const attachmentSummary = args.attachments?.length
+      ? ` (${args.attachments.length} attachment${args.attachments.length === 1 ? '' : 's'})`
+      : '';
+    console.info('[mailer:dev]', { to, subject: subject + attachmentSummary });
     console.info('[mailer:dev:html]\n' + args.html);
     return;
   }
+  // Resend's SDK accepts Node Buffer for attachment content on the
+  // server. We pass the filename through sanitizeHeader, not because it
+  // ends up in an RFC 2822 header (the SDK base64-encodes the body),
+  // but to strip anything that would confuse email clients' download
+  // prompts (CRLF is the usual suspect). Ticket filenames are already
+  // well-formed, this is the same belt-and-suspenders posture as subject.
+  const attachments = args.attachments?.map((a) => ({
+    filename: sanitizeHeader(a.filename),
+    content: a.content,
+    contentType: a.contentType,
+  }));
   const { error } = await resend.emails.send({
     from: env.EMAIL_FROM,
     to,
@@ -60,6 +84,7 @@ export async function sendMail(args: SendMailArgs): Promise<void> {
     html: args.html,
     text: args.text,
     replyTo,
+    attachments,
   });
   if (error) {
     throw new Error(`[mailer] send failed (${subject}): ${error.message}`);

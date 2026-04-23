@@ -4,6 +4,7 @@ import { db } from '@/server/db';
 import { verifyTransaction } from '@/server/paystack/client';
 import { signTicket } from '@/server/qr/signPayload';
 import { sendOrderConfirmation } from '@/server/email/orderConfirmation';
+import { buildTicketPdf } from '@/server/tickets/ticketPdf';
 import { captureError } from '@/server/observability';
 import { isSameOrigin, rateLimit } from '@/server/rateLimit';
 import { ticketRefMatches } from '@/lib/ticketAccess';
@@ -171,11 +172,19 @@ export async function POST(
     return NextResponse.json({ status: fresh?.status ?? 'PENDING' });
   }
 
-  // Confirmation email. Best-effort, same pattern as the webhook.
+  // Confirmation email. Best-effort, same pattern as the webhook — PDF
+  // attachment gets built but failures don't block the HTML send.
   try {
     const fresh = await db.order.findUniqueOrThrow({
       where: { id: order.id },
       include: { event: true, items: { include: { ticketType: true } } },
+    });
+    const pdf = await buildTicketPdf(fresh.id).catch((err) => {
+      captureError('[ticket-verify] ticket PDF build failed', err, {
+        orderId: fresh.id,
+        reference: fresh.reference,
+      });
+      return null;
     });
     await sendOrderConfirmation({
       to: fresh.buyerEmail,
@@ -192,6 +201,9 @@ export async function POST(
         quantity: i.quantity,
         unitPriceMinor: i.unitPriceMinor,
       })),
+      attachments: pdf
+        ? [{ filename: pdf.filename, content: pdf.buffer, contentType: 'application/pdf' }]
+        : undefined,
     });
   } catch (err) {
     captureError('[ticket-verify] order confirmation email failed', err, {

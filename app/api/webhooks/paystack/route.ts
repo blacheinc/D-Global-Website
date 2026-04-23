@@ -4,6 +4,7 @@ import { db } from '@/server/db';
 import { verifyPaystackSignature } from '@/server/paystack/verifyWebhook';
 import { signTicket } from '@/server/qr/signPayload';
 import { sendOrderConfirmation } from '@/server/email/orderConfirmation';
+import { buildTicketPdf } from '@/server/tickets/ticketPdf';
 import { captureError } from '@/server/observability';
 
 export const runtime = 'nodejs';
@@ -111,10 +112,24 @@ export async function POST(req: Request) {
       // the user can always reach their tickets via /tickets/[orderId]. A
       // mail-provider outage shouldn't bounce the webhook into a retry
       // (Paystack would re-fire and we'd attempt to mail twice).
+      //
+      // PDF attachment: regenerate inside try/catch and pass as
+      // attachment so the buyer lands with a scannable QR in their
+      // inbox. If PDF rendering fails (hero fetch, pdfkit) we still
+      // send the HTML email — the "View your QR tickets" CTA resolves
+      // the same thing, we just prefer the attachment because it's
+      // cache-friendly and works offline at the door.
       try {
         const fresh = await db.order.findUniqueOrThrow({
           where: { id: order.id },
           include: { event: true, items: { include: { ticketType: true } } },
+        });
+        const pdf = await buildTicketPdf(fresh.id).catch((err) => {
+          captureError('[paystack webhook] ticket PDF build failed', err, {
+            orderId: fresh.id,
+            reference: payload.data.reference,
+          });
+          return null;
         });
         await sendOrderConfirmation({
           to: fresh.buyerEmail,
@@ -131,6 +146,9 @@ export async function POST(req: Request) {
             quantity: i.quantity,
             unitPriceMinor: i.unitPriceMinor,
           })),
+          attachments: pdf
+            ? [{ filename: pdf.filename, content: pdf.buffer, contentType: 'application/pdf' }]
+            : undefined,
         });
       } catch (err) {
         captureError('[paystack webhook] order confirmation email failed', err, {

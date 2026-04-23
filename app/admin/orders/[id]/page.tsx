@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/Badge';
 import { formatEventDateTime } from '@/lib/formatDate';
 import { formatPriceMinor } from '@/lib/formatCurrency';
 import { StatusSelect } from '@/features/admin/components/StatusSelect';
+import { ResendTicketButton } from '@/features/admin/components/ResendTicketButton';
 import { updateOrderStatus } from '@/features/admin/orderActions';
 
 export const dynamic = 'force-dynamic';
@@ -116,6 +117,19 @@ export default async function AdminOrderDetailPage({
         <p className="mt-2 text-xs text-muted">
           PAID → PENDING is blocked server-side to keep the sold-ticket counter consistent.
         </p>
+      </section>
+
+      <section className="mt-12 border-t border-white/10 pt-10 max-w-2xl">
+        <h2 className="mb-4 text-lg font-semibold">Resend tickets</h2>
+        <p className="mb-4 text-xs text-muted">
+          Fires the original confirmation email to {order.buyerEmail} with the ticket PDF attached.
+          Only available once the order is PAID — the QR codes are generated at payment time.
+        </p>
+        <ResendTicketButton
+          orderId={order.id}
+          buyerEmail={order.buyerEmail}
+          disabled={order.status !== 'PAID'}
+        />
       </section>
     </div>
   );

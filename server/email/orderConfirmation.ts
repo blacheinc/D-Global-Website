@@ -1,5 +1,5 @@
 import 'server-only';
-import { sendMail } from '@/server/mailer';
+import { sendMail, type MailAttachment } from '@/server/mailer';
 import { emailLayout, escape } from './layout';
 import { formatPriceMinor } from '@/lib/formatCurrency';
 import { formatEventDateTime } from '@/lib/formatDate';
@@ -17,6 +17,14 @@ export type OrderConfirmationArgs = {
   eventStartsAt: Date;
   venueName: string;
   items: ReadonlyArray<{ name: string; quantity: number; unitPriceMinor: number }>;
+  // Ticket PDF is attached on the happy-path payment-confirmed email
+  // and on admin resends. Left optional so the helper stays usable for
+  // free-to-attend tickets (none today, but keeps the contract honest).
+  attachments?: ReadonlyArray<MailAttachment>;
+  // Prefix on the subject line for admin resends so buyers who have
+  // already seen the original email don't think they've been double-
+  // charged. Leave null for the first-send from the webhook.
+  subjectPrefix?: string | null;
 };
 
 export async function sendOrderConfirmation(args: OrderConfirmationArgs): Promise<void> {
@@ -42,14 +50,24 @@ export async function sendOrderConfirmation(args: OrderConfirmationArgs): Promis
     )
     .join('');
 
+  const hasAttachment = Boolean(args.attachments && args.attachments.length > 0);
+  const eyebrow = args.subjectPrefix ? args.subjectPrefix.toUpperCase() : "You're in";
+  const heading = args.subjectPrefix
+    ? `${escape(firstName)}, here are your tickets again.`
+    : `${escape(firstName)}, your tickets are confirmed.`;
+  const attachmentNote = hasAttachment
+    ? `<p style="margin:0 0 24px 0;color:${brand.muted};font-size:13px;">Your ticket PDF is attached — save it to your phone, you can also scan the QR straight from the attachment at the door.</p>`
+    : '';
+
   const bodyHtml = `
-    <p style="margin:0 0 16px 0;font-size:12px;letter-spacing:0.22em;text-transform:uppercase;color:${brand.accent};">You're in</p>
+    <p style="margin:0 0 16px 0;font-size:12px;letter-spacing:0.22em;text-transform:uppercase;color:${brand.accent};">${escape(eyebrow)}</p>
     <h1 style="margin:0 0 16px 0;font-size:24px;line-height:1.2;font-weight:600;color:${brand.fg};">
-      ${escape(firstName)}, your tickets are confirmed.
+      ${heading}
     </h1>
     <p style="margin:0 0 24px 0;color:${brand.muted};">
       ${escape(args.eventTitle)} · ${escape(formatEventDateTime(args.eventStartsAt))} · ${escape(args.venueName)}
     </p>
+    ${attachmentNote}
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 24px 0;">
       ${itemsHtml}
       <tr>
@@ -81,13 +99,18 @@ export async function sendOrderConfirmation(args: OrderConfirmationArgs): Promis
     `Order reference: ${args.reference}`,
   ].join('\n');
 
+  const subject = args.subjectPrefix
+    ? `${args.subjectPrefix} ${args.eventTitle}`
+    : `You're in, ${args.eventTitle}`;
+  const preheader = args.subjectPrefix
+    ? `Resending your tickets to ${args.eventTitle}.`
+    : `Your tickets to ${args.eventTitle} are confirmed.`;
+
   await sendMail({
     to: args.to,
-    subject: `You're in, ${args.eventTitle}`,
-    html: emailLayout({
-      preheader: `Your tickets to ${args.eventTitle} are confirmed.`,
-      bodyHtml,
-    }),
+    subject,
+    html: emailLayout({ preheader, bodyHtml }),
     text: textBody,
+    attachments: args.attachments,
   });
 }
