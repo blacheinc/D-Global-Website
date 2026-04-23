@@ -55,11 +55,12 @@ export async function sendOrderConfirmation(args: OrderConfirmationArgs): Promis
   const heading = args.subjectPrefix
     ? `${escape(firstName)}, here are your tickets again.`
     : `${escape(firstName)}, your tickets are confirmed.`;
-  const attachmentNote = hasAttachment
-    ? `<p style="margin:0 0 24px 0;color:${brand.muted};font-size:13px;">Your ticket PDF is attached — save it to your phone, you can also scan the QR straight from the attachment at the door.</p>`
-    : '';
 
-  const bodyHtml = `
+  const renderHtml = (withAttachment: boolean) => {
+    const note = withAttachment
+      ? `<p style="margin:0 0 24px 0;color:${brand.muted};font-size:13px;">Your ticket PDF is attached — save it to your phone, you can also scan the QR straight from the attachment at the door.</p>`
+      : `<p style="margin:0 0 24px 0;color:${brand.muted};font-size:13px;">Tap the button below to open your QR tickets and save the PDF to your phone.</p>`;
+    return `
     <p style="margin:0 0 16px 0;font-size:12px;letter-spacing:0.22em;text-transform:uppercase;color:${brand.accent};">${escape(eyebrow)}</p>
     <h1 style="margin:0 0 16px 0;font-size:24px;line-height:1.2;font-weight:600;color:${brand.fg};">
       ${heading}
@@ -67,7 +68,7 @@ export async function sendOrderConfirmation(args: OrderConfirmationArgs): Promis
     <p style="margin:0 0 24px 0;color:${brand.muted};">
       ${escape(args.eventTitle)} · ${escape(formatEventDateTime(args.eventStartsAt))} · ${escape(args.venueName)}
     </p>
-    ${attachmentNote}
+    ${note}
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 24px 0;">
       ${itemsHtml}
       <tr>
@@ -85,6 +86,7 @@ export async function sendOrderConfirmation(args: OrderConfirmationArgs): Promis
     <p style="margin:0;color:${brand.muted};font-size:13px;">
       Order reference: <code style="font-family:Menlo,Monaco,Consolas,monospace;">${escape(args.reference)}</code>
     </p>`;
+  };
 
   const textBody = [
     `${args.eventTitle}, ${formatEventDateTime(args.eventStartsAt)} at ${args.venueName}`,
@@ -106,11 +108,33 @@ export async function sendOrderConfirmation(args: OrderConfirmationArgs): Promis
     ? `Resending your tickets to ${args.eventTitle}.`
     : `Your tickets to ${args.eventTitle} are confirmed.`;
 
-  await sendMail({
-    to: args.to,
-    subject,
-    html: emailLayout({ preheader, bodyHtml }),
-    text: textBody,
-    attachments: args.attachments,
-  });
+  // Attachment-drop fallback. Resend occasionally rejects specific
+  // attachment payloads (size, encoding, something transient we can't
+  // diagnose from their error message). When that happens we still want
+  // the buyer to get *something* in their inbox so they have the
+  // reference + the "View your QR tickets" link — the PDF is always
+  // re-downloadable from /api/tickets/[orderId]/download. Swap the
+  // HTML for the no-attachment variant on the fallback so the copy
+  // matches what actually arrived.
+  try {
+    await sendMail({
+      to: args.to,
+      subject,
+      html: emailLayout({ preheader, bodyHtml: renderHtml(hasAttachment) }),
+      text: textBody,
+      attachments: args.attachments,
+    });
+  } catch (err) {
+    if (!hasAttachment) throw err;
+    console.warn(
+      '[orderConfirmation] attachment send failed, retrying without attachment:',
+      err instanceof Error ? err.message : err,
+    );
+    await sendMail({
+      to: args.to,
+      subject,
+      html: emailLayout({ preheader, bodyHtml: renderHtml(false) }),
+      text: textBody,
+    });
+  }
 }
