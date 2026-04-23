@@ -7,6 +7,7 @@ import { db } from '@/server/db';
 import { requireAdmin } from '@/server/auth';
 import { captureError } from '@/server/observability';
 import { sendOrderConfirmation } from '@/server/email/orderConfirmation';
+import { MailProviderUnavailableError } from '@/server/mailer';
 import { buildTicketPdf } from '@/server/tickets/ticketPdf';
 import { reconcilePaymentWithPaystack } from '@/server/tickets/reconcilePayment';
 
@@ -174,6 +175,13 @@ export async function resendTicketEmail(orderId: string): Promise<ResendTicketRe
     });
   } catch (err) {
     captureError('[admin:resendTicketEmail] send failed', err, { orderId });
+    if (err instanceof MailProviderUnavailableError) {
+      return {
+        ok: false,
+        error:
+          "Our mail provider (Resend) is having issues right now. The order is fine, nothing was double-charged. Try again in a few minutes.",
+      };
+    }
     return { ok: false, error: 'Could not send email. Try again.' };
   }
   return { ok: true };
