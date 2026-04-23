@@ -67,7 +67,7 @@ export function PackageCard({ pkg, selected, onClick }: PackageCardProps) {
         </div>
         {pkg.perks.length > 0 && (
           <ul className="space-y-2 text-sm text-muted">
-            {pkg.perks.slice(0, 4).map((perk) => (
+            {pkg.perks.map((perk) => (
               <li key={perk} className="flex items-start gap-2">
                 <span className="mt-1.5 h-1 w-1 rounded-full bg-accent" />
                 {perk}
