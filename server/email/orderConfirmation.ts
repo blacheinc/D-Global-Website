@@ -22,8 +22,10 @@ export type OrderConfirmationArgs = {
 export async function sendOrderConfirmation(args: OrderConfirmationArgs): Promise<void> {
   // Encode the order ID even though current cuids are [a-z0-9]+, if the
   // ID format ever changes (ULID with dashes, uuid) this keeps the href
-  // valid without another code change.
-  const ticketsUrl = `${env.NEXT_PUBLIC_SITE_URL}/tickets/${encodeURIComponent(args.orderId)}`;
+  // valid without another code change. `?ref=` is the capability token
+  // the ticket page enforces — without it the page shows a lookup form
+  // instead of the QR codes.
+  const ticketsUrl = `${env.NEXT_PUBLIC_SITE_URL}/tickets/${encodeURIComponent(args.orderId)}?ref=${encodeURIComponent(args.reference)}`;
   const firstName = args.buyerName.trim().split(/\s+/)[0] || 'Hey';
   const itemsHtml = args.items
     .map(

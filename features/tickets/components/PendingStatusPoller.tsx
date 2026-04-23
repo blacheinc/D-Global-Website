@@ -23,7 +23,13 @@ const FIRST_TICK_DELAY_MS = 3000;
 const POLL_INTERVAL_MS = 5000;
 const MAX_POLLS = 24;
 
-export function PendingStatusPoller({ orderId }: { orderId: string }) {
+export function PendingStatusPoller({
+  orderId,
+  reference,
+}: {
+  orderId: string;
+  reference: string;
+}) {
   const router = useRouter();
   useEffect(() => {
     let cancelled = false;
@@ -34,6 +40,12 @@ export function PendingStatusPoller({ orderId }: { orderId: string }) {
       try {
         const res = await fetch(`/api/tickets/${orderId}/verify`, {
           method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          // The server requires the reference as a capability token so
+          // nobody can force a Paystack verify round-trip by enumerating
+          // order IDs. The page only renders this component after the
+          // reference check has already passed, so we can safely forward it.
+          body: JSON.stringify({ reference }),
           // Don't cache the verify response; each tick should reflect
           // whatever Paystack + our DB agree on right now.
           cache: 'no-store',
@@ -63,7 +75,7 @@ export function PendingStatusPoller({ orderId }: { orderId: string }) {
       clearTimeout(first);
       clearInterval(interval);
     };
-  }, [orderId, router]);
+  }, [orderId, reference, router]);
 
   return null;
 }

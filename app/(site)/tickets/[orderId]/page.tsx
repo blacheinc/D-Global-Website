@@ -1,21 +1,34 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import type { Metadata } from 'next';
 import { Download } from 'lucide-react';
 import { db } from '@/server/db';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { formatEventDateTime } from '@/lib/formatDate';
 import { formatPriceMinor } from '@/lib/formatCurrency';
+import { ticketRefMatches } from '@/lib/ticketAccess';
 import { PendingStatusPoller } from '@/features/tickets/components/PendingStatusPoller';
 
 export const dynamic = 'force-dynamic';
 
+// Keep ticket pages out of Google / Bing / Archive indexes even if a link
+// leaks. The page also demands ?ref= on every view, but belt-and-braces.
+export const metadata: Metadata = {
+  robots: { index: false, follow: false, nocache: true, googleBot: { index: false, follow: false } },
+};
+
 export default async function TicketPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ orderId: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { orderId } = await params;
+  const sp = await searchParams;
+  const providedRef = typeof sp.ref === 'string' ? sp.ref : null;
+
   const order = await db.order.findUnique({
     where: { id: orderId },
     include: {
@@ -24,6 +37,52 @@ export default async function TicketPage({
     },
   });
   if (!order) notFound();
+
+  // Gate: the orderId alone isn't enough to see tickets. The `reference`
+  // is the capability token, it lives in the success email + Paystack
+  // callback URL. Without a matching ref we render a lookup form instead
+  // of the QR codes / PDF button. Constant-time compare prevents byte-
+  // level timing disclosure of the expected reference.
+  const unlocked = ticketRefMatches(order.reference, providedRef);
+  if (!unlocked) {
+    return (
+      <section className="container-px py-14 md:py-20">
+        <div className="max-w-lg mx-auto space-y-6">
+          <p className="eyebrow">Verify your order</p>
+          <h1 className="font-display text-display-md">Enter your order reference</h1>
+          <p className="text-sm text-muted">
+            Your reference was sent in your confirmation email. It starts with{' '}
+            <span className="font-mono">dg_</span> and is about 30 characters.
+          </p>
+          <form method="get" className="space-y-4">
+            <label className="block">
+              <span className="text-xs uppercase tracking-[0.22em] text-muted">Reference</span>
+              <input
+                name="ref"
+                required
+                autoComplete="off"
+                spellCheck={false}
+                placeholder="dg_…"
+                defaultValue={providedRef ?? ''}
+                className="mt-2 w-full rounded-xl border border-white/10 bg-surface px-4 py-3 font-mono text-sm outline-none focus:border-accent"
+              />
+            </label>
+            {providedRef && (
+              <p className="text-xs text-accent">
+                That reference doesn't match this order. Check your email for the confirmation.
+              </p>
+            )}
+            <Button type="submit" variant="primary">
+              Show my tickets
+            </Button>
+          </form>
+          <p className="text-xs text-muted">
+            Can't find it? Message D Global Entertainment on WhatsApp with your name and event.
+          </p>
+        </div>
+      </section>
+    );
+  }
 
   const isPending = order.status === 'PENDING';
 
@@ -45,7 +104,7 @@ export default async function TicketPage({
             {/* Actively verifies with Paystack + refreshes the page so
                 the status flip lands without the user hitting reload.
                 See component for cadence + cap. */}
-            <PendingStatusPoller orderId={order.id} />
+            <PendingStatusPoller orderId={order.id} reference={order.reference} />
             <div className="rounded-2xl border border-accent/40 bg-accent/10 p-5 text-sm">
               Payment is being confirmed. This page will update automatically. If it doesn't within a
               minute, check your email or contact D Global Entertainment on WhatsApp with reference{' '}
@@ -101,7 +160,7 @@ export default async function TicketPage({
                   download prompt. `download` attr is belt-and-braces;
                   the server header is the real lever. */}
               <a
-                href={`/api/tickets/${order.id}/download`}
+                href={`/api/tickets/${order.id}/download?ref=${encodeURIComponent(order.reference)}`}
                 download={`dglobal-${order.reference}.pdf`}
               >
                 <Download aria-hidden className="h-4 w-4" /> Download ticket

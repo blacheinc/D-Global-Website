@@ -2,6 +2,7 @@ import PDFDocument from 'pdfkit';
 import QRCode from 'qrcode';
 import { db } from '@/server/db';
 import { captureError } from '@/server/observability';
+import { ticketRefMatches } from '@/lib/ticketAccess';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -28,10 +29,13 @@ const BRAND = {
 } as const;
 
 export async function GET(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ orderId: string }> },
 ) {
   const { orderId } = await params;
+  const url = new URL(req.url);
+  const providedRef = url.searchParams.get('ref');
+
   const order = await db.order.findUnique({
     where: { id: orderId },
     include: {
@@ -40,6 +44,14 @@ export async function GET(
     },
   });
   if (!order) return new Response('Order not found', { status: 404 });
+  // Capability check: the orderId is URL-visible (Paystack redirect, email
+  // link, browser history), so it isn't a secret. Require the reference
+  // as well — constant-time compared so we don't leak bytes via timing.
+  // We return 404 on mismatch rather than 403 so an attacker iterating
+  // IDs can't tell real orders from fake ones.
+  if (!ticketRefMatches(order.reference, providedRef)) {
+    return new Response('Not found', { status: 404 });
+  }
   // Unpaid orders don't have qrTokens and shouldn't be printable.
   if (order.status !== 'PAID') return new Response('Order not paid yet', { status: 400 });
 
