@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { db } from '@/server/db';
 import { verifyTransaction } from '@/server/paystack/client';
 import { signTicket } from '@/server/qr/signPayload';
 import { sendOrderConfirmation } from '@/server/email/orderConfirmation';
+import { buildTicketPdf } from '@/server/tickets/ticketPdf';
 import { captureError } from '@/server/observability';
 import { isSameOrigin, rateLimit } from '@/server/rateLimit';
+import { ticketRefMatches } from '@/lib/ticketAccess';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -33,6 +36,10 @@ export const dynamic = 'force-dynamic';
 //     ensures we never double-flip if the webhook arrives between the
 //     find-order and the transaction.
 
+const bodySchema = z.object({
+  reference: z.string().trim().min(1).max(128),
+});
+
 export async function POST(
   req: Request,
   { params }: { params: Promise<{ orderId: string }> },
@@ -48,12 +55,32 @@ export async function POST(
     );
   }
 
+  // Require the reference alongside the orderId. Same-origin + rate limit
+  // already block drive-by abuse; the reference makes order-ID enumeration
+  // (tell me which IDs are real orders) and trigger-on-behalf (force a
+  // Paystack verify round-trip for someone else's order) both useless to
+  // an attacker who only knows the ID.
+  let rawBody: unknown;
+  try {
+    rawBody = await req.json();
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+  }
+  const parsed = bodySchema.safeParse(rawBody);
+  if (!parsed.success) {
+    return NextResponse.json({ error: 'Missing reference' }, { status: 400 });
+  }
+
   const { orderId } = await params;
   const order = await db.order.findUnique({
     where: { id: orderId },
     include: { items: true },
   });
-  if (!order) return NextResponse.json({ error: 'Order not found' }, { status: 404 });
+  // Return 404 on either missing or mismatched reference — same shape
+  // so an attacker can't enumerate which orderIds exist.
+  if (!order || !ticketRefMatches(order.reference, parsed.data.reference)) {
+    return NextResponse.json({ error: 'Order not found' }, { status: 404 });
+  }
 
   // Fast path: the webhook already won. No Paystack round-trip needed.
   if (order.status === 'PAID') {
@@ -145,11 +172,19 @@ export async function POST(
     return NextResponse.json({ status: fresh?.status ?? 'PENDING' });
   }
 
-  // Confirmation email. Best-effort, same pattern as the webhook.
+  // Confirmation email. Best-effort, same pattern as the webhook — PDF
+  // attachment gets built but failures don't block the HTML send.
   try {
     const fresh = await db.order.findUniqueOrThrow({
       where: { id: order.id },
       include: { event: true, items: { include: { ticketType: true } } },
+    });
+    const pdf = await buildTicketPdf(fresh.id).catch((err) => {
+      captureError('[ticket-verify] ticket PDF build failed', err, {
+        orderId: fresh.id,
+        reference: fresh.reference,
+      });
+      return null;
     });
     await sendOrderConfirmation({
       to: fresh.buyerEmail,
@@ -166,6 +201,9 @@ export async function POST(
         quantity: i.quantity,
         unitPriceMinor: i.unitPriceMinor,
       })),
+      attachments: pdf
+        ? [{ filename: pdf.filename, content: pdf.buffer, contentType: 'application/pdf' }]
+        : undefined,
     });
   } catch (err) {
     captureError('[ticket-verify] order confirmation email failed', err, {
