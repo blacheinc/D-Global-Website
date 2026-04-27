@@ -9,7 +9,7 @@ import { formatPriceMinor } from '@/lib/formatCurrency';
 async function getStats() {
   const since = new Date();
   since.setDate(since.getDate() - 30);
-  const [events, bookings, paidOrders, paidAgg] = await Promise.all([
+  const [events, bookings, paidOrders, paidAgg, ticketUnits] = await Promise.all([
     db.event.count(),
     db.booking.count(),
     db.order.count({ where: { status: 'PAID' } }),
@@ -17,11 +17,19 @@ async function getStats() {
       where: { status: 'PAID', paidAt: { gte: since } },
       _sum: { totalMinor: true },
     }),
+    // Tickets sold = sum of OrderItem.quantity across PAID orders.
+    // Same source the public event pages use for `sold`-counter
+    // displays, so the dashboard matches what buyers see.
+    db.orderItem.aggregate({
+      where: { order: { status: 'PAID' } },
+      _sum: { quantity: true },
+    }),
   ]);
   return {
     events,
     bookings,
     paidOrders,
+    ticketsSold: ticketUnits._sum.quantity ?? 0,
     revenueLast30: paidAgg._sum.totalMinor ?? 0,
   };
 }
@@ -32,6 +40,7 @@ export default async function AdminHomePage() {
     { label: 'Events', value: stats.events.toLocaleString('en-GH'), href: '/admin/events' },
     { label: 'Bookings', value: stats.bookings.toLocaleString('en-GH'), href: '/admin/bookings' },
     { label: 'Paid orders', value: stats.paidOrders.toLocaleString('en-GH'), href: '/admin/orders' },
+    { label: 'Tickets sold', value: stats.ticketsSold.toLocaleString('en-GH'), href: '/admin/orders' },
     {
       label: 'Revenue · 30d',
       value: formatPriceMinor(stats.revenueLast30),
@@ -44,7 +53,7 @@ export default async function AdminHomePage() {
         <h1 className="text-3xl font-semibold tracking-tight">Overview</h1>
         <p className="mt-2 text-sm text-muted">A quick read on the night.</p>
       </header>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         {tiles.map((tile) => (
           <Link key={tile.label} href={tile.href} className="block">
             <Card className="p-6">
