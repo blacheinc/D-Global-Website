@@ -10,6 +10,7 @@ import { sendOrderConfirmation } from '@/server/email/orderConfirmation';
 import { MailProviderUnavailableError } from '@/server/mailer';
 import { buildTicketPdf } from '@/server/tickets/ticketPdf';
 import { reconcilePaymentWithPaystack } from '@/server/tickets/reconcilePayment';
+import { signTicket } from '@/server/qr/signPayload';
 
 // Manual order status override. The Paystack webhook does the happy-path
 // flip PENDING → PAID automatically; this action covers the ops
@@ -49,7 +50,12 @@ export async function updateOrderStatus(
     select: {
       status: true,
       eventId: true,
-      items: { select: { ticketTypeId: true, quantity: true } },
+      // qrToken is needed so the entering-PAID branch can issue tokens
+      // for items that don't have one yet, and skip items that already
+      // do (e.g. an order being flipped REFUNDED → PAID after an
+      // accidental refund — keep the original tokens so the buyer's
+      // existing QR still validates).
+      items: { select: { id: true, ticketTypeId: true, quantity: true, qrToken: true } },
     },
   });
   if (!order) return { ok: false, error: 'Order not found.' };
@@ -74,11 +80,27 @@ export async function updateOrderStatus(
   const leavingPaid = order.status === 'PAID' && parsed.data.status !== 'PAID';
   const enteringPaid = order.status !== 'PAID' && parsed.data.status === 'PAID';
 
+  // When admin manually flips an order into PAID (e.g. recovering a
+  // FAILED order after confirming the buyer actually paid, or
+  // resolving a webhook no-show), we must mirror everything the
+  // webhook does: bump the sold counter AND sign QR tokens. Without
+  // the QR step the resend email lands with blank QR slots because
+  // buildTicketPdf maps OrderItem.qrToken === null to an empty
+  // canvas. Only sign items that don't already have a token so flips
+  // through PAID more than once (REFUNDED → PAID, etc.) keep the
+  // buyer's original QR working.
+  const itemsNeedingTokens = enteringPaid
+    ? order.items.filter((item) => !item.qrToken)
+    : [];
+
   try {
     await db.$transaction([
       db.order.update({
         where: { id },
-        data: { status: parsed.data.status },
+        data: {
+          status: parsed.data.status,
+          ...(enteringPaid ? { paidAt: new Date() } : {}),
+        },
       }),
       ...(leavingPaid
         ? order.items.map((item) =>
@@ -96,6 +118,19 @@ export async function updateOrderStatus(
             }),
           )
         : []),
+      ...itemsNeedingTokens.map((item) =>
+        db.orderItem.update({
+          where: { id: item.id },
+          data: {
+            qrToken: signTicket({
+              orderItemId: item.id,
+              orderId: id,
+              eventId: order.eventId,
+              issuedAt: Date.now(),
+            }),
+          },
+        }),
+      ),
     ]);
   } catch (err) {
     captureError('[admin:updateOrderStatus]', err, { id });

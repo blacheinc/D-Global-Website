@@ -2,6 +2,7 @@ import 'server-only';
 import PDFDocument from 'pdfkit';
 import QRCode from 'qrcode';
 import { db } from '@/server/db';
+import { signTicket } from '@/server/qr/signPayload';
 import { captureError } from '@/server/observability';
 
 // Single source of truth for the ticket PDF. Both the user-facing
@@ -33,6 +34,50 @@ export async function buildTicketPdf(orderId: string): Promise<TicketPdfResult |
     },
   });
   if (!order || order.status !== 'PAID') return null;
+
+  // Defensive backfill: any PAID order whose line items don't have a
+  // qrToken yet gets one signed now. The webhook + verify backstop +
+  // reconcile path all sign at the moment they flip status; the only
+  // way to land here without a token is a code path that flipped to
+  // PAID without doing it (historically: admin status overrides
+  // pre-fix). Without this, the PDF would render a blank QR slot for
+  // those items and the buyer would have a useless ticket.
+  const itemsMissingTokens = order.items.filter((it) => !it.qrToken);
+  if (itemsMissingTokens.length > 0) {
+    try {
+      const signed = await db.$transaction(
+        itemsMissingTokens.map((it) =>
+          db.orderItem.update({
+            where: { id: it.id },
+            data: {
+              qrToken: signTicket({
+                orderItemId: it.id,
+                orderId: order.id,
+                eventId: order.eventId,
+                issuedAt: Date.now(),
+              }),
+            },
+            select: { id: true, qrToken: true },
+          }),
+        ),
+      );
+      // Mirror the freshly-signed tokens onto the in-memory items so
+      // the rest of this function renders QRs for them without a
+      // re-read round-trip.
+      for (const s of signed) {
+        const target = order.items.find((it) => it.id === s.id);
+        if (target) target.qrToken = s.qrToken;
+      }
+    } catch (err) {
+      captureError('[ticket-pdf] qr backfill failed', err, {
+        orderId,
+        missingCount: itemsMissingTokens.length,
+      });
+      // Fall through with whatever tokens we do have; the QR-encode
+      // step below will skip null tokens. Better than throwing — the
+      // PDF still has the buyer's reference + event details.
+    }
+  }
 
   // Fetch hero once, render one QR per line item (qrToken lives on the
   // line item, scanners validate by scan count, not serial).
