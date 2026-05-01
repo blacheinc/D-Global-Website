@@ -14,7 +14,7 @@ import { PlausibleScript } from '@/components/analytics/PlausibleScript';
 
 export default function SiteLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="pb-[calc(5rem_+_env(safe-area-inset-bottom))] md:pb-0">
+    <div>
       {/* focus-visible keeps it off-screen for mouse clicks. Chrome
           still sometimes matches it after DevTools/tab-switch focus
           restoration, though, so we also position it BELOW the fixed
