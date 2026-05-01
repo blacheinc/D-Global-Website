@@ -12,7 +12,10 @@ interface EventCardProps {
 }
 
 export function EventCard({ event, priority }: EventCardProps) {
-  const cheapest = event.ticketTypes[0];
+  // ticketTypes is sorted by priceMinor asc upstream; find the first
+  // one with capacity left so a sold-out cheapest tier doesn't keep
+  // advertising its price after no buyer can hit that bucket.
+  const cheapest = event.ticketTypes.find((t) => t.sold < t.quota);
   return (
     <Link
       href={`/events/${event.slug}`}
