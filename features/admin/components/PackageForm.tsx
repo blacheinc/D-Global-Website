@@ -131,7 +131,7 @@ export function PackageForm({ initial }: { initial?: Initial }) {
           />
           <FieldError>{fe.bottlesIncl?.[0]}</FieldError>
         </div>
-        <div className="flex items-end">
+        <div className="flex items-end gap-6 flex-wrap">
           <label className="inline-flex items-center gap-3 text-sm">
             <input
               type="checkbox"
@@ -140,6 +140,15 @@ export function PackageForm({ initial }: { initial?: Initial }) {
               className="h-4 w-4 accent-accent"
             />
             Active (visible on /bookings)
+          </label>
+          <label className="inline-flex items-center gap-3 text-sm">
+            <input
+              type="checkbox"
+              name="soldOut"
+              defaultChecked={initial?.soldOut ?? false}
+              className="h-4 w-4 accent-accent"
+            />
+            Sold out (still visible, not reservable)
           </label>
         </div>
       </div>

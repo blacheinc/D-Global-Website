@@ -11,17 +11,26 @@ interface PackageCardProps {
 }
 
 export function PackageCard({ pkg, selected, onClick }: PackageCardProps) {
+  // Sold-out packages stay on the page (so visitors see the full
+  // line-up and which tiers are unavailable today) but lose
+  // selectability + visual emphasis. Hover styles drop, click is
+  // disabled, and a badge lands above the price.
+  const soldOut = pkg.soldOut;
   return (
     <button
       type="button"
-      onClick={onClick}
+      onClick={soldOut ? undefined : onClick}
+      disabled={soldOut}
+      aria-disabled={soldOut}
       className={cn(
         'group relative w-full text-left rounded-2xl overflow-hidden border bg-surface card-lift',
-        selected
-          ? 'border-accent shadow-glow-sm'
-          : 'border-white/10 hover:border-white/20',
+        soldOut
+          ? 'border-white/10 opacity-70 cursor-not-allowed'
+          : selected
+            ? 'border-accent shadow-glow-sm'
+            : 'border-white/10 hover:border-white/20',
       )}
-      aria-pressed={selected}
+      aria-pressed={!soldOut && selected}
     >
       <div className="relative aspect-[4/3]">
         {pkg.heroImage && (
@@ -31,7 +40,11 @@ export function PackageCard({ pkg, selected, onClick }: PackageCardProps) {
             aria-hidden
             fill
             sizes="(min-width: 768px) 33vw, 100vw"
-            className="object-cover transition-transform duration-700 group-hover:scale-105"
+            className={cn(
+              'object-cover transition-transform duration-700',
+              !soldOut && 'group-hover:scale-105',
+              soldOut && 'grayscale',
+            )}
           />
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/30 to-transparent" />
@@ -40,7 +53,14 @@ export function PackageCard({ pkg, selected, onClick }: PackageCardProps) {
             {pkg.tier}
           </span>
         </div>
-        {selected && (
+        {soldOut && (
+          <div className="absolute top-4 right-4">
+            <span className="inline-flex items-center rounded-full bg-accent px-3 py-1 text-[10px] uppercase tracking-[0.3em] text-white">
+              Sold out
+            </span>
+          </div>
+        )}
+        {!soldOut && selected && (
           <div
             aria-hidden
             className="absolute top-4 right-4 grid h-8 w-8 place-items-center rounded-full bg-accent text-white"

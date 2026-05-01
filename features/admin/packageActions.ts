@@ -28,6 +28,7 @@ const packageSchema = z.object({
   bottlesIncl: z.coerce.number().int().min(0).max(100).default(0),
   heroImage: z.string().url().max(500).optional(),
   active: z.preprocess((v) => v === 'on' || v === true || v === 'true', z.boolean()),
+  soldOut: z.preprocess((v) => v === 'on' || v === true || v === 'true', z.boolean()),
 });
 
 export type PackageFormState = {
@@ -92,6 +93,7 @@ export async function upsertPackage(
     bottlesIncl: data.bottlesIncl,
     heroImage: data.heroImage ?? null,
     active: data.active,
+    soldOut: data.soldOut,
   };
   try {
     if (id) await db.package.update({ where: { id }, data: payload });
