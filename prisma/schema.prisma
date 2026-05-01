@@ -232,6 +232,7 @@ model Package {
   bottlesIncl Int           @default(0)
   heroImage   String?
   active      Boolean       @default(true)
+  soldOut     Boolean       @default(false)
   bookings    Booking[]
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt

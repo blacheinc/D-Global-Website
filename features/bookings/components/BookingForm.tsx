@@ -27,9 +27,15 @@ export function BookingForm({
   defaultPackageTier,
   defaultEventId,
 }: BookingFormProps) {
-  const [selectedPkgId, setSelectedPkgId] = useState<string | null>(
-    packages.find((p) => p.tier === defaultPackageTier)?.id ?? packages[0]?.id ?? null,
-  );
+  // Default to the requested tier if it's still bookable; otherwise the
+  // first non-sold-out package; otherwise nothing. PackageCard already
+  // refuses clicks on sold-out cards, but auto-selecting one here would
+  // be a confusing "you're booking a sold-out tier" initial state.
+  const [selectedPkgId, setSelectedPkgId] = useState<string | null>(() => {
+    const requested = packages.find((p) => p.tier === defaultPackageTier && !p.soldOut);
+    if (requested) return requested.id;
+    return packages.find((p) => !p.soldOut)?.id ?? null;
+  });
   const [partySize, setPartySize] = useState(4);
   const [eventId, setEventId] = useState(defaultEventId ?? '');
   const [guestName, setGuestName] = useState('');
@@ -70,7 +76,10 @@ export function BookingForm({
               key={pkg.id}
               pkg={pkg}
               selected={pkg.id === selectedPkgId}
-              onClick={() => setSelectedPkgId(pkg.id)}
+              onClick={() => {
+                if (pkg.soldOut) return;
+                setSelectedPkgId(pkg.id);
+              }}
             />
           ))}
         </div>

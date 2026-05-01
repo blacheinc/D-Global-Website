@@ -43,8 +43,21 @@ export async function VIPStrip() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {packages.map((pkg, i) => (
             <Reveal key={pkg.id} delay={i * 0.08}>
-              <div className="group h-full rounded-2xl border border-white/10 bg-surface/80 backdrop-blur p-6 md:p-8 card-lift">
-                <p className="text-[10px] uppercase tracking-[0.3em] text-accent">{pkg.tier}</p>
+              <div
+                className={
+                  pkg.soldOut
+                    ? 'group h-full rounded-2xl border border-white/10 bg-surface/80 backdrop-blur p-6 md:p-8 opacity-70'
+                    : 'group h-full rounded-2xl border border-white/10 bg-surface/80 backdrop-blur p-6 md:p-8 card-lift'
+                }
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-[10px] uppercase tracking-[0.3em] text-accent">{pkg.tier}</p>
+                  {pkg.soldOut && (
+                    <span className="inline-flex items-center rounded-full bg-accent px-2.5 py-1 text-[10px] uppercase tracking-[0.3em] text-white">
+                      Sold out
+                    </span>
+                  )}
+                </div>
                 <h3 className="mt-2 font-display text-2xl md:text-3xl">{pkg.name}</h3>
                 {pkg.tagline && <p className="mt-2 text-sm text-muted">{pkg.tagline}</p>}
                 <div className="mt-5 pt-5 border-t border-white/10">
@@ -59,13 +72,19 @@ export async function VIPStrip() {
                     </li>
                   ))}
                 </ul>
-                <Link
-                  href={`/bookings?pkg=${pkg.tier}`}
-                  className="mt-6 inline-flex items-center gap-1.5 text-sm text-foreground group-hover:text-accent transition-colors"
-                >
-                  Reserve {pkg.name}
-                  <span aria-hidden>→</span>
-                </Link>
+                {pkg.soldOut ? (
+                  <p className="mt-6 text-sm text-muted">
+                    Currently unavailable. Check back next drop.
+                  </p>
+                ) : (
+                  <Link
+                    href={`/bookings?pkg=${pkg.tier}`}
+                    className="mt-6 inline-flex items-center gap-1.5 text-sm text-foreground group-hover:text-accent transition-colors"
+                  >
+                    Reserve {pkg.name}
+                    <span aria-hidden>→</span>
+                  </Link>
+                )}
               </div>
             </Reveal>
           ))}

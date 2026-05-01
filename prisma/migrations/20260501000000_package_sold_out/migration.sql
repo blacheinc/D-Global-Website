@@ -1,0 +1,1 @@
+ALTER TABLE "Package" ADD COLUMN "soldOut" BOOLEAN NOT NULL DEFAULT false;

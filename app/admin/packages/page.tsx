@@ -34,7 +34,7 @@ export default async function AdminPackagesPage() {
                 <th scope="col" className="px-4 py-3 font-medium">Price</th>
                 <th scope="col" className="px-4 py-3 font-medium">Max guests</th>
                 <th scope="col" className="px-4 py-3 font-medium">Bookings</th>
-                <th scope="col" className="px-4 py-3 font-medium">Active</th>
+                <th scope="col" className="px-4 py-3 font-medium">Status</th>
                 <th scope="col" className="px-4 py-3 font-medium" />
               </tr>
             </thead>
@@ -51,7 +51,10 @@ export default async function AdminPackagesPage() {
                   <td className="px-4 py-3 text-muted">{p.maxGuests}</td>
                   <td className="px-4 py-3 text-muted">{p._count.bookings}</td>
                   <td className="px-4 py-3">
-                    <Badge>{p.active ? 'Active' : 'Paused'}</Badge>
+                    <div className="flex flex-wrap gap-1.5">
+                      <Badge>{p.active ? 'Active' : 'Paused'}</Badge>
+                      {p.soldOut && <Badge tone="accent">Sold out</Badge>}
+                    </div>
                   </td>
                   <td className="px-4 py-3 text-right">
                     <DeletePackageButton id={p.id} name={p.name} />
