@@ -25,7 +25,7 @@ const resend = env.RESEND_API_KEY ? new Resend(env.RESEND_API_KEY) : null;
 export type MailAttachment = {
   filename: string;
   content: Buffer;
-  // contentType is optional — Resend infers from the extension when
+  // contentType is optional, Resend infers from the extension when
   // absent, but we set it explicitly for ticket PDFs so inline previews
   // work in Gmail / Apple Mail.
   contentType?: string;
@@ -57,7 +57,7 @@ function sanitizeHeader(value: string): string {
 // Resend's API occasionally returns 5xx under load ("Internal server
 // error. We are unable to process your request right now, please try
 // again later.") and sometimes chokes on specific attachment payloads.
-// Neither is deterministic — the same request will usually succeed on
+// Neither is deterministic, the same request will usually succeed on
 // a second attempt. Classify based on the error message so we only
 // retry transient failures, not validation errors (bad email, attachment
 // too large, etc.) that will fail the same way every time.
@@ -126,7 +126,7 @@ export async function sendMail(args: SendMailArgs): Promise<void> {
   // Retry transient 5xx with exponential backoff. Three attempts (one
   // original + two retries) at 500ms/1500ms rides out ~2s Resend
   // wobbles, which is the majority of their hiccups. A sustained
-  // outage longer than that will still surface — callers
+  // outage longer than that will still surface, callers
   // (sendOrderConfirmation) can then decide whether to degrade.
   // Non-transient errors (bad email, payload too large, auth) fail
   // immediately since retrying them is pointless.

@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic';
 
 const PAGE_SIZE = 50;
 
-// By default the dashboard shows only PAID orders — those are the
+// By default the dashboard shows only PAID orders, those are the
 // actually-sold tickets operations care about. Pending/failed/expired
 // rows are inventory noise (most are abandoned carts), but ops still
 // occasionally need them (stuck-payment investigations, reconciling a
@@ -47,7 +47,7 @@ export default async function AdminOrdersPage({
   const query = parseQuery(sp.q);
 
   // Build the where clause. Status filter is AND; the text search ORs
-  // across the fields ops actually types into a search box — reference
+  // across the fields ops actually types into a search box, reference
   // (the dg_<hex> buyer quotes back), buyer name, email, phone, and
   // event title (a buyer says "I bought for Uncle Waffles"). `contains`
   // with mode:'insensitive' is fine at our volume; swap to a trigram
@@ -63,6 +63,10 @@ export default async function AdminOrdersPage({
           { buyerEmail: { contains: query, mode: 'insensitive' } },
           { buyerPhone: { contains: query, mode: 'insensitive' } },
           { event: { title: { contains: query, mode: 'insensitive' } } },
+          // Comp note is admin-only context (never shown to buyer);
+          // searching it lets ops jump back to "Ama's birthday" or
+          // "Pulse press review" by typing the keyword.
+          { compNote: { contains: query, mode: 'insensitive' } },
         ],
       }
     : {};
@@ -207,7 +211,10 @@ export default async function AdminOrdersPage({
                   <td className="px-4 py-3">{o.items.reduce((sum, i) => sum + i.quantity, 0)}</td>
                   <td className="px-4 py-3">{formatPriceMinor(o.totalMinor, o.currency)}</td>
                   <td className="px-4 py-3">
-                    <Badge>{o.status}</Badge>
+                    <div className="flex flex-wrap gap-1.5">
+                      <Badge>{o.status}</Badge>
+                      {o.isComplimentary && <Badge tone="accent">Comp</Badge>}
+                    </div>
                   </td>
                   <td className="px-4 py-3 text-muted">{formatEventDateTime(o.createdAt)}</td>
                 </tr>

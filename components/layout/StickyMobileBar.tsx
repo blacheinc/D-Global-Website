@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { Ticket, Wine } from 'lucide-react';
 
 // Mobile-only bottom bar with the two highest-intent CTAs. Restricted
-// to the home page only — on every other route the user has already
+// to the home page only, on every other route the user has already
 // landed on something more specific (the events list, a single event,
 // the bookings form), and the sticky bar just covers content. The
 // home page is the one place visitors land without a clear path.

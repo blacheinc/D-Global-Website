@@ -24,7 +24,7 @@ export const dynamic = 'force-dynamic';
 // On success we atomically flip OrderItem.scannedAt. If it was already
 // set we return { scanned: true, alreadyScanned: true, scannedAt } so
 // the scanner UI can flag a duplicate/repeat entry. Order.status must
-// be PAID — refunded/failed orders aren't valid even if the QR was
+// be PAID, refunded/failed orders aren't valid even if the QR was
 // previously signed.
 
 const bodySchema = z.object({
@@ -62,8 +62,8 @@ export async function POST(
       { status: 403 },
     );
   }
-  // Rate-limit is generous — a real scanner doing many tickets back-
-  // to-back shouldn't hit it — but enough to stop a compromised link
+  // Rate-limit is generous, a real scanner doing many tickets back-
+  // to-back shouldn't hit it, but enough to stop a compromised link
   // being used to brute-force enumerate QR tokens. 120/min/IP.
   const rl = rateLimit(req, 'scan-verify', 120, 60 * 1000);
   if (!rl.ok) {
@@ -152,7 +152,7 @@ export async function POST(
       });
       effectiveScannedAt = updated.scannedAt;
     } catch (err) {
-      // Concurrent gate scan won the race — treat as already-scanned.
+      // Concurrent gate scan won the race, treat as already-scanned.
       captureError('[scan:verify] scannedAt race', err, {
         orderItemId: item.id,
       });

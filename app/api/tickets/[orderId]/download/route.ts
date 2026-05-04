@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 
 // One-click ticket PDF download. The ticket page's "Download ticket"
 // button hits this endpoint; the browser receives a Content-Disposition
-// attachment and saves the file — no print dialog.
+// attachment and saves the file, no print dialog.
 //
 // Access gate: the orderId is URL-visible (Paystack redirect, email,
 // history) and not secret. The reference (128-bit randomUUID) is the
@@ -23,7 +23,12 @@ export async function GET(
 ) {
   const { orderId } = await params;
   const url = new URL(req.url);
-  const providedRef = url.searchParams.get('ref');
+  // Trim because the ?ref= comes from a URL the buyer might have
+  // pasted into a new tab, often with a stray leading space. The
+  // exact-match comparison would otherwise silently 404. Server-side
+  // trim is safe (field is exact-match) and keeps the happy path
+  // forgiving without changing the security posture.
+  const providedRef = url.searchParams.get('ref')?.trim() ?? null;
 
   const order = await db.order.findUnique({
     where: { id: orderId },

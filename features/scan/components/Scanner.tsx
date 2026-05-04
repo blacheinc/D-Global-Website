@@ -6,14 +6,14 @@ import { Check, X, AlertTriangle, Camera, RefreshCw } from 'lucide-react';
 // Camera-based QR scanner for gate crew.
 //
 // Detection backends (tried in order):
-//   1. Native BarcodeDetector — Chrome, recent Edge, some Android.
+//   1. Native BarcodeDetector, Chrome, recent Edge, some Android.
 //      Hardware-accelerated where supported, cheaper on battery.
-//   2. jsqr fallback — pure JS, ~40KB gzipped, lazy-loaded the first
+//   2. jsqr fallback, pure JS, ~40KB gzipped, lazy-loaded the first
 //      time a browser without BarcodeDetector hits the page. Works on
 //      Safari / iOS Safari / Firefox / anything with getUserMedia.
 //
 // Permission flow: getUserMedia is always called on the user-gesture
-// click of the Start button, BEFORE any capability decision — so the
+// click of the Start button, BEFORE any capability decision, so the
 // OS-level camera prompt appears even on browsers where the JS
 // decoder story is weird. Detection backend is picked after the
 // stream is running; if neither works we fall through to a clear
@@ -51,13 +51,13 @@ const DEBOUNCE_MS = 2500;
 // Detect user agents that are known-problematic for getUserMedia on
 // Android. These in-app WebViews either don't declare the CAMERA
 // permission in their host app's manifest or disable the API at the
-// WebView level. The list is deliberately Android-focused — iOS
+// WebView level. The list is deliberately Android-focused, iOS
 // "in-app" browsers use SFSafariViewController or standard WKWebView
 // which inherit the OS camera grant and work fine.
 function isProblemInAppBrowser(): boolean {
   if (typeof navigator === 'undefined') return false;
   const ua = navigator.userAgent || '';
-  // Only fire the guard on Android — iOS paths go to Safari.
+  // Only fire the guard on Android, iOS paths go to Safari.
   if (!/Android/i.test(ua)) return false;
   // WhatsApp, Facebook (FBAN/FBAV), Instagram, TikTok, Line, WeChat,
   // Messenger. LinkedIn / Twitter also ship their own; catch the common
@@ -117,7 +117,7 @@ export function Scanner({ token, eventTitle }: { token: string; eventTitle: stri
           else navigator.vibrate([120, 60, 120]);
         }
       } catch {
-        const fail: ShownResult = { kind: 'fail', message: 'Network error — try again.' };
+        const fail: ShownResult = { kind: 'fail', message: 'Network error, try again.' };
         shownRef.current = fail;
         setShown(fail);
       }
@@ -136,7 +136,7 @@ export function Scanner({ token, eventTitle }: { token: string; eventTitle: stri
     }
   }, []);
 
-  // Decoder picker — runs AFTER getUserMedia so permission has already
+  // Decoder picker, runs AFTER getUserMedia so permission has already
   // been prompted. Prefers native BarcodeDetector; falls back to jsqr
   // (dynamic-imported so the ~40KB only ships to browsers that need it).
   const pickDecoder = useCallback(async (): Promise<DecodeFn | null> => {
@@ -156,7 +156,7 @@ export function Scanner({ token, eventTitle }: { token: string; eventTitle: stri
           }
         };
       } catch {
-        // Constructor can throw on partially-implemented builds — fall
+        // Constructor can throw on partially-implemented builds, fall
         // through to jsqr.
       }
     }
@@ -200,7 +200,7 @@ export function Scanner({ token, eventTitle }: { token: string; eventTitle: stri
     // app didn't declare CAMERA permission, or its WebView has the
     // feature disabled. The prompt never fires and everything looks
     // broken. Catch this before trying so we can route the user to
-    // their system browser. iOS doesn't have the same issue — in-app
+    // their system browser. iOS doesn't have the same issue, in-app
     // browsers there run through SFSafariViewController / real WKWebView
     // which inherit the OS camera grant.
     if (isProblemInAppBrowser()) {
@@ -448,10 +448,10 @@ function OpenInBrowserHelper() {
         onClick={copy}
         className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/15 bg-white/5 px-5 py-3 text-sm font-medium text-foreground hover:bg-white/10"
       >
-        {copied ? 'Link copied — paste into Chrome' : 'Copy link'}
+        {copied ? 'Link copied, paste into Chrome' : 'Copy link'}
       </button>
       <p className="text-[11px] text-muted leading-relaxed">
-        The tap may ask you to pick a browser — choose Chrome, Samsung Internet, Firefox, or
+        The tap may ask you to pick a browser, choose Chrome, Samsung Internet, Firefox, or
         another browser that supports camera access.
       </p>
     </div>
@@ -487,7 +487,7 @@ function ResultPanel({ shown, onDismiss }: { shown: ShownResult; onDismiss: () =
       return {
         tone: 'ok',
         Icon: Check,
-        headline: 'Valid — let them in',
+        headline: 'Valid, let them in',
         body: (
           <>
             <p className="text-lg font-medium text-foreground">{shown.result.attendee}</p>
@@ -548,7 +548,7 @@ function ResultPanel({ shown, onDismiss }: { shown: ShownResult; onDismiss: () =
       aria-labelledby="scan-result-headline"
       className="fixed inset-0 z-50 flex items-end justify-center sm:items-center"
     >
-      {/* Backdrop. Clicking it dismisses — staff can tap anywhere
+      {/* Backdrop. Clicking it dismisses, staff can tap anywhere
           outside the card to return to scanning. Tinted to the result
           tone so the colour reads at a glance from across the door. */}
       <button

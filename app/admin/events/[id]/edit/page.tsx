@@ -34,6 +34,12 @@ export default async function AdminEventEditPage({ params }: { params: Promise<{
             Scanner links →
           </Link>
           <Link
+            href={`/admin/events/${id}/comps`}
+            className="text-accent hover:text-accent-hot"
+          >
+            Comp tickets →
+          </Link>
+          <Link
             href={`/events/${event.slug}`}
             target="_blank"
             rel="noopener noreferrer"

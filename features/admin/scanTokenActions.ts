@@ -6,7 +6,7 @@ import { db } from '@/server/db';
 import { requireAdmin } from '@/server/auth';
 import { captureError } from '@/server/observability';
 
-// Admin CRUD for EventScanToken — tokenised "/scan/[token]" URLs that
+// Admin CRUD for EventScanToken, tokenised "/scan/[token]" URLs that
 // let the gate crew validate tickets on their phones without needing
 // a full admin session. Each row's `token` is an unguessable cuid;
 // the public scan page validates existence + !revokedAt + (optional)
@@ -68,7 +68,7 @@ export async function revokeScanToken(
 ): Promise<RevokeScanTokenResult> {
   await requireAdmin();
   try {
-    // Flip revokedAt rather than deleting — lets us still show the link
+    // Flip revokedAt rather than deleting, lets us still show the link
     // row with a "revoked" badge so admins know it existed, and lets
     // the scanner page return a clear "this link was revoked" error
     // instead of a generic 404.

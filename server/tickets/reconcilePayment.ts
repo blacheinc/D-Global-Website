@@ -18,7 +18,7 @@ import { captureError } from '@/server/observability';
 //
 // Idempotent: every write gates on order.status !== 'PAID', so calling
 // this when the webhook has already won is a no-op that returns
-// { kind: 'already-paid' }. Same fraud posture as the webhook — an
+// { kind: 'already-paid' }. Same fraud posture as the webhook, an
 // amount mismatch flags the order FAILED instead of issuing tickets.
 
 export type ReconcileResult =
@@ -37,7 +37,7 @@ export async function reconcilePaymentWithPaystack(orderId: string): Promise<Rec
   if (!order) return { kind: 'paystack-error', message: 'Order not found.' };
 
   if (order.status === 'PAID') return { kind: 'already-paid' };
-  // REFUNDED / FAILED / EXPIRED are terminal from our side — Paystack
+  // REFUNDED / FAILED / EXPIRED are terminal from our side, Paystack
   // might still report 'success' on the underlying transaction but
   // re-issuing tickets would desync the sold counter (the admin took
   // an action to move us out of PAID). Surface the terminal state to
@@ -61,10 +61,10 @@ export async function reconcilePaymentWithPaystack(orderId: string): Promise<Rec
   const upstreamStatus = verifyResult.data.status;
   if (upstreamStatus !== 'success') {
     // Paystack statuses we care about:
-    //   'pending' — still settling (usually 3DS in progress)
-    //   'failed' — declined at the gateway / issuer
-    //   'reversed' — chargeback
-    //   'abandoned' — user closed the checkout without completing
+    //   'pending', still settling (usually 3DS in progress)
+    //   'failed', declined at the gateway / issuer
+    //   'reversed', chargeback
+    //   'abandoned', user closed the checkout without completing
     // Only 'pending' is a retry-later; everything else is terminal for
     // this attempt. Map to a FAILED order locally so inventory frees up.
     if (upstreamStatus === 'pending') {
@@ -110,7 +110,7 @@ export async function reconcilePaymentWithPaystack(orderId: string): Promise<Rec
 
   // Atomic flip. The { status: 'PENDING' } gate on the order.update is
   // how we stay safe if the webhook arrived between the findUnique and
-  // the transaction — whoever wins the race owns the side effects and
+  // the transaction, whoever wins the race owns the side effects and
   // the loser gets a P2025 which we swallow.
   try {
     await db.$transaction([

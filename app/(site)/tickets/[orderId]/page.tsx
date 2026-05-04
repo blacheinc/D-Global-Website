@@ -27,7 +27,12 @@ export default async function TicketPage({
 }) {
   const { orderId } = await params;
   const sp = await searchParams;
-  const providedRef = typeof sp.ref === 'string' ? sp.ref : null;
+  // Trim before comparing, buyers pasting from email often pick up
+  // a leading or trailing space, which would silently fail the
+  // constant-time match and dump them into the lookup form for the
+  // wrong reason. Trimming on the server stays safe (the field is
+  // exact-match anyway) while making the happy path forgiving.
+  const providedRef = typeof sp.ref === 'string' ? sp.ref.trim() : null;
 
   const order = await db.order.findUnique({
     where: { id: orderId },
@@ -52,7 +57,8 @@ export default async function TicketPage({
           <h1 className="font-display text-display-md">Enter your order reference</h1>
           <p className="text-sm text-muted">
             Your reference was sent in your confirmation email. It starts with{' '}
-            <span className="font-mono">dg_</span> and is about 30 characters.
+            <span className="font-mono">dg_</span> (paid orders) or{' '}
+            <span className="font-mono">dgcomp_</span> (complimentary tickets).
           </p>
           <form method="get" className="space-y-4">
             <label className="block">

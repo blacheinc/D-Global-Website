@@ -1,0 +1,2 @@
+ALTER TABLE "Order" ADD COLUMN "isComplimentary" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "Order" ADD COLUMN "compNote" TEXT;

@@ -32,7 +32,7 @@ const { spawnSync } = require('node:child_process');
 const dbUrl = process.env.DATABASE_URL;
 if (!dbUrl) {
   console.error('[migrate] DATABASE_URL is not set; skipping `prisma migrate deploy`.');
-  // Don't fail the build — this happens on environments that don't run
+  // Don't fail the build, this happens on environments that don't run
   // Prisma (e.g. preview Vercel envs without a database wired up). The
   // app's runtime queries will fail loudly enough later if a DB really
   // is missing.
@@ -52,7 +52,7 @@ function deriveDirectUrl(raw) {
       return u.toString();
     }
   } catch {
-    // Malformed URL — leave it. Prisma will surface a clearer error
+    // Malformed URL, leave it. Prisma will surface a clearer error
     // than we could from here.
   }
   return raw;

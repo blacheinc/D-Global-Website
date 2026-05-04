@@ -1,4 +1,4 @@
-// Pragmatic email validator — stricter than Zod's built-in .email()
+// Pragmatic email validator, stricter than Zod's built-in .email()
 // and closer to what gateway-side validators (Paystack, Stripe,
 // Resend) actually accept. Rejects the common causes of Paystack's
 // "Invalid Email Address Passed" response: short TLDs, missing TLD,
@@ -15,7 +15,7 @@ export function isStrictEmail(raw: string): boolean {
   if (typeof raw !== 'string') return false;
   const value = raw.trim();
   if (value.length === 0 || value.length > 254) return false;
-  // Must be plain ASCII — Paystack rejects unicode addresses and
+  // Must be plain ASCII, Paystack rejects unicode addresses and
   // smart-quote leakage from iOS Mail copy-paste.
   // eslint-disable-next-line no-control-regex
   if (/[^\x00-\x7F]/.test(value)) return false;

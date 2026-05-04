@@ -12,7 +12,7 @@ const LOGO_ASPECT = LOGO_INTRINSIC_WIDTH / LOGO_INTRINSIC_HEIGHT;
 
 // The trim-scale used to be 1.4 because the old landscape PNG had a
 // lot of transparent padding around its glyph. The new dglobal-logo.png
-// is cropped tight, so no CSS trim is needed — render at 1:1. Kept as a
+// is cropped tight, so no CSS trim is needed, render at 1:1. Kept as a
 // constant so if a future asset drop needs trimming again, only this
 // number has to change.
 const LOGO_TRIM_SCALE = 1;

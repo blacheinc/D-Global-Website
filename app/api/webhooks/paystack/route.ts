@@ -116,7 +116,7 @@ export async function POST(req: Request) {
       // PDF attachment: regenerate inside try/catch and pass as
       // attachment so the buyer lands with a scannable QR in their
       // inbox. If PDF rendering fails (hero fetch, pdfkit) we still
-      // send the HTML email — the "View your QR tickets" CTA resolves
+      // send the HTML email, the "View your QR tickets" CTA resolves
       // the same thing, we just prefer the attachment because it's
       // cache-friendly and works offline at the door.
       try {
