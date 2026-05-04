@@ -17,7 +17,7 @@ interface BookingFormProps {
 }
 
 // VIP table booking is WhatsApp-only. We collect the basics inline,
-// pre-fill a WA message, and open wa.me — the rest (deposit, bottle
+// pre-fill a WA message, and open wa.me, the rest (deposit, bottle
 // selection, arrival instructions) is handled in-chat with a human.
 // No DB write, no server action. features/bookings/actions.ts still
 // exists unchanged if we want to turn capture back on later.
@@ -173,7 +173,7 @@ export function BookingForm({
           </a>
         </Button>
       ) : (
-        // Every package is sold out (or none active) — submit would
+        // Every package is sold out (or none active), submit would
         // open WhatsApp with a generic "VIP table" message and no
         // tier picked, which doesn't help the buyer or the host.
         // Disable instead and surface the constraint inline.

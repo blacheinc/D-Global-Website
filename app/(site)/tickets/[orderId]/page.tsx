@@ -27,7 +27,12 @@ export default async function TicketPage({
 }) {
   const { orderId } = await params;
   const sp = await searchParams;
-  const providedRef = typeof sp.ref === 'string' ? sp.ref : null;
+  // Trim before comparing, buyers pasting from email often pick up
+  // a leading or trailing space, which would silently fail the
+  // constant-time match and dump them into the lookup form for the
+  // wrong reason. Trimming on the server stays safe (the field is
+  // exact-match anyway) while making the happy path forgiving.
+  const providedRef = typeof sp.ref === 'string' ? sp.ref.trim() : null;
 
   const order = await db.order.findUnique({
     where: { id: orderId },

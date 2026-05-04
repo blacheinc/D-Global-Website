@@ -55,7 +55,7 @@ export async function updateOrderStatus(
       // qrToken is needed so the entering-PAID branch can issue tokens
       // for items that don't have one yet, and skip items that already
       // do (e.g. an order being flipped REFUNDED → PAID after an
-      // accidental refund — keep the original tokens so the buyer's
+      // accidental refund, keep the original tokens so the buyer's
       // existing QR still validates).
       items: { select: { id: true, ticketTypeId: true, quantity: true, qrToken: true } },
     },
@@ -161,7 +161,7 @@ export async function updateOrderStatus(
     if (err instanceof CapacityRaceError) {
       return {
         ok: false,
-        error: `${err.tierName} is full — can't flip this order to PAID without overselling. Refund a ${err.tierName} order or raise the quota first.`,
+        error: `${err.tierName} is full, can't flip this order to PAID without overselling. Refund a ${err.tierName} order or raise the quota first.`,
       };
     }
     captureError('[admin:updateOrderStatus]', err, { id });
@@ -190,7 +190,7 @@ export async function updateOrderStatus(
 // Admin resend. Re-runs the same PDF + email the webhook fires on a
 // fresh payment, so a buyer who deleted their confirmation, never got
 // it (spam), or bounces to a new address gets a second copy with
-// working QR codes. Only valid on PAID orders — the QR tokens are
+// working QR codes. Only valid on PAID orders, the QR tokens are
 // signed at payment time and live on OrderItem.qrToken; a PENDING
 // order doesn't have them to send yet.
 //
@@ -254,7 +254,7 @@ export async function resendTicketEmail(orderId: string): Promise<ResendTicketRe
 }
 
 // Admin-triggered Paystack recheck. Same code path the buyer-side
-// /verify endpoint uses — hits Paystack's /transaction/verify, flips
+// /verify endpoint uses, hits Paystack's /transaction/verify, flips
 // the order to PAID if the charge succeeded (and amount matches),
 // issues QR tokens, sends the confirmation email with PDF attached.
 // Non-PAID terminal states (FAILED / REFUNDED / EXPIRED) get a
@@ -276,7 +276,7 @@ export async function recheckPaystackStatus(orderId: string): Promise<RecheckPay
 
   switch (outcome.kind) {
     case 'already-paid':
-      return { ok: true, message: 'Order is already PAID — nothing to do.' };
+      return { ok: true, message: 'Order is already PAID, nothing to do.' };
     case 'now-paid': {
       const order = await db.order.findUnique({
         where: { id: orderId },
@@ -323,7 +323,7 @@ export async function recheckPaystackStatus(orderId: string): Promise<RecheckPay
 }
 
 // Thrown inside an interactive transaction when a conditional sold
-// increment finds the row already at or above quota — i.e. another
+// increment finds the row already at or above quota, i.e. another
 // transaction beat us to the seat under READ COMMITTED. The outer
 // catch in each calling action turns this into a friendly capacity
 // error for the admin UI.
@@ -338,7 +338,7 @@ class CapacityRaceError extends Error {
 // the talent, owner gifts, etc. Creates an Order in PAID state with
 // totalMinor=0 + isComplimentary=true, signs QR tokens like the
 // webhook would, increments the tier's sold counter (comps consume
-// real seats — the door doesn't care that the buyer didn't pay), and
+// real seats, the door doesn't care that the buyer didn't pay), and
 // emails the recipient the same PDF a paid buyer receives. The
 // confirmation subject is prefixed so the recipient knows it's a
 // gift, not something they were charged for.
@@ -423,7 +423,7 @@ export async function generateComplimentaryOrder(
   const cleanEmail = data.buyerEmail;
   const now = new Date();
 
-  // Same capacity check the buyer-side checkout uses — quota minus
+  // Same capacity check the buyer-side checkout uses, quota minus
   // already-sold minus pending reservations. Comps consume real
   // inventory at the door, so we honour the same limit. Wrapped with
   // the writes so a concurrent buyer-side request can't race past
@@ -501,7 +501,7 @@ export async function generateComplimentaryOrder(
 
       // Atomic capacity gate. The aggregate-then-check above closes the
       // common case but two interactive transactions running in parallel
-      // can both pass it under READ COMMITTED — by the time we increment
+      // can both pass it under READ COMMITTED, by the time we increment
       // sold, the other transaction may already have committed an
       // increment we didn't see. Conditional updateMany makes the
       // increment apply only if the row is still under quota; count===0
@@ -527,7 +527,7 @@ export async function generateComplimentaryOrder(
             `${err.tierName} just sold out. Refresh and try a different tier.`,
           ],
         },
-        error: 'Tier filled up while we were issuing — refresh to see the latest counts.',
+        error: 'Tier filled up while we were issuing, refresh to see the latest counts.',
       };
     }
     if (
@@ -539,7 +539,7 @@ export async function generateComplimentaryOrder(
       // Astronomically unlikely (UUID space), but if randomUUID
       // happened to collide we surface a retryable error instead of
       // bubbling a Prisma error to the admin.
-      return { ok: false, error: 'Reference collision — try again.' };
+      return { ok: false, error: 'Reference collision, try again.' };
     }
     captureError('[admin:generateComplimentaryOrder]', err, { eventId, tier: data.ticketTypeId });
     return { ok: false, error: 'Could not issue tickets. Try again.' };
@@ -550,7 +550,7 @@ export async function generateComplimentaryOrder(
       fieldErrors: {
         quantity: [
           outcome.available === 0
-            ? `${outcome.tierName} is sold out — no comps available.`
+            ? `${outcome.tierName} is sold out, no comps available.`
             : `Only ${outcome.available} ${outcome.tierName} ticket${outcome.available === 1 ? '' : 's'} left.`,
         ],
       },
@@ -593,7 +593,7 @@ export async function generateComplimentaryOrder(
         : undefined,
       // Distinct prefix so the recipient sees this is a gift, not a
       // charge confirmation. The buyer-side ticket page is identical
-      // either way — comp orders are PAID just like real ones.
+      // either way, comp orders are PAID just like real ones.
       subjectPrefix: 'Complimentary tickets for',
     });
     emailSent = true;

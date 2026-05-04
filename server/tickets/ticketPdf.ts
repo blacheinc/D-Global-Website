@@ -10,7 +10,7 @@ import { captureError } from '@/server/observability';
 // attachment invoke buildTicketPdf; keeping layout in one file means
 // the PDF a buyer downloads looks identical to the PDF they received.
 //
-// Node runtime only — pdfkit uses Node streams + Buffer.
+// Node runtime only, pdfkit uses Node streams + Buffer.
 
 const BRAND = {
   bg: '#000000',
@@ -74,7 +74,7 @@ export async function buildTicketPdf(orderId: string): Promise<TicketPdfResult |
         missingCount: itemsMissingTokens.length,
       });
       // Fall through with whatever tokens we do have; the QR-encode
-      // step below will skip null tokens. Better than throwing — the
+      // step below will skip null tokens. Better than throwing, the
       // PDF still has the buyer's reference + event details.
     }
   }

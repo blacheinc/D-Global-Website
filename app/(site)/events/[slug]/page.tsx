@@ -62,7 +62,7 @@ export default async function EventDetailPage({
 
   // ticketTypes is already sorted by priceMinor asc in the query, so
   // the first one with remaining capacity is the cheapest available.
-  // Skip sold-out tiers — quoting their price as "from" is misleading
+  // Skip sold-out tiers, quoting their price as "from" is misleading
   // when no buyer can actually purchase at that price.
   const cheapest = event.ticketTypes.find((t) => t.sold < t.quota);
 

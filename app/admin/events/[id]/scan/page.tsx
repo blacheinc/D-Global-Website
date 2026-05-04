@@ -69,7 +69,7 @@ export default async function AdminEventScanPage({
                     : 'Active';
                 return (
                   <tr key={t.id} className="bg-bg/50">
-                    <td className="px-4 py-3">{t.label ?? <span className="text-muted">—</span>}</td>
+                    <td className="px-4 py-3">{t.label ?? <span className="text-muted">-</span>}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2 font-mono text-xs">
                         <a

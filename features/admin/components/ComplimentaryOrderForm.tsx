@@ -28,7 +28,7 @@ interface ComplimentaryOrderFormProps {
 const initial: GenerateCompResult | null = null;
 
 // Pick the first tier with capacity left for the initial selection.
-// Returns null when every tier is sold out — the form renders an empty
+// Returns null when every tier is sold out, the form renders an empty
 // state in that branch and never submits.
 function firstAvailable(tiers: ReadonlyArray<Tier>): string | null {
   for (const t of tiers) {
@@ -115,7 +115,7 @@ export function ComplimentaryOrderForm({ eventId, tiers }: ComplimentaryOrderFor
           <span className="font-mono">{state.reference.slice(0, 14)}</span>.{' '}
           {state.emailSent
             ? 'Email sent with the QR ticket attached.'
-            : 'Email send failed — use the order detail page to resend.'}
+            : 'Email send failed, use the order detail page to resend.'}
         </div>
       )}
 

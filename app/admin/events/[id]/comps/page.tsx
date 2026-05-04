@@ -65,7 +65,7 @@ export default async function AdminEventCompsPage({
         <p className="mt-2 text-sm text-muted max-w-2xl">
           Issue free tickets for press, talent guests, or owner gifts. Comp orders are stamped
           PAID immediately, signed QR tokens are generated, and the recipient gets the same
-          confirmation email a paying buyer receives — with a "Complimentary tickets for"
+          confirmation email a paying buyer receives, with a "Complimentary tickets for"
           subject so they know it's a gift. Comps consume real seats off the tier quota.
         </p>
       </header>
@@ -95,7 +95,7 @@ export default async function AdminEventCompsPage({
               <tbody className="divide-y divide-white/5">
                 {recentComps.map((c) => {
                   const qty = c.items.reduce((sum, i) => sum + i.quantity, 0);
-                  const tierName = c.items[0]?.ticketType.name ?? '—';
+                  const tierName = c.items[0]?.ticketType.name ?? '-';
                   return (
                     <tr key={c.id} className="bg-bg/50">
                       <td className="px-4 py-3 font-mono text-xs text-muted">
@@ -110,7 +110,7 @@ export default async function AdminEventCompsPage({
                       <td className="px-4 py-3 text-muted">{tierName}</td>
                       <td className="px-4 py-3">{qty}</td>
                       <td className="px-4 py-3 text-xs text-muted max-w-xs truncate">
-                        {c.compNote ?? '—'}
+                        {c.compNote ?? '-'}
                       </td>
                       <td className="px-4 py-3">
                         <Badge tone={c.status === 'PAID' ? 'accent' : 'muted'}>{c.status}</Badge>

@@ -16,7 +16,7 @@ async function getStats() {
     // Complimentary orders are also stamped PAID (they consume seats
     // and need scannable QRs) but they didn't bring money in, so they
     // don't belong in this tile. Tickets-sold below intentionally
-    // includes them — they're physical seats at the door.
+    // includes them, they're physical seats at the door.
     db.order.count({ where: { status: 'PAID', isComplimentary: false } }),
     db.order.aggregate({
       where: { status: 'PAID', paidAt: { gte: since } },

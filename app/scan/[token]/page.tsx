@@ -6,7 +6,7 @@ import { Scanner } from '@/features/scan/components/Scanner';
 
 // Public (but token-gated) scanner page. Lives OUTSIDE the (site)
 // route group so door staff don't see the public nav / footer / sticky
-// WhatsApp bar while scanning — the page renders on whatever is
+// WhatsApp bar while scanning, the page renders on whatever is
 // provided by the root layout (minimal html/body/fonts).
 //
 // Token validity is checked up front on the server: unknown / revoked

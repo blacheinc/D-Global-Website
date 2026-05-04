@@ -17,7 +17,7 @@ export const dynamic = 'force-dynamic';
 // Safety:
 //   - Same-origin + rate-limited (client polls, so we don't want the
 //     endpoint open to scripted enumeration).
-//   - Reference in body is a capability token — without it, an
+//   - Reference in body is a capability token, without it, an
 //     attacker who learned an orderId can't force Paystack calls
 //     against another buyer's order.
 //   - 404 on reference mismatch so a real-vs-fake order can't be

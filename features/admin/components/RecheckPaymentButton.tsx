@@ -8,7 +8,7 @@ import { recheckPaystackStatus } from '../orderActions';
 // Most valuable when the webhook didn't fire (slow, misrouted, or the
 // event wasn't wired up at the dashboard) and a buyer's order is
 // stranded in PENDING. Also useful after marking FAILED if the buyer
-// says they actually paid — the underlying transaction may still be
+// says they actually paid, the underlying transaction may still be
 // verifiable on Paystack's side.
 //
 // Everything the button does happens in the server action; this

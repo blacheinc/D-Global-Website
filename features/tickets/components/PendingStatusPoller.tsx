@@ -51,7 +51,7 @@ export function PendingStatusPoller({
           cache: 'no-store',
         });
         if (!cancelled && res.ok) {
-          // Status may have flipped to PAID inside the endpoint — pull
+          // Status may have flipped to PAID inside the endpoint, pull
           // fresh server state so the page re-renders with QR codes.
           router.refresh();
         }

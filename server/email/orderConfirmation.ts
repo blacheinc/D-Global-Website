@@ -31,7 +31,7 @@ export async function sendOrderConfirmation(args: OrderConfirmationArgs): Promis
   // Encode the order ID even though current cuids are [a-z0-9]+, if the
   // ID format ever changes (ULID with dashes, uuid) this keeps the href
   // valid without another code change. `?ref=` is the capability token
-  // the ticket page enforces — without it the page shows a lookup form
+  // the ticket page enforces, without it the page shows a lookup form
   // instead of the QR codes.
   const ticketsUrl = `${env.NEXT_PUBLIC_SITE_URL}/tickets/${encodeURIComponent(args.orderId)}?ref=${encodeURIComponent(args.reference)}`;
   const firstName = args.buyerName.trim().split(/\s+/)[0] || 'Hey';
@@ -57,14 +57,14 @@ export async function sendOrderConfirmation(args: OrderConfirmationArgs): Promis
     : `${escape(firstName)}, your tickets are confirmed.`;
   // Comp orders carry totalMinor=0 because there was no charge.
   // Showing "Total: GH₵ 0.00" reads awkwardly to a press / guest
-  // recipient — replace with "Complimentary" so the gift framing
+  // recipient, replace with "Complimentary" so the gift framing
   // stays consistent with the subject prefix the action sets.
   const isComp = args.totalMinor === 0;
   const totalDisplay = isComp ? 'Complimentary' : formatPriceMinor(args.totalMinor, args.currency);
 
   const renderHtml = (withAttachment: boolean) => {
     const note = withAttachment
-      ? `<p style="margin:0 0 24px 0;color:${brand.muted};font-size:13px;">Your ticket PDF is attached — save it to your phone, you can also scan the QR straight from the attachment at the door.</p>`
+      ? `<p style="margin:0 0 24px 0;color:${brand.muted};font-size:13px;">Your ticket PDF is attached, save it to your phone, you can also scan the QR straight from the attachment at the door.</p>`
       : `<p style="margin:0 0 24px 0;color:${brand.muted};font-size:13px;">Tap the button below to open your QR tickets and save the PDF to your phone.</p>`;
     return `
     <p style="margin:0 0 16px 0;font-size:12px;letter-spacing:0.22em;text-transform:uppercase;color:${brand.accent};">${escape(eyebrow)}</p>
@@ -121,7 +121,7 @@ export async function sendOrderConfirmation(args: OrderConfirmationArgs): Promis
   // attachment payloads (size, encoding, something transient we can't
   // diagnose from their error message). When that happens we still want
   // the buyer to get *something* in their inbox so they have the
-  // reference + the "View your QR tickets" link — the PDF is always
+  // reference + the "View your QR tickets" link, the PDF is always
   // re-downloadable from /api/tickets/[orderId]/download. Swap the
   // HTML for the no-attachment variant on the fallback so the copy
   // matches what actually arrived.

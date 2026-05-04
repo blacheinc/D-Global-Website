@@ -196,8 +196,8 @@ export async function POST(req: Request) {
     captureError('[checkout] paystack initialize failed', err, { orderId, reference });
     // Paystack returns its human-readable complaint in the thrown
     // message (the client helper formats it as "Paystack /path failed:
-    // <message>"). Surface field-level cases — invalid email is by
-    // far the most common — as a 400 with fieldErrors so the checkout
+    // <message>"). Surface field-level cases, invalid email is by
+    // far the most common, as a 400 with fieldErrors so the checkout
     // form highlights the offending field instead of the buyer seeing
     // an opaque "payment provider unreachable".
     const message = err instanceof Error ? err.message : '';

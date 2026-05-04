@@ -129,7 +129,7 @@ export default async function AdminOrderDetailPage({
             Asks Paystack directly whether reference{' '}
             <span className="font-mono">{order.reference.slice(0, 14)}</span> has been paid. If it has,
             the order flips to PAID, QR tickets are issued, and the buyer gets the confirmation
-            email with the PDF attached. Safe to click repeatedly — it's a no-op once the order
+            email with the PDF attached. Safe to click repeatedly, it's a no-op once the order
             is PAID.
           </p>
           <RecheckPaymentButton orderId={order.id} />
@@ -148,7 +148,7 @@ export default async function AdminOrderDetailPage({
         <h2 className="mb-4 text-lg font-semibold">Resend tickets</h2>
         <p className="mb-4 text-xs text-muted">
           Fires the original confirmation email to {order.buyerEmail} with the ticket PDF attached.
-          Only available once the order is PAID — the QR codes are generated at payment time.
+          Only available once the order is PAID, the QR codes are generated at payment time.
         </p>
         <ResendTicketButton
           orderId={order.id}

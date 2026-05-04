@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic';
 
 const PAGE_SIZE = 50;
 
-// By default the dashboard shows only PAID orders — those are the
+// By default the dashboard shows only PAID orders, those are the
 // actually-sold tickets operations care about. Pending/failed/expired
 // rows are inventory noise (most are abandoned carts), but ops still
 // occasionally need them (stuck-payment investigations, reconciling a
@@ -47,7 +47,7 @@ export default async function AdminOrdersPage({
   const query = parseQuery(sp.q);
 
   // Build the where clause. Status filter is AND; the text search ORs
-  // across the fields ops actually types into a search box — reference
+  // across the fields ops actually types into a search box, reference
   // (the dg_<hex> buyer quotes back), buyer name, email, phone, and
   // event title (a buyer says "I bought for Uncle Waffles"). `contains`
   // with mode:'insensitive' is fine at our volume; swap to a trigram
