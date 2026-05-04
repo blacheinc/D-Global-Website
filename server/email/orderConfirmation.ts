@@ -55,6 +55,12 @@ export async function sendOrderConfirmation(args: OrderConfirmationArgs): Promis
   const heading = args.subjectPrefix
     ? `${escape(firstName)}, here are your tickets again.`
     : `${escape(firstName)}, your tickets are confirmed.`;
+  // Comp orders carry totalMinor=0 because there was no charge.
+  // Showing "Total: GH₵ 0.00" reads awkwardly to a press / guest
+  // recipient — replace with "Complimentary" so the gift framing
+  // stays consistent with the subject prefix the action sets.
+  const isComp = args.totalMinor === 0;
+  const totalDisplay = isComp ? 'Complimentary' : formatPriceMinor(args.totalMinor, args.currency);
 
   const renderHtml = (withAttachment: boolean) => {
     const note = withAttachment
@@ -74,7 +80,7 @@ export async function sendOrderConfirmation(args: OrderConfirmationArgs): Promis
       <tr>
         <td style="padding:16px 0 0 0;color:${brand.muted};font-size:13px;">Total</td>
         <td align="right" style="padding:16px 0 0 0;color:${brand.fg};font-weight:600;font-size:18px;">
-          ${escape(formatPriceMinor(args.totalMinor, args.currency))}
+          ${escape(totalDisplay)}
         </td>
       </tr>
     </table>
@@ -92,10 +98,13 @@ export async function sendOrderConfirmation(args: OrderConfirmationArgs): Promis
     `${args.eventTitle}, ${formatEventDateTime(args.eventStartsAt)} at ${args.venueName}`,
     '',
     ...args.items.map(
-      (i) => `  ${i.quantity} × ${i.name}, ${formatPriceMinor(i.unitPriceMinor * i.quantity, args.currency)}`,
+      (i) =>
+        isComp
+          ? `  ${i.quantity} × ${i.name} (complimentary)`
+          : `  ${i.quantity} × ${i.name}, ${formatPriceMinor(i.unitPriceMinor * i.quantity, args.currency)}`,
     ),
     '',
-    `Total: ${formatPriceMinor(args.totalMinor, args.currency)}`,
+    `Total: ${totalDisplay}`,
     '',
     `View your tickets: ${ticketsUrl}`,
     `Order reference: ${args.reference}`,

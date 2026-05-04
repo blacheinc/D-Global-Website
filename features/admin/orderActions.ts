@@ -96,32 +96,55 @@ export async function updateOrderStatus(
     : [];
 
   try {
-    await db.$transaction([
-      db.order.update({
+    await db.$transaction(async (tx) => {
+      await tx.order.update({
         where: { id },
         data: {
           status: parsed.data.status,
           ...(enteringPaid ? { paidAt: new Date() } : {}),
         },
-      }),
-      ...(leavingPaid
-        ? order.items.map((item) =>
-            db.ticketType.update({
-              where: { id: item.ticketTypeId },
-              data: { sold: { decrement: item.quantity } },
-            }),
-          )
-        : []),
-      ...(enteringPaid
-        ? order.items.map((item) =>
-            db.ticketType.update({
-              where: { id: item.ticketTypeId },
-              data: { sold: { increment: item.quantity } },
-            }),
-          )
-        : []),
-      ...itemsNeedingTokens.map((item) =>
-        db.orderItem.update({
+      });
+
+      if (leavingPaid) {
+        for (const item of order.items) {
+          await tx.ticketType.update({
+            where: { id: item.ticketTypeId },
+            data: { sold: { decrement: item.quantity } },
+          });
+        }
+      }
+
+      if (enteringPaid) {
+        // Atomic capacity gate per tier. Without the conditional,
+        // two concurrent admin flips of different orders that touch
+        // the same tier could both see "X seats left", both
+        // increment, and oversell. updateMany returns count===0 if
+        // sold has moved past the threshold underneath us; throw
+        // CapacityRaceError so the outer catch surfaces a friendly
+        // message and the transaction rolls back.
+        for (const item of order.items) {
+          const tt = await tx.ticketType.findUnique({
+            where: { id: item.ticketTypeId },
+            select: { name: true, quota: true },
+          });
+          if (!tt) {
+            throw new Error('Ticket type vanished mid-transaction');
+          }
+          const inc = await tx.ticketType.updateMany({
+            where: {
+              id: item.ticketTypeId,
+              sold: { lte: tt.quota - item.quantity },
+            },
+            data: { sold: { increment: item.quantity } },
+          });
+          if (inc.count === 0) {
+            throw new CapacityRaceError(tt.name);
+          }
+        }
+      }
+
+      for (const item of itemsNeedingTokens) {
+        await tx.orderItem.update({
           where: { id: item.id },
           data: {
             qrToken: signTicket({
@@ -131,10 +154,16 @@ export async function updateOrderStatus(
               issuedAt: Date.now(),
             }),
           },
-        }),
-      ),
-    ]);
+        });
+      }
+    });
   } catch (err) {
+    if (err instanceof CapacityRaceError) {
+      return {
+        ok: false,
+        error: `${err.tierName} is full — can't flip this order to PAID without overselling. Refund a ${err.tierName} order or raise the quota first.`,
+      };
+    }
     captureError('[admin:updateOrderStatus]', err, { id });
     return { ok: false, error: 'Could not update status. Try again.' };
   }
@@ -290,6 +319,18 @@ export async function recheckPaystackStatus(orderId: string): Promise<RecheckPay
       const _exhaustive: never = outcome;
       return { ok: false, error: 'Unexpected reconcile outcome.' };
     }
+  }
+}
+
+// Thrown inside an interactive transaction when a conditional sold
+// increment finds the row already at or above quota — i.e. another
+// transaction beat us to the seat under READ COMMITTED. The outer
+// catch in each calling action turns this into a friendly capacity
+// error for the admin UI.
+class CapacityRaceError extends Error {
+  constructor(public readonly tierName: string) {
+    super(`CAPACITY_RACE:${tierName}`);
+    this.name = 'CapacityRaceError';
   }
 }
 
@@ -458,14 +499,37 @@ export async function generateComplimentaryOrder(
         ),
       );
 
-      await tx.ticketType.update({
-        where: { id: tier.id },
+      // Atomic capacity gate. The aggregate-then-check above closes the
+      // common case but two interactive transactions running in parallel
+      // can both pass it under READ COMMITTED — by the time we increment
+      // sold, the other transaction may already have committed an
+      // increment we didn't see. Conditional updateMany makes the
+      // increment apply only if the row is still under quota; count===0
+      // means we lost the race and need to roll back this whole
+      // transaction. Throw so the outer catch surfaces a friendly
+      // capacity error instead of letting an oversell land.
+      const inc = await tx.ticketType.updateMany({
+        where: { id: tier.id, sold: { lte: tier.quota - data.quantity } },
         data: { sold: { increment: data.quantity } },
       });
+      if (inc.count === 0) {
+        throw new CapacityRaceError(tier.name);
+      }
 
       return { ok: true as const, orderId: order.id };
     });
   } catch (err) {
+    if (err instanceof CapacityRaceError) {
+      return {
+        ok: false,
+        fieldErrors: {
+          quantity: [
+            `${err.tierName} just sold out. Refresh and try a different tier.`,
+          ],
+        },
+        error: 'Tier filled up while we were issuing — refresh to see the latest counts.',
+      };
+    }
     if (
       err instanceof Prisma.PrismaClientKnownRequestError &&
       err.code === 'P2002' &&
@@ -538,10 +602,10 @@ export async function generateComplimentaryOrder(
       orderId: outcome.orderId,
     });
     // Don't bubble; the action's main job (issue tickets) succeeded.
-    if (err instanceof MailProviderUnavailableError) {
-      // Caller surfaces this as a non-blocking warning.
-      emailSent = false;
-    }
+    // emailSent stays false; the form surfaces a non-blocking warning
+    // and ops can fall back to the resend button on the order detail
+    // page once Resend recovers (this branch is overwhelmingly hit on
+    // a transient MailProviderUnavailableError).
   }
 
   revalidatePath('/admin/orders');

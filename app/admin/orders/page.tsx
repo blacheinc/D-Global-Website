@@ -63,6 +63,10 @@ export default async function AdminOrdersPage({
           { buyerEmail: { contains: query, mode: 'insensitive' } },
           { buyerPhone: { contains: query, mode: 'insensitive' } },
           { event: { title: { contains: query, mode: 'insensitive' } } },
+          // Comp note is admin-only context (never shown to buyer);
+          // searching it lets ops jump back to "Ama's birthday" or
+          // "Pulse press review" by typing the keyword.
+          { compNote: { contains: query, mode: 'insensitive' } },
         ],
       }
     : {};

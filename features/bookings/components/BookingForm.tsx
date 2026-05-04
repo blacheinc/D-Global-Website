@@ -166,11 +166,22 @@ export function BookingForm({
         </div>
       </div>
 
-      <Button asChild variant="primary" size="lg" className="w-full sm:w-auto">
-        <a href={waHref} target="_blank" rel="noopener noreferrer">
-          <MessageCircle aria-hidden className="h-4 w-4" /> Continue on WhatsApp
-        </a>
-      </Button>
+      {selectedPkg ? (
+        <Button asChild variant="primary" size="lg" className="w-full sm:w-auto">
+          <a href={waHref} target="_blank" rel="noopener noreferrer">
+            <MessageCircle aria-hidden className="h-4 w-4" /> Continue on WhatsApp
+          </a>
+        </Button>
+      ) : (
+        // Every package is sold out (or none active) — submit would
+        // open WhatsApp with a generic "VIP table" message and no
+        // tier picked, which doesn't help the buyer or the host.
+        // Disable instead and surface the constraint inline.
+        <div className="rounded-2xl border border-white/10 bg-surface px-5 py-4 text-sm">
+          All VIP packages are currently sold out. Message us on WhatsApp anyway and we'll let you
+          know if anything frees up.
+        </div>
+      )}
 
       <p className="text-xs text-muted">
         We'll confirm your reservation on WhatsApp within an hour. Deposit, bottle selection and
