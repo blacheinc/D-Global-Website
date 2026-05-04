@@ -207,7 +207,10 @@ export default async function AdminOrdersPage({
                   <td className="px-4 py-3">{o.items.reduce((sum, i) => sum + i.quantity, 0)}</td>
                   <td className="px-4 py-3">{formatPriceMinor(o.totalMinor, o.currency)}</td>
                   <td className="px-4 py-3">
-                    <Badge>{o.status}</Badge>
+                    <div className="flex flex-wrap gap-1.5">
+                      <Badge>{o.status}</Badge>
+                      {o.isComplimentary && <Badge tone="accent">Comp</Badge>}
+                    </div>
                   </td>
                   <td className="px-4 py-3 text-muted">{formatEventDateTime(o.createdAt)}</td>
                 </tr>

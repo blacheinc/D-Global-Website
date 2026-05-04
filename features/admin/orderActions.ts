@@ -1,7 +1,8 @@
 'use server';
 
+import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
-import { OrderStatus } from '@prisma/client';
+import { OrderStatus, Prisma } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
 import { db } from '@/server/db';
 import { requireAdmin } from '@/server/auth';
@@ -11,6 +12,7 @@ import { MailProviderUnavailableError } from '@/server/mailer';
 import { buildTicketPdf } from '@/server/tickets/ticketPdf';
 import { reconcilePaymentWithPaystack } from '@/server/tickets/reconcilePayment';
 import { signTicket } from '@/server/qr/signPayload';
+import { isStrictEmail } from '@/lib/email';
 
 // Manual order status override. The Paystack webhook does the happy-path
 // flip PENDING → PAID automatically; this action covers the ops
@@ -289,4 +291,266 @@ export async function recheckPaystackStatus(orderId: string): Promise<RecheckPay
       return { ok: false, error: 'Unexpected reconcile outcome.' };
     }
   }
+}
+
+// Issue complimentary tickets for an event. Used for press, guests of
+// the talent, owner gifts, etc. Creates an Order in PAID state with
+// totalMinor=0 + isComplimentary=true, signs QR tokens like the
+// webhook would, increments the tier's sold counter (comps consume
+// real seats — the door doesn't care that the buyer didn't pay), and
+// emails the recipient the same PDF a paid buyer receives. The
+// confirmation subject is prefixed so the recipient knows it's a
+// gift, not something they were charged for.
+//
+// Capacity check is the same one the user-side checkout enforces:
+// quota - sold - pending-reservations >= requested. Comps go straight
+// to PAID so they don't add to the pending reservation pool, but the
+// tier's quota is still the hard limit. Refusing here is friendlier
+// than landing the buyer at the door with a quota mismatch.
+
+const COMP_PENDING_TTL_MS = 30 * 60 * 1000;
+
+const compSchema = z.object({
+  ticketTypeId: z.string().min(1, 'Choose a tier'),
+  // 1..10 keeps the action ergonomic for actual comp use (a press
+  // pair, a +3 entourage). Higher quantities should be a real
+  // discounted order, not a comp.
+  quantity: z.coerce.number().int().min(1).max(10),
+  buyerName: z.string().trim().min(2, 'Recipient name required').max(120),
+  buyerEmail: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .refine(isStrictEmail, { message: 'Enter a valid email address.' }),
+  buyerPhone: z
+    .string()
+    .trim()
+    .max(32)
+    .optional()
+    .transform((v) => (v && v.length > 0 ? v : undefined)),
+  note: z
+    .string()
+    .trim()
+    .max(500)
+    .optional()
+    .transform((v) => (v && v.length > 0 ? v : undefined)),
+});
+
+export type GenerateCompResult =
+  | { ok: true; orderId: string; reference: string; emailSent: boolean }
+  | { ok: false; error: string; fieldErrors?: Record<string, string[]> };
+
+export async function generateComplimentaryOrder(
+  eventId: string,
+  _prev: GenerateCompResult | null,
+  formData: FormData,
+): Promise<GenerateCompResult> {
+  await requireAdmin();
+  const parsed = compSchema.safeParse(Object.fromEntries(formData.entries()));
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: 'Please check the highlighted fields.',
+      fieldErrors: parsed.error.flatten().fieldErrors,
+    };
+  }
+  const data = parsed.data;
+
+  const event = await db.event.findUnique({
+    where: { id: eventId },
+    select: {
+      id: true,
+      slug: true,
+      ticketTypes: {
+        where: { id: data.ticketTypeId },
+        select: { id: true, name: true, quota: true, sold: true, priceMinor: true },
+      },
+    },
+  });
+  if (!event) return { ok: false, error: 'Event not found.' };
+  const tier = event.ticketTypes[0];
+  if (!tier) {
+    return {
+      ok: false,
+      fieldErrors: { ticketTypeId: ['Selected tier no longer exists for this event.'] },
+      error: 'Selected tier no longer exists for this event.',
+    };
+  }
+
+  const reference = `dgcomp_${randomUUID().replace(/-/g, '')}`;
+  // data.buyerEmail is already trimmed + lowercased by the zod schema.
+  const cleanEmail = data.buyerEmail;
+  const now = new Date();
+
+  // Same capacity check the buyer-side checkout uses — quota minus
+  // already-sold minus pending reservations. Comps consume real
+  // inventory at the door, so we honour the same limit. Wrapped with
+  // the writes so a concurrent buyer-side request can't race past
+  // the gate between our read and our increment.
+  type CompOutcome =
+    | { ok: true; orderId: string }
+    | { ok: false; status: 'capacity'; available: number; tierName: string };
+  let outcome: CompOutcome;
+  try {
+    outcome = await db.$transaction(async (tx) => {
+      const pending = await tx.orderItem.aggregate({
+        where: {
+          ticketTypeId: tier.id,
+          order: {
+            status: 'PENDING',
+            createdAt: { gt: new Date(Date.now() - COMP_PENDING_TTL_MS) },
+          },
+        },
+        _sum: { quantity: true },
+      });
+      const reserved = pending._sum.quantity ?? 0;
+      const available = tier.quota - tier.sold - reserved;
+      if (available < data.quantity) {
+        return {
+          ok: false as const,
+          status: 'capacity' as const,
+          available: Math.max(0, available),
+          tierName: tier.name,
+        };
+      }
+
+      const order = await tx.order.create({
+        data: {
+          reference,
+          eventId: event.id,
+          buyerName: data.buyerName,
+          buyerEmail: cleanEmail,
+          buyerPhone: data.buyerPhone ?? null,
+          totalMinor: 0,
+          status: 'PAID',
+          paidAt: now,
+          isComplimentary: true,
+          compNote: data.note ?? null,
+          items: {
+            create: [
+              {
+                ticketTypeId: tier.id,
+                quantity: data.quantity,
+                unitPriceMinor: 0,
+              },
+            ],
+          },
+        },
+        include: { items: { select: { id: true } } },
+      });
+
+      // Sign QR tokens for the just-created items. Two-pass is fine
+      // here; the items rows are created above without a token, then
+      // we set the signed token now that we have stable IDs.
+      await Promise.all(
+        order.items.map((item) =>
+          tx.orderItem.update({
+            where: { id: item.id },
+            data: {
+              qrToken: signTicket({
+                orderItemId: item.id,
+                orderId: order.id,
+                eventId: event.id,
+                issuedAt: now.getTime(),
+              }),
+            },
+          }),
+        ),
+      );
+
+      await tx.ticketType.update({
+        where: { id: tier.id },
+        data: { sold: { increment: data.quantity } },
+      });
+
+      return { ok: true as const, orderId: order.id };
+    });
+  } catch (err) {
+    if (
+      err instanceof Prisma.PrismaClientKnownRequestError &&
+      err.code === 'P2002' &&
+      Array.isArray(err.meta?.target) &&
+      (err.meta.target as string[]).includes('reference')
+    ) {
+      // Astronomically unlikely (UUID space), but if randomUUID
+      // happened to collide we surface a retryable error instead of
+      // bubbling a Prisma error to the admin.
+      return { ok: false, error: 'Reference collision — try again.' };
+    }
+    captureError('[admin:generateComplimentaryOrder]', err, { eventId, tier: data.ticketTypeId });
+    return { ok: false, error: 'Could not issue tickets. Try again.' };
+  }
+  if (!outcome.ok) {
+    return {
+      ok: false,
+      fieldErrors: {
+        quantity: [
+          outcome.available === 0
+            ? `${outcome.tierName} is sold out — no comps available.`
+            : `Only ${outcome.available} ${outcome.tierName} ticket${outcome.available === 1 ? '' : 's'} left.`,
+        ],
+      },
+      error: 'Not enough inventory for this tier.',
+    };
+  }
+
+  // Email + PDF. Best-effort: if it fails the order still exists, the
+  // recipient can be reached via /tickets/[orderId]?ref=... and ops
+  // has the resend button as a fallback. Mirror the webhook pattern.
+  let emailSent = false;
+  try {
+    const fresh = await db.order.findUniqueOrThrow({
+      where: { id: outcome.orderId },
+      include: { event: true, items: { include: { ticketType: true } } },
+    });
+    const pdf = await buildTicketPdf(fresh.id).catch((err) => {
+      captureError('[admin:generateComplimentaryOrder] PDF build failed', err, {
+        orderId: fresh.id,
+      });
+      return null;
+    });
+    await sendOrderConfirmation({
+      to: fresh.buyerEmail,
+      buyerName: fresh.buyerName,
+      orderId: fresh.id,
+      reference: fresh.reference,
+      totalMinor: fresh.totalMinor,
+      currency: fresh.currency,
+      eventTitle: fresh.event.title,
+      eventStartsAt: fresh.event.startsAt,
+      venueName: fresh.event.venueName,
+      items: fresh.items.map((i) => ({
+        name: i.ticketType.name,
+        quantity: i.quantity,
+        unitPriceMinor: i.unitPriceMinor,
+      })),
+      attachments: pdf
+        ? [{ filename: pdf.filename, content: pdf.buffer, contentType: 'application/pdf' }]
+        : undefined,
+      // Distinct prefix so the recipient sees this is a gift, not a
+      // charge confirmation. The buyer-side ticket page is identical
+      // either way — comp orders are PAID just like real ones.
+      subjectPrefix: 'Complimentary tickets for',
+    });
+    emailSent = true;
+  } catch (err) {
+    captureError('[admin:generateComplimentaryOrder] email send failed', err, {
+      orderId: outcome.orderId,
+    });
+    // Don't bubble; the action's main job (issue tickets) succeeded.
+    if (err instanceof MailProviderUnavailableError) {
+      // Caller surfaces this as a non-blocking warning.
+      emailSent = false;
+    }
+  }
+
+  revalidatePath('/admin/orders');
+  revalidatePath(`/admin/orders/${outcome.orderId}`);
+  revalidatePath(`/admin/events/${eventId}/comps`);
+  revalidatePath(`/events/${event.slug}`);
+  revalidatePath(`/events/${event.slug}/tickets`);
+  revalidatePath('/events');
+  revalidatePath('/');
+
+  return { ok: true, orderId: outcome.orderId, reference, emailSent };
 }
