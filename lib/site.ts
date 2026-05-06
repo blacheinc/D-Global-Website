@@ -15,6 +15,7 @@ export const site = {
   nav: [
     { href: '/events', label: 'Events' },
     { href: '/bookings', label: 'VIP Tables' },
+    { href: '/membership', label: 'Membership' },
     { href: '/gallery', label: 'Gallery' },
   ],
   socials: {
