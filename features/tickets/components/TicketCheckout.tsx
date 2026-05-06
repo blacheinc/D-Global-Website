@@ -129,7 +129,7 @@ export function TicketCheckout({
         <div className="flex items-center gap-3 rounded-2xl border border-accent/40 bg-accent/10 px-4 py-3 text-sm">
           <Sparkles aria-hidden className="h-4 w-4 text-accent shrink-0" />
           <p>
-            <span className="font-medium">{memberDiscount.planName}</span> active —{' '}
+            <span className="font-medium">{memberDiscount.planName}</span> active -{' '}
             {formatDiscountBps(memberDiscount.discountBps)} off your tickets, applied at checkout.
           </p>
         </div>

@@ -37,7 +37,7 @@ export async function getMemberDiscount(
     },
   });
   if (!m) return null;
-  // Plan paused by admin — stop applying the discount immediately while
+  // Plan paused by admin, stop applying the discount immediately while
   // keeping the row so a re-activation doesn't lose history.
   if (!m.plan.active) return null;
   if (m.status === MembershipStatus.EXPIRED) return null;
@@ -53,7 +53,7 @@ export async function getMemberDiscount(
     // Lazy expire so the next read short-circuits and the admin UI
     // reflects reality without a cron. We already returned early for
     // status === EXPIRED above, so reaching here means ACTIVE / PAST_DUE
-    // / CANCELLED with a lapsed period — always worth flipping.
+    // / CANCELLED with a lapsed period, always worth flipping.
     void db.membership
       .update({ where: { id: m.id }, data: { status: MembershipStatus.EXPIRED } })
       .catch(() => {

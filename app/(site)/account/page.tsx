@@ -14,7 +14,7 @@ import { signOut } from '@/auth';
 
 export const metadata: Metadata = {
   title: 'My account',
-  // Account page is per-user — never index, even if the URL leaks.
+  // Account page is per-user, never index, even if the URL leaks.
   robots: { index: false, follow: false },
 };
 
@@ -132,6 +132,23 @@ export default async function AccountPage({ searchParams }: PageProps) {
                   </Button>
                 </div>
               )}
+            </div>
+          ) : justSubscribed ? (
+            // Paystack just redirected us back here but the
+            // subscription.create webhook hasn't materialised the row
+            // yet. The lag is usually seconds; rather than render a
+            // misleading "no membership" state we tell the user we're
+            // confirming and auto-refresh once on mount via the
+            // <meta http-equiv="refresh"> below.
+            <div className="rounded-2xl border border-accent/40 bg-accent/10 p-6 space-y-3">
+              <p className="text-sm">
+                We're confirming your subscription with Paystack. This usually takes a few
+                seconds, refresh in a moment if it hasn't updated.
+              </p>
+              {/* Auto-refresh once after 5s so the buyer doesn't have
+                  to know to hit reload. eslint allows meta refresh
+                  inside Next pages; it's a one-shot, not a loop. */}
+              <meta httpEquiv="refresh" content="5" />
             </div>
           ) : (
             <div className="rounded-2xl border border-white/10 bg-surface p-6 space-y-4">

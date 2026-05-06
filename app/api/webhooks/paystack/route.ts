@@ -6,6 +6,7 @@ import { signTicket } from '@/server/qr/signPayload';
 import { sendOrderConfirmation } from '@/server/email/orderConfirmation';
 import { buildTicketPdf } from '@/server/tickets/ticketPdf';
 import { captureError } from '@/server/observability';
+import { disablePaystackSubscription } from '@/server/paystack/client';
 import { MembershipStatus } from '@prisma/client';
 
 export const runtime = 'nodejs';
@@ -186,6 +187,69 @@ export async function POST(req: Request) {
 
       try {
         if (payload.event === 'subscription.create') {
+          // Orphan-defense: if the user already has a Membership row
+          // with a DIFFERENT paystackSubscriptionCode, the incoming
+          // event is a second subscription against the same user,
+          // typically from a two-tab race or a re-click after a
+          // Paystack delay. Both subs are alive upstream and would
+          // double-charge on renewal. Disable the old one (best
+          // effort) before we overwrite the row, so only the new
+          // one auto-renews.
+          const prior = await db.membership
+            .findUnique({
+              where: { userId },
+              select: { paystackSubscriptionCode: true, paystackEmailToken: true, currentPeriodEnd: true },
+            })
+            .catch(() => null);
+          if (
+            prior?.paystackSubscriptionCode &&
+            prior.paystackEmailToken &&
+            subCode &&
+            prior.paystackSubscriptionCode !== subCode
+          ) {
+            try {
+              await disablePaystackSubscription({
+                code: prior.paystackSubscriptionCode,
+                token: prior.paystackEmailToken,
+              });
+              Sentry.captureMessage(
+                '[paystack webhook] disabled orphaned subscription on subscription.create',
+                {
+                  level: 'info',
+                  tags: { kind: 'subscription-orphan-disabled' },
+                  extra: {
+                    userId,
+                    oldCode: prior.paystackSubscriptionCode,
+                    newCode: subCode,
+                  },
+                },
+              );
+            } catch (err) {
+              captureError(
+                '[paystack webhook] failed to disable orphaned subscription',
+                err,
+                {
+                  userId,
+                  oldCode: prior.paystackSubscriptionCode,
+                  newCode: subCode,
+                },
+              );
+              // Don't bail; we still write the new row. Ops can clean
+              // up the orphan in the Paystack dashboard if disable
+              // continues to fail.
+            }
+          }
+
+          // Only push currentPeriodEnd forward, never shorten it.
+          // Late-arriving stale events shouldn't roll back a member's
+          // grace window. If incoming periodEnd is missing or older
+          // than what we have, keep what we have.
+          const safePeriodEnd =
+            periodEnd &&
+            (!prior?.currentPeriodEnd || periodEnd > prior.currentPeriodEnd)
+              ? periodEnd
+              : null;
+
           await db.membership.upsert({
             where: { userId },
             create: {
@@ -202,9 +266,7 @@ export async function POST(req: Request) {
               status: MembershipStatus.ACTIVE,
               paystackSubscriptionCode: subCode ?? null,
               paystackEmailToken: payload.data.email_token ?? null,
-              // Only push period end forward; never shorten it on a
-              // late-arriving event.
-              ...(periodEnd ? { currentPeriodEnd: periodEnd } : {}),
+              ...(safePeriodEnd ? { currentPeriodEnd: safePeriodEnd } : {}),
               cancelledAt: null,
               paystackPayload: payload as unknown as object,
             },
@@ -277,12 +339,22 @@ export async function POST(req: Request) {
 
       if (target) {
         const periodEnd = parsePeriodEnd(payload.data.next_payment_date);
+        // Only push periodEnd forward, never shorten on a stale or
+        // out-of-order event. Renewals always advance the period; if
+        // the incoming date is older than what we have, the event is
+        // stale and we ignore the period bump while still flipping
+        // status back to ACTIVE.
+        const safePeriodEnd =
+          periodEnd &&
+          (!target.currentPeriodEnd || periodEnd > target.currentPeriodEnd)
+            ? periodEnd
+            : null;
         try {
           await db.membership.update({
             where: { id: target.id },
             data: {
               status: MembershipStatus.ACTIVE,
-              ...(periodEnd ? { currentPeriodEnd: periodEnd } : {}),
+              ...(safePeriodEnd ? { currentPeriodEnd: safePeriodEnd } : {}),
               paystackPayload: payload as unknown as object,
             },
           });

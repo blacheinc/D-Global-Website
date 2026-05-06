@@ -149,6 +149,12 @@ export async function subscribeMembership(
 
   const reference = `dgsub_${randomUUID().replace(/-/g, '')}`;
   const callback = `${env.NEXT_PUBLIC_SITE_URL}/account?ref=${reference}`;
+  // Initialise inside try/catch, then redirect() OUTSIDE so the
+  // NEXT_REDIRECT marker error doesn't get caught by our generic
+  // handler. Distinguishing redirect errors via err.message is
+  // fragile across Next versions; lifting the redirect out is the
+  // robust pattern.
+  let authUrl: string;
   try {
     const init = await initializeTransaction({
       email: user.email,
@@ -163,10 +169,8 @@ export async function subscribeMembership(
         planSlug: plan.slug,
       },
     });
-    redirect(init.data.authorization_url);
+    authUrl = init.data.authorization_url;
   } catch (err) {
-    // Next.js redirect() throws an internal error we shouldn't catch.
-    if (err instanceof Error && err.message === 'NEXT_REDIRECT') throw err;
     captureError('[membership:subscribe] paystack init failed', err, {
       userId: user.id,
       planSlug: plan.slug,
@@ -176,6 +180,7 @@ export async function subscribeMembership(
       error: 'Paystack is not responding right now. Try again in a moment.',
     };
   }
+  redirect(authUrl);
 }
 
 // Self-service cancel for the signed-in member. Stops auto-renew

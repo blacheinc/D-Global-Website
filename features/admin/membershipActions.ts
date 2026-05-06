@@ -7,6 +7,7 @@ import { redirect } from 'next/navigation';
 import { db } from '@/server/db';
 import { requireAdmin } from '@/server/auth';
 import { captureError } from '@/server/observability';
+import { disablePaystackSubscription } from '@/server/paystack/client';
 import { isStrictEmail } from '@/lib/email';
 
 // Admin-side membership management. Phase 1 doesn't go through Paystack
@@ -80,6 +81,24 @@ export async function upsertMembershipPlan(
     };
   }
   const data = parsed.data;
+  // Read existing values so we can detect a billing-shape change and
+  // invalidate the cached Paystack plan_code accordingly. Paystack
+  // plans are immutable on price/interval, admin edits here would
+  // otherwise have new signups subscribed at the old price for the
+  // old interval. Clearing the code makes the next signup lazily
+  // create a fresh Paystack plan with the new values.
+  const existing = id
+    ? await db.membershipPlan.findUnique({
+        where: { id },
+        select: { priceMinor: true, intervalDays: true, currency: true },
+      })
+    : null;
+  const billingShapeChanged =
+    !!existing &&
+    (existing.priceMinor !== data.priceMinor ||
+      existing.intervalDays !== data.intervalDays ||
+      existing.currency !== data.currency);
+
   const payload = {
     slug: data.slug,
     name: data.name,
@@ -91,6 +110,12 @@ export async function upsertMembershipPlan(
     discountBps: Math.round(data.discountPercent * 100),
     perks: parsePerks(data.perks),
     active: data.active,
+    // Drop the stale plan_code on billing-shape edits so the next
+    // signup creates a fresh Paystack plan at the new price/interval.
+    // Existing subscribers stay on their original plan upstream
+    // (Paystack doesn't auto-migrate live subs when you create a new
+    // plan), so this only affects future signups.
+    ...(billingShapeChanged ? { paystackPlanCode: null } : {}),
   };
   try {
     if (id) await db.membershipPlan.update({ where: { id }, data: payload });
@@ -234,10 +259,43 @@ export async function grantMembership(
 // Discount enforcement keeps applying through currentPeriodEnd (lazy
 // expire flips to EXPIRED when the period passes), matching how Paystack
 // auto-renew cancellations behave.
+//
+// If the membership is wired to a Paystack subscription, we ALSO disable
+// it upstream so the user doesn't keep getting auto-charged on renewal.
+// Best-effort: if Paystack is unreachable we still flip local status,
+// otherwise the admin clicks cancel and the user keeps getting billed
+// silently. Ops can clean up an orphan from the Paystack dashboard if
+// the upstream call ever fails persistently.
 export type CancelMembershipResult = { ok: true } | { ok: false; error: string };
 
 export async function cancelMembership(id: string): Promise<CancelMembershipResult> {
   await requireAdmin();
+  const m = await db.membership.findUnique({
+    where: { id },
+    select: { paystackSubscriptionCode: true, paystackEmailToken: true, status: true },
+  });
+  if (!m) return { ok: false, error: 'Membership not found.' };
+  if (m.status === MembershipStatus.CANCELLED || m.status === MembershipStatus.EXPIRED) {
+    return { ok: false, error: 'Already cancelled.' };
+  }
+
+  if (m.paystackSubscriptionCode && m.paystackEmailToken) {
+    try {
+      await disablePaystackSubscription({
+        code: m.paystackSubscriptionCode,
+        token: m.paystackEmailToken,
+      });
+    } catch (err) {
+      captureError('[admin:cancelMembership] paystack disable failed', err, {
+        membershipId: id,
+        subscriptionCode: m.paystackSubscriptionCode,
+      });
+      // Fall through and flip local state anyway. Better an orphan
+      // upstream that ops can clean up than a member who keeps the
+      // discount because we got stuck on Paystack's API.
+    }
+  }
+
   try {
     await db.membership.update({
       where: { id },
