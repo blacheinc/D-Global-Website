@@ -77,6 +77,10 @@ model User {
   role          Role      @default(GUEST)
   bookings      Booking[]
   orders        Order[]
+  // 0..1 membership row, enforced by @unique on Membership.userId.
+  // Active members get 20% off tickets and tables (configured on the
+  // MembershipPlan they're on).
+  membership    Membership?
   // NextAuth (PrismaAdapter) relations. The adapter writes into these on
   // sign-in/link account flows, we never touch them directly.
   accounts      Account[]
@@ -431,4 +435,95 @@ model GalleryImage {
 
   @@index([category, order])
   @@index([eventId])
+}
+
+// ----- Membership / paid subscription -----
+//
+// "D Global members" pay a recurring fee in exchange for a flat percent
+// discount on tickets and VIP tables. Single tier today (one
+// MembershipPlan row, configured by admin), but the model is shaped to
+// accept multiple tiers later: each user has at most one Membership
+// pointing at one Plan, and the discount lives on the plan so a future
+// "Platinum, 30% off" tier needs no enforcement-code changes.
+//
+// Status reflects the Paystack subscription's lifecycle:
+//   ACTIVE     paid + within currentPeriodEnd, discount applies
+//   PAST_DUE   renewal charge failed; Paystack retries automatically.
+//              Discount still applies through the grace period
+//              (currentPeriodEnd) so a transient card decline doesn't
+//              instantly punish the member at checkout.
+//   CANCELLED  user (or admin) disabled it. Discount applies until
+//              currentPeriodEnd, then the read-side helper expires it.
+//   EXPIRED   currentPeriodEnd has passed; no discount. The expiry
+//              transition runs lazily on read (cheap) so we don't
+//              need a cron.
+
+enum MembershipStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  EXPIRED
+}
+
+model MembershipPlan {
+  id           String       @id @default(cuid())
+  // Slug-safe handle used in URLs and Paystack's plan_code mapping.
+  // Unique so a /membership/[slug] page route stays clean.
+  slug         String       @unique
+  name         String
+  tagline      String?
+  description  String?
+  priceMinor   Int
+  currency     String       @default("GHS")
+  // Billing interval in days. 30 = monthly, 90 = quarterly, 365 = annual.
+  // Paystack's own intervals are named (monthly/biannually/annually);
+  // store the day count too so renewal arithmetic is unambiguous.
+  intervalDays Int          @default(30)
+  // Discount in basis points (10000 = 100%, 2000 = 20%) so a future
+  // "members get 12.5% off" tier is representable without schema churn.
+  discountBps  Int          @default(2000)
+  // Bullet list rendered on the marketing page, same shape as
+  // Package.perks so admins write them the same way.
+  perks        String[]     @default([])
+  // Paystack plan_code populated when the plan is created upstream
+  // (Phase 2). Nullable so admin can grant manual memberships in
+  // Phase 1 without Paystack being wired up yet.
+  paystackPlanCode String?  @unique
+  active       Boolean      @default(true)
+  memberships  Membership[]
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+}
+
+model Membership {
+  id        String           @id @default(cuid())
+  userId    String           @unique
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  planId    String
+  plan      MembershipPlan   @relation(fields: [planId], references: [id])
+  status    MembershipStatus @default(ACTIVE)
+  // Paystack subscription_code populated by the subscription.create
+  // webhook (Phase 2). Null for admin-granted memberships that don't
+  // route through Paystack.
+  paystackSubscriptionCode String? @unique
+  // Token Paystack requires alongside subscription_code when calling
+  // POST /subscription/disable. Saved at create-time, never logged.
+  paystackEmailToken       String?
+  // End of the currently-paid period. Discount enforcement gates on
+  // (status === ACTIVE || status === PAST_DUE) AND currentPeriodEnd > now.
+  // For admin-granted memberships, set explicitly by the admin form.
+  currentPeriodEnd DateTime?
+  startedAt        DateTime  @default(now())
+  cancelledAt      DateTime?
+  // Last Paystack event payload kept for audit / ops debugging. Same
+  // pattern as Order.paystackPayload.
+  paystackPayload  Json?
+  // Free-text note set by the admin when granting a manual membership
+  // (e.g. "Comp for venue partner"). Never shown to the member.
+  adminNote        String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([status])
+  @@index([currentPeriodEnd])
 }

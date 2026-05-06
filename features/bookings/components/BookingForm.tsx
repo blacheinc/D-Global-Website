@@ -1,12 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { MessageCircle } from 'lucide-react';
+import { MessageCircle, Sparkles } from 'lucide-react';
 import { PackageCard } from './PackageCard';
 import { Button } from '@/components/ui/Button';
 import { Input, Label, Textarea } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { buildWaLink } from '@/lib/whatsapp';
+import { formatDiscountBps, type MemberDiscount } from '@/lib/membership';
 import type { Event, Package } from '@prisma/client';
 
 interface BookingFormProps {
@@ -14,6 +15,11 @@ interface BookingFormProps {
   events: Array<Pick<Event, 'id' | 'slug' | 'title' | 'startsAt'>>;
   defaultPackageTier?: string;
   defaultEventId?: string;
+  // Member discount for the signed-in visitor, resolved server-side.
+  // Null for guests + non-members. When present, surfaces as a banner
+  // and adds a flag line to the WhatsApp message so ops applies the
+  // discount in chat (table bookings don't go through Paystack).
+  memberDiscount: MemberDiscount | null;
 }
 
 // VIP table booking is WhatsApp-only. We collect the basics inline,
@@ -26,6 +32,7 @@ export function BookingForm({
   events,
   defaultPackageTier,
   defaultEventId,
+  memberDiscount,
 }: BookingFormProps) {
   // Default to the requested tier if it's still bookable; otherwise the
   // first non-sold-out package; otherwise nothing. PackageCard already
@@ -63,11 +70,30 @@ export function BookingForm({
   if (guestName.trim()) lines.push(`Name: ${guestName.trim()}`);
   if (guestPhone.trim()) lines.push(`Phone: ${guestPhone.trim()}`);
   if (guestEmail.trim()) lines.push(`Email: ${guestEmail.trim()}`);
+  if (memberDiscount) {
+    // Tells ops to apply the member discount when quoting the deposit /
+    // total in chat. Bookings don't go through Paystack so we can't
+    // reprice automatically; this line is the handoff cue.
+    lines.push(
+      `D Global member (${memberDiscount.planName}, ${formatDiscountBps(memberDiscount.discountBps)} off)`,
+    );
+  }
   if (notes.trim()) lines.push(`Notes: ${notes.trim()}`);
   const waHref = buildWaLink(lines.join('\n'));
 
   return (
     <div className="space-y-10">
+      {memberDiscount && (
+        <div className="flex items-center gap-3 rounded-2xl border border-accent/40 bg-accent/10 px-4 py-3 text-sm">
+          <Sparkles aria-hidden className="h-4 w-4 text-accent shrink-0" />
+          <p>
+            <span className="font-medium">{memberDiscount.planName}</span> active —{' '}
+            {formatDiscountBps(memberDiscount.discountBps)} off your table. Our team applies it on
+            the WhatsApp quote.
+          </p>
+        </div>
+      )}
+
       <div>
         <p className="eyebrow mb-5">1. Choose a package</p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">

@@ -1,11 +1,12 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Minus, Plus, Loader2 } from 'lucide-react';
+import { Minus, Plus, Loader2, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input, Label, FieldError } from '@/components/ui/Input';
 import { formatPriceMinor } from '@/lib/formatCurrency';
 import { isStrictEmail, normaliseEmail } from '@/lib/email';
+import { applyDiscountBps, formatDiscountBps, type MemberDiscount } from '@/lib/membership';
 import { cn } from '@/lib/utils';
 import type { TicketType } from '@prisma/client';
 
@@ -13,15 +14,24 @@ interface TicketCheckoutProps {
   eventId: string;
   ticketTypes: TicketType[];
   paystackMode: 'link' | 'api';
+  // Server-resolved at page render time. The same discount is re-applied
+  // server-side at order create, so this prop is purely for display, a
+  // tampered prop can't undercharge anyone.
+  memberDiscount: MemberDiscount | null;
 }
 
-export function TicketCheckout({ eventId, ticketTypes, paystackMode }: TicketCheckoutProps) {
+export function TicketCheckout({
+  eventId,
+  ticketTypes,
+  paystackMode,
+  memberDiscount,
+}: TicketCheckoutProps) {
   const [qty, setQty] = useState<Record<string, number>>({});
   const [buyer, setBuyer] = useState({ name: '', email: '', phone: '' });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const totalMinor = useMemo(
+  const subtotalMinor = useMemo(
     () =>
       ticketTypes.reduce(
         (sum, t) => sum + (qty[t.id] ?? 0) * t.priceMinor,
@@ -29,6 +39,20 @@ export function TicketCheckout({ eventId, ticketTypes, paystackMode }: TicketChe
       ),
     [qty, ticketTypes],
   );
+  const discountMinor = useMemo(() => {
+    if (!memberDiscount) return 0;
+    // Mirror the server: apply per-line so rounding is consistent with
+    // how the API priced the order. Aggregating then discounting could
+    // diverge by 1 pesewa on certain quantities.
+    return ticketTypes.reduce((cut, t) => {
+      const q = qty[t.id] ?? 0;
+      if (q === 0) return cut;
+      const undisc = t.priceMinor * q;
+      const disc = applyDiscountBps(t.priceMinor, memberDiscount.discountBps) * q;
+      return cut + (undisc - disc);
+    }, 0);
+  }, [qty, ticketTypes, memberDiscount]);
+  const totalMinor = subtotalMinor - discountMinor;
   const totalQty = useMemo(
     () => Object.values(qty).reduce((a, b) => a + b, 0),
     [qty],
@@ -101,10 +125,23 @@ export function TicketCheckout({ eventId, ticketTypes, paystackMode }: TicketChe
 
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
+      {memberDiscount && (
+        <div className="flex items-center gap-3 rounded-2xl border border-accent/40 bg-accent/10 px-4 py-3 text-sm">
+          <Sparkles aria-hidden className="h-4 w-4 text-accent shrink-0" />
+          <p>
+            <span className="font-medium">{memberDiscount.planName}</span> active —{' '}
+            {formatDiscountBps(memberDiscount.discountBps)} off your tickets, applied at checkout.
+          </p>
+        </div>
+      )}
       <div className="space-y-3">
         {ticketTypes.map((t) => {
           const q = qty[t.id] ?? 0;
           const soldOut = t.sold >= t.quota;
+          const discounted = memberDiscount
+            ? applyDiscountBps(t.priceMinor, memberDiscount.discountBps)
+            : t.priceMinor;
+          const showStrike = memberDiscount && discounted !== t.priceMinor;
           return (
             <div
               key={t.id}
@@ -120,7 +157,18 @@ export function TicketCheckout({ eventId, ticketTypes, paystackMode }: TicketChe
                   {t.description && <p className="mt-1 text-sm text-muted max-w-md">{t.description}</p>}
                 </div>
                 <div className="text-right">
-                  <p className="font-display text-2xl">{formatPriceMinor(t.priceMinor)}</p>
+                  {showStrike ? (
+                    <>
+                      <p className="text-xs text-muted line-through">
+                        {formatPriceMinor(t.priceMinor)}
+                      </p>
+                      <p className="font-display text-2xl text-accent">
+                        {formatPriceMinor(discounted)}
+                      </p>
+                    </>
+                  ) : (
+                    <p className="font-display text-2xl">{formatPriceMinor(t.priceMinor)}</p>
+                  )}
                   {soldOut && <p className="text-xs text-accent uppercase">Sold out</p>}
                 </div>
               </div>
@@ -199,8 +247,22 @@ export function TicketCheckout({ eventId, ticketTypes, paystackMode }: TicketChe
 
       <div className="sticky bottom-20 md:bottom-0 rounded-2xl border border-white/10 bg-background/90 backdrop-blur p-5 md:p-6 flex items-center justify-between gap-4">
         <div>
-          <p className="text-xs uppercase tracking-[0.22em] text-muted">Total</p>
-          <p className="font-display text-3xl">{formatPriceMinor(totalMinor)}</p>
+          {discountMinor > 0 ? (
+            <>
+              <p className="text-xs uppercase tracking-[0.22em] text-muted">
+                Subtotal {formatPriceMinor(subtotalMinor)}
+              </p>
+              <p className="text-xs text-accent">
+                Member discount, {formatPriceMinor(discountMinor)}
+              </p>
+              <p className="font-display text-3xl mt-1">{formatPriceMinor(totalMinor)}</p>
+            </>
+          ) : (
+            <>
+              <p className="text-xs uppercase tracking-[0.22em] text-muted">Total</p>
+              <p className="font-display text-3xl">{formatPriceMinor(totalMinor)}</p>
+            </>
+          )}
         </div>
         <Button type="submit" variant="primary" size="lg" disabled={totalQty === 0 || submitting}>
           {submitting ? (
