@@ -175,6 +175,28 @@ export async function subscribeMembership(
       userId: user.id,
       planSlug: plan.slug,
     });
+    // Surface the specific Paystack failure where it's safe to. The
+    // wrapper throws with messages like:
+    //   "Paystack /transaction/initialize failed: Invalid Email Address Passed"
+    // Buyers benefit from seeing the actual reason ("invalid email,
+    // sign in with a different address") instead of a generic
+    // outage message that points them at WhatsApp for an issue they
+    // could fix themselves.
+    const message = err instanceof Error ? err.message : '';
+    if (/invalid email/i.test(message)) {
+      return {
+        ok: false,
+        error:
+          "Paystack rejected your account email. Sign out, sign back in with a different address, and try again.",
+      };
+    }
+    if (/plan/i.test(message) && /not found/i.test(message)) {
+      return {
+        ok: false,
+        error:
+          "We couldn't find this plan on Paystack. Ask the platform admin to re-save the plan and try again.",
+      };
+    }
     return {
       ok: false,
       error: 'Paystack is not responding right now. Try again in a moment.',

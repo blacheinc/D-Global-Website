@@ -175,20 +175,28 @@ export default async function AccountPage({ searchParams }: PageProps) {
           ) : (
             <ul className="space-y-3">
               {recentOrders.map((o) => (
-                <li
-                  key={o.id}
-                  className="rounded-2xl border border-white/10 bg-surface p-4 flex items-center justify-between gap-3"
-                >
-                  <div className="min-w-0">
-                    <p className="font-medium truncate">{o.event.title}</p>
-                    <p className="text-xs text-muted">
-                      {formatEventDateTime(o.createdAt)} ·{' '}
-                      <span className="font-mono">{o.reference.slice(0, 14)}</span>
-                    </p>
-                  </div>
-                  <p className="text-sm font-medium shrink-0">
-                    {formatPriceMinor(o.totalMinor, o.currency)}
-                  </p>
+                <li key={o.id}>
+                  {/* Wrap the row in a link to the buyer-side ticket
+                      page. The page demands ?ref= as a capability
+                      token; we have the reference already so the
+                      member's QR + PDF unlock without a re-prompt. */}
+                  <Link
+                    href={`/tickets/${o.id}?ref=${encodeURIComponent(o.reference)}`}
+                    className="block rounded-2xl border border-white/10 bg-surface p-4 hover:border-white/20 transition-colors"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-medium truncate">{o.event.title}</p>
+                        <p className="text-xs text-muted">
+                          {formatEventDateTime(o.createdAt)} ·{' '}
+                          <span className="font-mono">{o.reference.slice(0, 14)}</span>
+                        </p>
+                      </div>
+                      <p className="text-sm font-medium shrink-0">
+                        {formatPriceMinor(o.totalMinor, o.currency)}
+                      </p>
+                    </div>
+                  </Link>
                 </li>
               ))}
             </ul>

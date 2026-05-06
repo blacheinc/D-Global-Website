@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { formatPriceMinor } from '@/lib/formatCurrency';
 import { formatDiscountBps } from '@/lib/membership';
+import { env } from '@/lib/env';
 import { getCurrentUser } from '@/server/auth';
 import { getMemberDiscount } from '@/server/membership';
 import { SubscribeButton } from '@/features/membership/components/SubscribeButton';
@@ -118,6 +119,16 @@ export default async function MembershipPage() {
                   <Button asChild variant="ghost" className="w-full sm:w-auto">
                     <Link href="/account">You're already a member</Link>
                   </Button>
+                ) : env.PAYSTACK_MODE !== 'api' ? (
+                  // Subscriptions require API mode (recurring billing
+                  // is only initialised through /transaction/initialize
+                  // with a plan code). Hide the buy button rather than
+                  // surface a confusing error on click; surface a clear
+                  // notice instead so admin/operator knows what to fix.
+                  <p className="text-xs text-muted">
+                    Subscriptions are temporarily unavailable. Message us on WhatsApp to be added
+                    by hand.
+                  </p>
                 ) : (
                   <SubscribeButton
                     planSlug={plan.slug}
