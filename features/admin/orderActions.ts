@@ -375,6 +375,17 @@ const compSchema = z.object({
     .max(500)
     .optional()
     .transform((v) => (v && v.length > 0 ? v : undefined)),
+  // When true, the comp consumes a real seat off the tier quota and
+  // increments TicketType.sold like a paid order. When false (the
+  // default), the comp lives ABOVE the quota: no capacity check,
+  // no sold increment, public availability counts are unaffected.
+  // Above-quota matches the natural meaning of "complimentary": press,
+  // talent guests, and owner gifts shouldn't shrink the door pool.
+  // Admins who deliberately want to paper the house against quota can
+  // tick the consume-seat box.
+  consumeSeat: z
+    .preprocess((v) => v === 'on' || v === true || v === 'true', z.boolean())
+    .default(false),
 });
 
 export type GenerateCompResult =
@@ -423,36 +434,41 @@ export async function generateComplimentaryOrder(
   const cleanEmail = data.buyerEmail;
   const now = new Date();
 
-  // Same capacity check the buyer-side checkout uses, quota minus
-  // already-sold minus pending reservations. Comps consume real
-  // inventory at the door, so we honour the same limit. Wrapped with
-  // the writes so a concurrent buyer-side request can't race past
-  // the gate between our read and our increment.
+  // Capacity gate is conditional on data.consumeSeat. When false (the
+  // default for above-quota comps), we skip the pending-reservations
+  // aggregate AND the sold-counter increment entirely: comps don't
+  // shrink the door pool and the public "X left" counts stay honest
+  // to paying buyers. When true, the same logic the buyer-side
+  // checkout uses gates the issue (quota - sold - pending >= qty),
+  // wrapped in the same atomic conditional updateMany that defends
+  // against parallel oversell.
   type CompOutcome =
     | { ok: true; orderId: string }
     | { ok: false; status: 'capacity'; available: number; tierName: string };
   let outcome: CompOutcome;
   try {
     outcome = await db.$transaction(async (tx) => {
-      const pending = await tx.orderItem.aggregate({
-        where: {
-          ticketTypeId: tier.id,
-          order: {
-            status: 'PENDING',
-            createdAt: { gt: new Date(Date.now() - COMP_PENDING_TTL_MS) },
+      if (data.consumeSeat) {
+        const pending = await tx.orderItem.aggregate({
+          where: {
+            ticketTypeId: tier.id,
+            order: {
+              status: 'PENDING',
+              createdAt: { gt: new Date(Date.now() - COMP_PENDING_TTL_MS) },
+            },
           },
-        },
-        _sum: { quantity: true },
-      });
-      const reserved = pending._sum.quantity ?? 0;
-      const available = tier.quota - tier.sold - reserved;
-      if (available < data.quantity) {
-        return {
-          ok: false as const,
-          status: 'capacity' as const,
-          available: Math.max(0, available),
-          tierName: tier.name,
-        };
+          _sum: { quantity: true },
+        });
+        const reserved = pending._sum.quantity ?? 0;
+        const available = tier.quota - tier.sold - reserved;
+        if (available < data.quantity) {
+          return {
+            ok: false as const,
+            status: 'capacity' as const,
+            available: Math.max(0, available),
+            tierName: tier.name,
+          };
+        }
       }
 
       const order = await tx.order.create({
@@ -499,22 +515,30 @@ export async function generateComplimentaryOrder(
         ),
       );
 
-      // Atomic capacity gate. The aggregate-then-check above closes the
-      // common case but two interactive transactions running in parallel
-      // can both pass it under READ COMMITTED, by the time we increment
-      // sold, the other transaction may already have committed an
-      // increment we didn't see. Conditional updateMany makes the
-      // increment apply only if the row is still under quota; count===0
-      // means we lost the race and need to roll back this whole
-      // transaction. Throw so the outer catch surfaces a friendly
-      // capacity error instead of letting an oversell land.
-      const inc = await tx.ticketType.updateMany({
-        where: { id: tier.id, sold: { lte: tier.quota - data.quantity } },
-        data: { sold: { increment: data.quantity } },
-      });
-      if (inc.count === 0) {
-        throw new CapacityRaceError(tier.name);
+      if (data.consumeSeat) {
+        // Atomic capacity gate. The aggregate-then-check above closes
+        // the common case but two interactive transactions running in
+        // parallel can both pass it under READ COMMITTED, by the time
+        // we increment sold the other transaction may already have
+        // committed an increment we didn't see. Conditional updateMany
+        // makes the increment apply only if the row is still under
+        // quota; count===0 means we lost the race and need to roll
+        // back this whole transaction. Throw so the outer catch
+        // surfaces a friendly capacity error instead of letting an
+        // oversell land.
+        const inc = await tx.ticketType.updateMany({
+          where: { id: tier.id, sold: { lte: tier.quota - data.quantity } },
+          data: { sold: { increment: data.quantity } },
+        });
+        if (inc.count === 0) {
+          throw new CapacityRaceError(tier.name);
+        }
       }
+      // When !consumeSeat: deliberately skip the sold increment. The
+      // comp's OrderItem still records the tier (so the door scanner
+      // and the recent-comps list can label it correctly), but the
+      // tier's `sold` counter stays untouched and public availability
+      // is unchanged.
 
       return { ok: true as const, orderId: order.id };
     });
