@@ -27,10 +27,15 @@ interface ComplimentaryOrderFormProps {
 
 const initial: GenerateCompResult | null = null;
 
-// Pick the first tier with capacity left for the initial selection.
-// Returns null when every tier is sold out, the form renders an empty
-// state in that branch and never submits.
-function firstAvailable(tiers: ReadonlyArray<Tier>): string | null {
+// When consumeSeat is true, the comp draws from the tier quota: we
+// only let the admin pick a tier that still has capacity. When false
+// (the default) the comp is above-quota: any tier is fair game,
+// including sold-out ones.
+function firstAvailable(
+  tiers: ReadonlyArray<Tier>,
+  consumeSeat: boolean,
+): string | null {
+  if (!consumeSeat) return tiers[0]?.id ?? null;
   for (const t of tiers) {
     if (t.quota - t.sold > 0) return t.id;
   }
@@ -42,10 +47,17 @@ export function ComplimentaryOrderForm({ eventId, tiers }: ComplimentaryOrderFor
   const action = generateComplimentaryOrder.bind(null, eventId);
   const [state, formAction, pending] = useActionState(action, initial);
 
-  // Controlled selection so we can disable sold-out tiers and re-pick
-  // a sensible default after each successful issue (the just-issued
-  // tier may have flipped to sold-out as a result).
-  const initialSelection = useMemo(() => firstAvailable(tiers), [tiers]);
+  // Default to above-quota: comps don't shrink the door pool. Admin
+  // can opt into a quota-consuming comp via the checkbox.
+  const [consumeSeat, setConsumeSeat] = useState(false);
+
+  // Controlled tier selection so we can react to consumeSeat toggling
+  // (which changes which tiers are valid) and re-pick a sensible
+  // default after each successful issue.
+  const initialSelection = useMemo(
+    () => firstAvailable(tiers, false),
+    [tiers],
+  );
   const [selectedTierId, setSelectedTierId] = useState<string | null>(initialSelection);
   const [recipientName, setRecipientName] = useState('');
   const [recipientEmail, setRecipientEmail] = useState('');
@@ -66,16 +78,18 @@ export function ComplimentaryOrderForm({ eventId, tiers }: ComplimentaryOrderFor
     }
   }, [state, router]);
 
-  // When tier inventory updates (after a refresh), keep the selection
-  // valid: if the previously-chosen tier is now sold out, fall back
-  // to the next available one.
+  // Keep the tier selection valid as either inventory or the
+  // consume-seat toggle changes. If consumeSeat just flipped to true
+  // and the chosen tier is now sold out, fall back to the next
+  // available one. If consumeSeat is false, any tier is fine, only
+  // re-pick when the current one was deleted upstream.
   useEffect(() => {
     if (selectedTierId) {
       const t = tiers.find((x) => x.id === selectedTierId);
-      if (t && t.quota - t.sold > 0) return;
+      if (t && (!consumeSeat || t.quota - t.sold > 0)) return;
     }
-    setSelectedTierId(firstAvailable(tiers));
-  }, [tiers, selectedTierId]);
+    setSelectedTierId(firstAvailable(tiers, consumeSeat));
+  }, [tiers, selectedTierId, consumeSeat]);
 
   const fe = state && !state.ok ? (state.fieldErrors ?? {}) : {};
 
@@ -87,17 +101,29 @@ export function ComplimentaryOrderForm({ eventId, tiers }: ComplimentaryOrderFor
     );
   }
 
+  // The allSoldOut empty state only applies when consumeSeat is on:
+  // an above-quota comp can be issued against any tier regardless of
+  // remaining inventory, so we still want the form rendered when
+  // every tier is sold-out by default.
   const allSoldOut = tiers.every((t) => t.quota - t.sold <= 0);
-
-  if (allSoldOut) {
+  if (allSoldOut && consumeSeat) {
     return (
-      <div className="rounded-2xl border border-white/10 bg-surface p-6 max-w-2xl">
+      <div className="rounded-2xl border border-white/10 bg-surface p-6 max-w-2xl space-y-3">
         <p className="font-medium">Every tier is sold out.</p>
-        <p className="mt-2 text-sm text-muted">
-          Comps consume real seats off the tier quota, so they can't be issued once a tier is full.
-          Free up capacity (refund a regular order, or raise the quota on the ticket-tiers page) and
-          come back here.
+        <p className="text-sm text-muted">
+          Quota-consuming comps can't be issued once a tier is full. Either toggle off
+          "Consume a seat from the tier quota" below to issue an above-quota comp, or free up
+          capacity (refund an order, or raise the quota on the ticket-tiers page).
         </p>
+        <label className="inline-flex items-center gap-3 text-sm pt-2">
+          <input
+            type="checkbox"
+            checked={consumeSeat}
+            onChange={(e) => setConsumeSeat(e.target.checked)}
+            className="h-4 w-4 accent-accent"
+          />
+          Consume a seat from the tier quota
+        </label>
       </div>
     );
   }
@@ -124,7 +150,10 @@ export function ComplimentaryOrderForm({ eventId, tiers }: ComplimentaryOrderFor
         <div className="grid gap-2">
           {tiers.map((t) => {
             const remaining = Math.max(0, t.quota - t.sold);
-            const disabled = remaining === 0;
+            // Only refuse the tier when consumeSeat is on AND it's
+            // sold out. Above-quota comps can use any tier regardless
+            // of inventory.
+            const disabled = consumeSeat && remaining === 0;
             return (
               <label
                 key={t.id}
@@ -147,8 +176,10 @@ export function ComplimentaryOrderForm({ eventId, tiers }: ComplimentaryOrderFor
                 <div className="flex-1">
                   <p className="font-medium">{t.name}</p>
                   <p className="text-xs text-muted">
-                    {t.tier.replace('_', ' ')} · {formatPriceMinor(t.priceMinor)} ·{' '}
-                    {disabled ? 'Sold out' : `${remaining} left`}
+                    {t.tier.replace('_', ' ')} · {formatPriceMinor(t.priceMinor)}
+                    {consumeSeat
+                      ? ` · ${remaining === 0 ? 'Sold out' : `${remaining} left`}`
+                      : ''}
                   </p>
                 </div>
               </label>
@@ -156,6 +187,27 @@ export function ComplimentaryOrderForm({ eventId, tiers }: ComplimentaryOrderFor
           })}
         </div>
         <FieldError>{fe.ticketTypeId?.[0]}</FieldError>
+      </div>
+
+      <div className="rounded-xl border border-white/10 bg-elevated px-4 py-3">
+        <label className="flex items-start gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            name="consumeSeat"
+            checked={consumeSeat}
+            onChange={(e) => setConsumeSeat(e.target.checked)}
+            className="mt-0.5 h-4 w-4 accent-accent"
+          />
+          <span className="text-sm">
+            <span className="font-medium">Consume a seat from the tier quota</span>
+            <span className="block text-xs text-muted mt-0.5">
+              Off (default): the comp lives above the quota; public availability is unchanged.
+              On: the comp counts against the tier's sold counter, lowering the public count by
+              the quantity issued. Use when you're papering the house and want the door numbers
+              to reflect it.
+            </span>
+          </span>
+        </label>
       </div>
 
       <div className="grid gap-6 sm:grid-cols-2">

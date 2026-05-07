@@ -2,12 +2,17 @@ import type { Metadata } from 'next';
 import { db } from '@/server/db';
 import { BookingForm } from '@/features/bookings/components/BookingForm';
 import { EventStatus } from '@prisma/client';
+import { getCurrentUser } from '@/server/auth';
+import { getMemberDiscount } from '@/server/membership';
 
 export const metadata: Metadata = {
   title: 'Book a VIP Table',
   description:
     'Reserve a VIP table at the next D Global Entertainment night. Silver, Gold or Platinum, your call.',
 };
+
+// Force-dynamic so the per-request membership lookup actually runs.
+export const dynamic = 'force-dynamic';
 
 interface PageProps {
   searchParams: Promise<{ pkg?: string; event?: string }>;
@@ -16,7 +21,7 @@ interface PageProps {
 export default async function BookingsPage({ searchParams }: PageProps) {
   const { pkg, event } = await searchParams;
 
-  const [packages, events] = await Promise.all([
+  const [packages, events, user] = await Promise.all([
     db.package.findMany({
       where: { active: true },
       orderBy: { priceMinor: 'asc' },
@@ -26,7 +31,9 @@ export default async function BookingsPage({ searchParams }: PageProps) {
       orderBy: { startsAt: 'asc' },
       select: { id: true, slug: true, title: true, startsAt: true },
     }),
+    getCurrentUser(),
   ]);
+  const memberDiscount = await getMemberDiscount(user?.id);
 
   const defaultEventId = event ? events.find((e) => e.slug === event)?.id : undefined;
 
@@ -59,6 +66,7 @@ export default async function BookingsPage({ searchParams }: PageProps) {
               events={events}
               defaultPackageTier={pkg?.toUpperCase()}
               defaultEventId={defaultEventId}
+              memberDiscount={memberDiscount}
             />
           )}
         </div>

@@ -6,10 +6,17 @@ import { getEventBySlug } from '@/features/events/queries';
 import { TicketCheckout } from '@/features/tickets/components/TicketCheckout';
 import { formatEventDateTime } from '@/lib/formatDate';
 import { env } from '@/lib/env';
+import { getCurrentUser } from '@/server/auth';
+import { getMemberDiscount } from '@/server/membership';
 
 export const metadata: Metadata = {
   title: 'Get Tickets',
 };
+
+// Force-dynamic so the per-request member discount lookup actually runs
+// on each page view, otherwise Next caches the rendered tree and the
+// member never sees their discount reflected.
+export const dynamic = 'force-dynamic';
 
 export default async function TicketsPage({
   params,
@@ -19,6 +26,13 @@ export default async function TicketsPage({
   const { slug } = await params;
   const event = await getEventBySlug(slug);
   if (!event) notFound();
+
+  // Discount is computed server-side, per-request, from the visitor's
+  // session. Re-priced again inside the checkout API at order create
+  // time so a member who signed in mid-session, or whose membership
+  // expired between page load and submit, gets the correct charge.
+  const user = await getCurrentUser();
+  const memberDiscount = await getMemberDiscount(user?.id);
 
   return (
     <section className="container-px py-14 md:py-20">
@@ -43,6 +57,7 @@ export default async function TicketsPage({
             eventId={event.id}
             ticketTypes={event.ticketTypes}
             paystackMode={env.PAYSTACK_MODE}
+            memberDiscount={memberDiscount}
           />
         </div>
       </div>

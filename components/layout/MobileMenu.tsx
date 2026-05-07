@@ -8,7 +8,7 @@ import { Menu, X } from 'lucide-react';
 import { site } from '@/lib/site';
 import { cn } from '@/lib/utils';
 
-export function MobileMenu() {
+export function MobileMenu({ signedIn = false }: { signedIn?: boolean }) {
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
@@ -65,6 +65,20 @@ export function MobileMenu() {
             </span>
           </Link>
         ))}
+        {signedIn && (
+          // Same surface visibility as the desktop header: signed-in
+          // users get a single tap to their membership + recent
+          // tickets, no need to remember the URL.
+          <Link
+            href="/account"
+            className="flex items-center justify-between border-b border-white/5 py-5 text-2xl font-display tracking-tight text-foreground hover:text-accent"
+          >
+            Account
+            <span className="text-xs text-muted" aria-hidden>
+              →
+            </span>
+          </Link>
+        )}
       </nav>
     </div>
   );

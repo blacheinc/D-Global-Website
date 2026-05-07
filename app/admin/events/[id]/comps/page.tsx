@@ -66,7 +66,9 @@ export default async function AdminEventCompsPage({
           Issue free tickets for press, talent guests, or owner gifts. Comp orders are stamped
           PAID immediately, signed QR tokens are generated, and the recipient gets the same
           confirmation email a paying buyer receives, with a "Complimentary tickets for"
-          subject so they know it's a gift. Comps consume real seats off the tier quota.
+          subject so they know it's a gift. By default comps live above the tier quota and
+          don't reduce public availability; toggle "Consume a seat from the tier quota" on the
+          form to count one against the tier's sold counter.
         </p>
       </header>
 

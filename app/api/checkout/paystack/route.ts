@@ -6,6 +6,9 @@ import { initializeTransaction } from '@/server/paystack/client';
 import { checkoutSchema } from '@/features/tickets/schema';
 import { captureError } from '@/server/observability';
 import { isSameOrigin, rateLimit } from '@/server/rateLimit';
+import { getCurrentUser } from '@/server/auth';
+import { getMemberDiscount } from '@/server/membership';
+import { applyDiscountBps } from '@/lib/membership';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -62,6 +65,13 @@ export async function POST(req: Request) {
     );
   }
   const { eventId, items, buyer } = parsed.data;
+
+  // Member discount is resolved server-side from the session, the client
+  // sees a discounted price for display but it's never trusted at this
+  // boundary. A guest checkout (no user) returns null and full price.
+  const sessionUser = await getCurrentUser();
+  const memberDiscount = await getMemberDiscount(sessionUser?.id);
+  const discountBps = memberDiscount?.discountBps ?? 0;
 
   const event = await db.event.findUnique({
     where: { id: eventId },
@@ -129,13 +139,23 @@ export async function POST(req: Request) {
             error: `Only ${Math.max(0, available)} ${tt.name} ticket${available === 1 ? '' : 's'} left.`,
           };
         }
-        totalMinor += tt.priceMinor * it.quantity;
-        lineItems.push({ ticketTypeId: tt.id, quantity: it.quantity, unitPriceMinor: tt.priceMinor });
+        // Member discount is applied per line so per-item rounding is
+        // consistent with what the client previewed. Store the
+        // post-discount unitPriceMinor so refund/order-detail surfaces
+        // reflect what was actually charged, the catalog price is still
+        // on the TicketType row if anyone needs the original.
+        const unitPriceMinor = applyDiscountBps(tt.priceMinor, discountBps);
+        totalMinor += unitPriceMinor * it.quantity;
+        lineItems.push({ ticketTypeId: tt.id, quantity: it.quantity, unitPriceMinor });
       }
       const order = await tx.order.create({
         data: {
           reference,
           eventId: event.id,
+          // Link the buyer to their user row when signed in so the
+          // admin orders list can join, and so a future "my tickets"
+          // page can list them. Guest checkouts stay null.
+          userId: sessionUser?.id ?? null,
           buyerName: buyer.name,
           buyerEmail: buyer.email,
           buyerPhone: buyer.phone,

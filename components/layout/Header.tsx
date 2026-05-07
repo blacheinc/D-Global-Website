@@ -2,9 +2,15 @@ import Link from 'next/link';
 import { Logo } from '@/components/brand/Logo';
 import { Button } from '@/components/ui/Button';
 import { site } from '@/lib/site';
+import { getCurrentUser } from '@/server/auth';
 import { MobileMenu } from './MobileMenu';
 
-export function Header() {
+export async function Header() {
+  // Read the session server-side so members can find their account
+  // page without typing the URL. Fast: NextAuth's auth() reads the
+  // session cookie + caches per-request, no DB round-trip on every
+  // page render.
+  const user = await getCurrentUser();
   return (
     // No opaque panel + border, so the hero video bleeds up behind the
     // fixed header instead of cutting off at a hard line. A soft vertical
@@ -30,6 +36,14 @@ export function Header() {
         </nav>
 
         <div className="hidden md:flex items-center gap-3">
+          {user && (
+            <Link
+              href="/account"
+              className="text-sm text-muted hover:text-foreground transition-colors"
+            >
+              Account
+            </Link>
+          )}
           <Button asChild variant="ghost" size="sm">
             <Link href="/bookings">Book Table</Link>
           </Button>
@@ -38,7 +52,7 @@ export function Header() {
           </Button>
         </div>
 
-        <MobileMenu />
+        <MobileMenu signedIn={Boolean(user)} />
       </div>
     </header>
   );
