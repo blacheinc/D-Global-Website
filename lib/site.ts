@@ -15,7 +15,10 @@ export const site = {
   nav: [
     { href: '/events', label: 'Events' },
     { href: '/bookings', label: 'VIP Tables' },
-    { href: '/membership', label: 'Membership' },
+    // Membership: hidden from public nav for now. Page still exists at
+    // /membership for direct access and existing members keep their
+    // discount; flip this entry back in to re-promote the feature.
+    // { href: '/membership', label: 'Membership' },
     { href: '/gallery', label: 'Gallery' },
   ],
   socials: {
