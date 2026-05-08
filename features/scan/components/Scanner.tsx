@@ -192,10 +192,41 @@ export function Scanner({ token, eventTitle }: { token: string; eventTitle: stri
     }
   }, [token]);
 
-  // Wire navigator online / offline events so the toolbar reflects
+  // Track navigator.onLine in state so the toolbar pill reflects
   // network state without requiring a manual toggle.
+  // Already declared above; this comment kept for context.
+
+  // Refs that mirror the latest pending / syncing / sync-fn values so
+  // the background interval can read fresh state without being
+  // re-created on every render. setInterval inside a useEffect that
+  // depends on those values would reset its 30s timer on every scan.
+  const pendingRef = useRef<PendingScan[]>(pending);
+  const syncingRef = useRef<boolean>(syncing);
+  const onlineRef = useRef<boolean>(online);
+  // syncPendingRef is declared after the function below; we initialize
+  // with a noop so calling it before mount has no effect.
+  const syncPendingRef = useRef<() => Promise<void>>(async () => {});
   useEffect(() => {
-    const handleOnline = () => setOnline(true);
+    pendingRef.current = pending;
+  }, [pending]);
+  useEffect(() => {
+    syncingRef.current = syncing;
+  }, [syncing]);
+  useEffect(() => {
+    onlineRef.current = online;
+  }, [online]);
+
+  // Wire navigator online / offline events. The 'online' branch ALSO
+  // tries an immediate sync when there's anything pending, so a gate
+  // crew device that drops network mid-event flushes its queue the
+  // instant signal returns, no manual button press required.
+  useEffect(() => {
+    const handleOnline = () => {
+      setOnline(true);
+      if (pendingRef.current.length > 0 && !syncingRef.current) {
+        void syncPendingRef.current();
+      }
+    };
     const handleOffline = () => setOnline(false);
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
@@ -203,6 +234,28 @@ export function Scanner({ token, eventTitle }: { token: string; eventTitle: stri
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
+  }, []);
+
+  // Periodic background sync. 30s is tight enough that the server's
+  // canonical scanCount stays close to the door's reality without
+  // hammering the endpoint when the gate is quiet. Skips when:
+  //   - we're offline (network lookup would fail anyway),
+  //   - the queue is empty (nothing to push),
+  //   - a sync is already in flight (avoid stacking).
+  // Stable across re-renders via refs above, so a busy gate that
+  // scans every few seconds still gets a tick every 30s rather than
+  // resetting the timer on each state change.
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (
+        onlineRef.current &&
+        pendingRef.current.length > 0 &&
+        !syncingRef.current
+      ) {
+        void syncPendingRef.current();
+      }
+    }, 30_000);
+    return () => clearInterval(id);
   }, []);
 
   // Index pack by qrToken for O(1) lookup at scan time. Recomputed
@@ -416,6 +469,14 @@ export function Scanner({ token, eventTitle }: { token: string; eventTitle: stri
       setSyncing(false);
     }
   }, [token, pending]);
+
+  // Keep the ref pointing at the latest syncPending so the background
+  // interval + online-event handler can call it without bringing the
+  // closure into their dependency arrays (which would tear down and
+  // recreate the listeners + interval on every state change).
+  useEffect(() => {
+    syncPendingRef.current = syncPending;
+  }, [syncPending]);
 
   const stop = useCallback(() => {
     if (intervalRef.current) {
