@@ -86,10 +86,16 @@ export function MembershipPlanForm({ plan }: { plan: MembershipPlan | null }) {
             id="priceMinor"
             name="priceMinor"
             required
-            // Same pesewa->GHS shift as TicketTypeForm.
-            defaultValue={plan?.priceMinor != null ? plan.priceMinor / 100 : ''}
+            // Same pesewa->GHS shift as TicketTypeForm. Default
+            // suggestion is GHS 400, roughly $30 USD at current cedi
+            // rates; admin can adjust as the rate moves.
+            defaultValue={plan?.priceMinor != null ? plan.priceMinor / 100 : 400}
+            placeholder="400"
             aria-invalid={!!fe.priceMinor}
           />
+          <p className="mt-1 text-xs text-muted">
+            Aim for the cedi equivalent of ~$30/month. Update as the rate moves.
+          </p>
           <FieldError>{fe.priceMinor?.[0]}</FieldError>
         </div>
         <div>
