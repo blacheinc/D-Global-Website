@@ -5,19 +5,22 @@ import { Check, X, AlertTriangle, Camera, RefreshCw, Download, Wifi, WifiOff, Re
 
 // Camera-based QR scanner for gate crew.
 //
-// Detection backends (tried in order):
-//   1. Native BarcodeDetector, Chrome, recent Edge, some Android.
-//      Hardware-accelerated where supported, cheaper on battery.
-//   2. jsqr fallback, pure JS, ~40KB gzipped, lazy-loaded the first
-//      time a browser without BarcodeDetector hits the page. Works on
-//      Safari / iOS Safari / Firefox / anything with getUserMedia.
+// Detection backend: jsqr only, lazy-imported (~40KB) on first use.
+// The native BarcodeDetector API was attractive on paper (hardware-
+// accelerated, cheaper on battery) but Android Chrome exposes the
+// API while its detect() silently returns [] on a meaningful slice
+// of device/build combinations, leaving the gate crew staring at a
+// running camera with no scans firing. jsqr is uniform across every
+// browser with getUserMedia and decodes 640x480 frames in tens of
+// milliseconds on any modern phone, well under the 150ms scan
+// interval.
 //
 // Permission flow: getUserMedia is always called on the user-gesture
-// click of the Start button, BEFORE any capability decision, so the
-// OS-level camera prompt appears even on browsers where the JS
-// decoder story is weird. Detection backend is picked after the
-// stream is running; if neither works we fall through to a clear
-// "your browser can't decode QR" error rather than a silent dead end.
+// click of the Start button, BEFORE the decoder loads, so the OS-
+// level camera prompt appears even on browsers where the JS decoder
+// story is weird. If jsqr fails to import (offline first-load,
+// blocked CDN) we fall through to a clear "your browser can't
+// decode QR" error rather than a silent dead end.
 
 type ServerOk = {
   ok: true;
@@ -138,15 +141,6 @@ function isProblemInAppBrowser(): boolean {
   return /WhatsApp|FBAN|FBAV|Instagram|TikTok|Line|MicroMessenger|Messenger|LinkedInApp|Twitter/i.test(
     ua,
   );
-}
-
-interface BarcodeDetectorLike {
-  detect(source: CanvasImageSource): Promise<Array<{ rawValue: string }>>;
-}
-declare global {
-  interface Window {
-    BarcodeDetector?: new (opts?: { formats?: string[] }) => BarcodeDetectorLike;
-  }
 }
 
 type DecodeFn = () => Promise<string | null>;
@@ -517,30 +511,19 @@ export function Scanner({ token, eventTitle }: { token: string; eventTitle: stri
   }, []);
 
   // Decoder picker, runs AFTER getUserMedia so permission has already
-  // been prompted. Prefers native BarcodeDetector; falls back to jsqr
-  // (dynamic-imported so the ~40KB only ships to browsers that need it).
+  // been prompted. Uses jsqr (lazy-imported, ~40KB) on every browser.
+  //
+  // We previously preferred the native BarcodeDetector when present
+  // and only fell back to jsqr if the constructor threw. The problem
+  // is that Android Chrome exposes window.BarcodeDetector but its
+  // detect() implementation silently returns [] on a meaningful
+  // fraction of devices/builds, so the camera was running and the
+  // user thought the scanner was broken. jsqr is uniform across
+  // browsers, modern phones decode 640x480 frames in 30-60ms which
+  // sits comfortably under the 150ms scan interval.
   const pickDecoder = useCallback(async (): Promise<DecodeFn | null> => {
     const video = videoRef.current;
     if (!video) return null;
-
-    if (typeof window !== 'undefined' && window.BarcodeDetector) {
-      try {
-        const detector = new window.BarcodeDetector({ formats: ['qr_code'] });
-        return async () => {
-          if (video.readyState < 2) return null;
-          try {
-            const codes = await detector.detect(video);
-            return codes[0]?.rawValue ?? null;
-          } catch {
-            return null;
-          }
-        };
-      } catch {
-        // Constructor can throw on partially-implemented builds, fall
-        // through to jsqr.
-      }
-    }
-
     try {
       const { default: jsQR } = await import('jsqr');
       const canvas =
@@ -602,14 +585,15 @@ export function Scanner({ token, eventTitle }: { token: string; eventTitle: stri
       return;
     }
 
-    setPhase({ stage: 'starting' });
-
+    // CRITICAL: getUserMedia must be the first async operation after
+    // the user-gesture click, with NO setState in between. Some Android
+    // Chrome builds drop the user-activation flag the moment React
+    // schedules a state update (which can flush before the await), so
+    // the prompt silently fails to appear. Fire the camera request as
+    // the first thing in the same task as the click; only after the
+    // stream is acquired do we update phase.
     let stream: MediaStream;
     try {
-      // Camera permission prompt fires here, always. Decoder choice is
-      // deferred until after the stream is live so an unsupported
-      // decoder can't silently block the prompt.
-      //
       // Try environment-facing camera first; some Android devices
       // (front-camera-only tablets, devices without back cam) reject
       // even the `ideal` hint with OverconstrainedError, so fall back
@@ -631,23 +615,49 @@ export function Scanner({ token, eventTitle }: { token: string; eventTitle: stri
       }
     } catch (err) {
       if (err instanceof DOMException && err.name === 'NotAllowedError') {
+        // Persistently denied: most Android Chrome users hit this when
+        // they previously tapped Block on the site. The browser short-
+        // circuits subsequent requests with no prompt. Spell out the
+        // recovery so the gate crew can fix it on the device.
         setPhase({
           stage: 'error',
           kind: 'denied',
           message:
-            'Camera access was blocked for this site. Allow camera in your browser settings, then tap Retry.',
+            'Camera permission is blocked for this site. On Chrome / Android: tap the ⋮ menu → Settings → Site settings → Camera → find this site → Allow. Then tap Retry.',
+        });
+      } else if (
+        err instanceof DOMException &&
+        (err.name === 'NotReadableError' || err.name === 'AbortError')
+      ) {
+        // Camera in use by another app, OS denied at hardware level.
+        setPhase({
+          stage: 'error',
+          kind: 'hardware',
+          message:
+            'Camera is busy or unavailable. Close any other app using the camera (WhatsApp video, Camera app) and tap Retry.',
+        });
+      } else if (err instanceof DOMException && err.name === 'SecurityError') {
+        setPhase({
+          stage: 'error',
+          kind: 'insecure',
+          message:
+            'The browser refused camera access for this page. Make sure the URL starts with https:// and try again.',
         });
       } else {
         setPhase({
           stage: 'error',
           kind: 'hardware',
           message:
-            'Couldn’t start the camera. Close other apps that may be using it and try again.',
+            err instanceof Error
+              ? `Couldn’t start the camera (${err.name || 'unknown'}). Close other apps that may be using it and try again.`
+              : 'Couldn’t start the camera. Close other apps that may be using it and try again.',
         });
       }
       return;
     }
 
+    // Stream acquired. NOW update phase + wire up the video.
+    setPhase({ stage: 'starting' });
     streamRef.current = stream;
     const v = videoRef.current;
     if (v) {
