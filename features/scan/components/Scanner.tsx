@@ -26,6 +26,13 @@ type ServerOk = {
   attendee: string;
   tier: string;
   ticketName: string;
+  // Group-purchase progress: how many physical units the OrderItem
+  // represents and how many have been admitted so far (including this
+  // scan if it consumed one). Both are present as of the scanCount
+  // migration; older deployed clients tolerated null because they
+  // were never set.
+  scanCount?: number;
+  quantity?: number;
 };
 type ServerFail = { ok: false; reason: string; message: string };
 type ServerResult = ServerOk | ServerFail;
@@ -482,6 +489,17 @@ function ResultPanel({ shown, onDismiss }: { shown: ShownResult; onDismiss: () =
     };
   }, [onDismiss]);
 
+  // Group-purchase progress label: "(2 of 4)" when the QR represents
+  // multiple units. Hidden for solo tickets (quantity 1) since the
+  // count is implied. Falls back to no label if the server didn't send
+  // the fields (older deploys, unlikely once this is shipped).
+  const groupLabel = (() => {
+    const q = shown.kind !== 'fail' ? shown.result.quantity : undefined;
+    const c = shown.kind !== 'fail' ? shown.result.scanCount : undefined;
+    if (typeof q !== 'number' || typeof c !== 'number' || q <= 1) return null;
+    return `Admitted ${c} of ${q}`;
+  })();
+
   const { tone, Icon, headline, body } = (() => {
     if (shown.kind === 'ok') {
       return {
@@ -494,11 +512,17 @@ function ResultPanel({ shown, onDismiss }: { shown: ShownResult; onDismiss: () =
             <p className="text-sm text-muted">
               {shown.result.ticketName} · {shown.result.tier}
             </p>
+            {groupLabel && (
+              <p className="mt-2 text-sm font-medium text-accent">{groupLabel}</p>
+            )}
           </>
         ),
       } as const;
     }
     if (shown.kind === 'already') {
+      // For multi-unit groups, "already scanned" only fires once every
+      // unit has been admitted. Surface the full count so gate crew
+      // sees this is a true repeat, not "you missed one".
       return {
         tone: 'warn',
         Icon: AlertTriangle,
@@ -507,8 +531,10 @@ function ResultPanel({ shown, onDismiss }: { shown: ShownResult; onDismiss: () =
           <>
             <p className="text-lg font-medium text-foreground">{shown.result.attendee}</p>
             <p className="text-sm text-muted">
-              First entry {new Date(shown.result.scannedAt).toLocaleTimeString()}. Verify before
-              letting them through.
+              {groupLabel
+                ? `${groupLabel}. Last admit ${new Date(shown.result.scannedAt).toLocaleTimeString()}.`
+                : `First entry ${new Date(shown.result.scannedAt).toLocaleTimeString()}.`}{' '}
+              Verify before letting them through.
             </p>
           </>
         ),
