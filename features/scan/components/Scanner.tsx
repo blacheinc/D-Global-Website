@@ -1,7 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { Check, X, AlertTriangle, Camera, RefreshCw } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Check, X, AlertTriangle, Camera, RefreshCw, Download, Wifi, WifiOff, RefreshCcw } from 'lucide-react';
 
 // Camera-based QR scanner for gate crew.
 //
@@ -55,6 +55,72 @@ type Phase =
 const SCAN_INTERVAL_MS = 150;
 const DEBOUNCE_MS = 2500;
 
+// ----- Offline pack -----
+//
+// The scanner page can pre-download a JSON pack of every valid qrToken
+// for the event so it keeps working when the gate-crew device drops off
+// network (basement venues, busy networks, captive-portal Wi-Fi). When
+// offline mode is on, we look the scanned QR up against the pack
+// instead of POSTing to /verify, track scans in a local delta map, and
+// queue a pending sync entry per admit so the canonical scanCount on
+// the server can be reconciled later via /api/scan/[token]/sync.
+
+type OfflineTicket = {
+  qrToken: string;
+  orderItemId: string;
+  attendee: string;
+  tier: string;
+  ticketName: string;
+  quantity: number;
+  scanCount: number;
+};
+
+type OfflinePack = {
+  version: 1;
+  eventId: string;
+  eventTitle: string;
+  generatedAt: string;
+  tokenSession: string;
+  tickets: OfflineTicket[];
+};
+
+type PendingScan = {
+  orderItemId: string;
+  scannedAt: string;
+  nonce: string;
+};
+
+const packKey = (token: string) => `dg-scan-pack-${token}`;
+const deltasKey = (token: string) => `dg-scan-deltas-${token}`;
+const pendingKey = (token: string) => `dg-scan-pending-${token}`;
+
+function loadJson<T>(key: string): T | null {
+  try {
+    const raw = typeof window !== 'undefined' ? window.localStorage.getItem(key) : null;
+    if (!raw) return null;
+    return JSON.parse(raw) as T;
+  } catch {
+    return null;
+  }
+}
+
+function saveJson(key: string, value: unknown): void {
+  try {
+    if (typeof window !== 'undefined') window.localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // localStorage full / disabled. Silent: the user-visible flow
+    // continues; offline mode just won't persist across reloads.
+  }
+}
+
+function makeNonce(): string {
+  // crypto.randomUUID exists everywhere we run; fallback to Math.random
+  // is just defensive for ancient WebViews. Nonces are advisory, not a
+  // security boundary.
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID();
+  return `n_${Math.random().toString(36).slice(2)}_${Date.now()}`;
+}
+
 // Detect user agents that are known-problematic for getUserMedia on
 // Android. These in-app WebViews either don't declare the CAMERA
 // permission in their host app's manifest or disable the API at the
@@ -100,8 +166,140 @@ export function Scanner({ token, eventTitle }: { token: string; eventTitle: stri
   const [phase, setPhase] = useState<Phase>({ stage: 'idle' });
   const [shown, setShown] = useState<ShownResult | null>(null);
 
+  // ----- Offline state -----
+  const [pack, setPack] = useState<OfflinePack | null>(null);
+  const [offlineMode, setOfflineMode] = useState(false);
+  // Local-only scan deltas keyed by orderItemId. Effective scanCount
+  // = pack.scanCount + (deltas[orderItemId] ?? 0).
+  const [deltas, setDeltas] = useState<Record<string, number>>({});
+  const [pending, setPending] = useState<PendingScan[]>([]);
+  // Track navigator.onLine in state so the toolbar pill reflects
+  // reality. Initialised to a generous default so SSR doesn't render
+  // a misleading "Offline" before hydration.
+  const [online, setOnline] = useState(true);
+  const [downloading, setDownloading] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [toolbarMessage, setToolbarMessage] = useState<string | null>(null);
+
+  // Load pack + deltas + pending queue from localStorage on mount.
+  useEffect(() => {
+    const p = loadJson<OfflinePack>(packKey(token));
+    if (p && p.version === 1 && p.tokenSession === token) setPack(p);
+    setDeltas(loadJson<Record<string, number>>(deltasKey(token)) ?? {});
+    setPending(loadJson<PendingScan[]>(pendingKey(token)) ?? []);
+    if (typeof navigator !== 'undefined' && 'onLine' in navigator) {
+      setOnline(navigator.onLine);
+    }
+  }, [token]);
+
+  // Wire navigator online / offline events so the toolbar reflects
+  // network state without requiring a manual toggle.
+  useEffect(() => {
+    const handleOnline = () => setOnline(true);
+    const handleOffline = () => setOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  // Index pack by qrToken for O(1) lookup at scan time. Recomputed
+  // when the pack changes (rare, only on download).
+  const packByQr = useMemo(() => {
+    const m = new Map<string, OfflineTicket>();
+    if (pack) for (const t of pack.tickets) m.set(t.qrToken, t);
+    return m;
+  }, [pack]);
+
+  // Persist deltas / pending whenever they change. Cheap, JSON-stringified
+  // size for a busy event is tens of KB at most.
+  useEffect(() => {
+    saveJson(deltasKey(token), deltas);
+  }, [token, deltas]);
+  useEffect(() => {
+    saveJson(pendingKey(token), pending);
+  }, [token, pending]);
+
+  // Shared post-result side effects (haptics + state set). Same shape
+  // for both online and offline branches so the UI behaves identically.
+  const surfaceResult = useCallback((next: ShownResult) => {
+    shownRef.current = next;
+    setShown(next);
+    if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+      if (next.kind === 'ok') navigator.vibrate(80);
+      else if (next.kind === 'already') navigator.vibrate([60, 40, 60]);
+      else navigator.vibrate([120, 60, 120]);
+    }
+  }, []);
+
   const submit = useCallback(
     async (qr: string) => {
+      // Offline branch: look the QR up in the local pack, increment
+      // the local delta, and queue a pending sync entry. No network
+      // call, so the door keeps moving even when Wi-Fi drops mid-event.
+      if (offlineMode) {
+        if (!pack) {
+          surfaceResult({
+            kind: 'fail',
+            message: 'No offline pack downloaded yet. Tap "Download pack" while online.',
+          });
+          return;
+        }
+        const ticket = packByQr.get(qr);
+        if (!ticket) {
+          // Not in the pack: either an event mismatch, a forged QR,
+          // or the pack is stale (ticket issued after pack download).
+          // We can't tell offline; surface a generic invalid.
+          surfaceResult({ kind: 'fail', message: 'QR not in offline pack. Refresh while online.' });
+          return;
+        }
+        const localDelta = deltas[ticket.orderItemId] ?? 0;
+        const effectiveCount = ticket.scanCount + localDelta;
+        if (effectiveCount >= ticket.quantity) {
+          surfaceResult({
+            kind: 'already',
+            result: {
+              ok: true,
+              alreadyScanned: true,
+              scannedAt: new Date().toISOString(),
+              attendee: ticket.attendee,
+              tier: ticket.tier,
+              ticketName: ticket.ticketName,
+              scanCount: effectiveCount,
+              quantity: ticket.quantity,
+            },
+          });
+          return;
+        }
+        // Admit one. Bump local delta + queue for sync. We use
+        // functional setState so back-to-back rapid scans of different
+        // QRs don't lose updates from stale closures.
+        const now = new Date().toISOString();
+        const nonce = makeNonce();
+        setDeltas((d) => ({
+          ...d,
+          [ticket.orderItemId]: (d[ticket.orderItemId] ?? 0) + 1,
+        }));
+        setPending((q) => [...q, { orderItemId: ticket.orderItemId, scannedAt: now, nonce }]);
+        surfaceResult({
+          kind: 'ok',
+          result: {
+            ok: true,
+            alreadyScanned: false,
+            scannedAt: now,
+            attendee: ticket.attendee,
+            tier: ticket.tier,
+            ticketName: ticket.ticketName,
+            scanCount: effectiveCount + 1,
+            quantity: ticket.quantity,
+          },
+        });
+        return;
+      }
+
+      // Online branch: same path as before.
       try {
         const res = await fetch(`/api/scan/${token}/verify`, {
           method: 'POST',
@@ -113,24 +311,111 @@ export function Scanner({ token, eventTitle }: { token: string; eventTitle: stri
         const next: ShownResult = json.ok
           ? { kind: json.alreadyScanned ? 'already' : 'ok', result: json }
           : { kind: 'fail', message: json.message };
-        shownRef.current = next;
-        setShown(next);
-        // Haptic pulse so gate crew get a tactile signal even if the
-        // phone is on silent. Fire-and-forget; not every device has
-        // navigator.vibrate and that's fine.
-        if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
-          if (next.kind === 'ok') navigator.vibrate(80);
-          else if (next.kind === 'already') navigator.vibrate([60, 40, 60]);
-          else navigator.vibrate([120, 60, 120]);
-        }
+        surfaceResult(next);
       } catch {
-        const fail: ShownResult = { kind: 'fail', message: 'Network error, try again.' };
-        shownRef.current = fail;
-        setShown(fail);
+        surfaceResult({ kind: 'fail', message: 'Network error, try again.' });
       }
     },
-    [token],
+    [token, offlineMode, pack, packByQr, deltas, surfaceResult],
   );
+
+  // Download a fresh pack from the server. Stored in localStorage so
+  // the device can lose connectivity and still scan. If there's already
+  // a pack with un-synced deltas, the new pack's scanCount snapshot
+  // includes the synced ones; we carry over the LOCAL delta only for
+  // orderItemIds whose snapshot hasn't caught up yet, otherwise we
+  // reset (preventing a delta from being applied twice if a sync
+  // succeeded between scans).
+  const downloadPack = useCallback(async () => {
+    setDownloading(true);
+    setToolbarMessage(null);
+    try {
+      const res = await fetch(`/api/scan/${token}/export`, { cache: 'no-store' });
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        throw new Error(text || `HTTP ${res.status}`);
+      }
+      const fresh = (await res.json()) as OfflinePack;
+      if (fresh.version !== 1) throw new Error('Unsupported pack version');
+      // Reconcile deltas against the new snapshot. Any orderItemId
+      // whose new snapshot scanCount has caught up to (or passed)
+      // the old snapshot + delta means the sync landed; drop the
+      // delta for that id. Otherwise carry it forward.
+      setDeltas((old) => {
+        const next: Record<string, number> = {};
+        const oldByItem: Record<string, OfflineTicket> = pack
+          ? Object.fromEntries(pack.tickets.map((t) => [t.orderItemId, t]))
+          : {};
+        for (const t of fresh.tickets) {
+          const oldDelta = old[t.orderItemId] ?? 0;
+          if (oldDelta <= 0) continue;
+          const oldSnap = oldByItem[t.orderItemId]?.scanCount ?? 0;
+          const expected = oldSnap + oldDelta;
+          // If server's new snapshot already reflects our delta (or
+          // exceeds it from another scanner), we can drop it.
+          if (t.scanCount >= expected) continue;
+          next[t.orderItemId] = expected - t.scanCount;
+        }
+        return next;
+      });
+      setPack(fresh);
+      saveJson(packKey(token), fresh);
+      setToolbarMessage(`Pack updated, ${fresh.tickets.length} tickets cached.`);
+    } catch (err) {
+      setToolbarMessage(
+        err instanceof Error ? `Pack download failed: ${err.message}` : 'Pack download failed.',
+      );
+    } finally {
+      setDownloading(false);
+    }
+  }, [token, pack]);
+
+  // Push the pending queue to the server. Each entry is applied
+  // independently; entries the server rejected as not-found get
+  // dropped (stale pack), the rest get cleared on success. Best-
+  // effort, we stay quiet on transient errors so the gate crew can
+  // retry from the toolbar.
+  //
+  // Optimistic clear with rollback: we snapshot the queue, clear it
+  // immediately, then restore on rejection. If we cleared only after
+  // a successful response, a fetch that succeeded server-side but
+  // failed to deliver the response would leave the queue intact and
+  // the next sync would re-apply every entry, double-counting
+  // scanCount. The remaining "request applied + response lost"
+  // window is much smaller than "any network error".
+  const syncPending = useCallback(async () => {
+    if (pending.length === 0) return;
+    const snapshot = pending;
+    setSyncing(true);
+    setToolbarMessage(null);
+    setPending([]);
+    setDeltas({});
+    try {
+      const res = await fetch(`/api/scan/${token}/sync`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ scans: snapshot }),
+        cache: 'no-store',
+      });
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        throw new Error(text || `HTTP ${res.status}`);
+      }
+      setToolbarMessage(`Synced ${snapshot.length} scan${snapshot.length === 1 ? '' : 's'}.`);
+    } catch (err) {
+      // Rollback: prepend the snapshot to whatever the user has
+      // queued in the meantime so no offline scans are dropped.
+      // Deltas can't be reconstructed cleanly here, but the next
+      // pack download's reconciliation logic will rebuild them
+      // from the server snapshot.
+      setPending((current) => [...snapshot, ...current]);
+      setToolbarMessage(
+        err instanceof Error ? `Sync failed: ${err.message}` : 'Sync failed, try again.',
+      );
+    } finally {
+      setSyncing(false);
+    }
+  }, [token, pending]);
 
   const stop = useCallback(() => {
     if (intervalRef.current) {
@@ -330,6 +615,85 @@ export function Scanner({ token, eventTitle }: { token: string; eventTitle: stri
 
   return (
     <div className="space-y-4">
+      {/* Offline toolbar. Renders even when no pack has been
+          downloaded, the buttons themselves are the discovery surface
+          for "you can work offline" so a venue with patchy wifi knows
+          to download before the doors open. */}
+      <div className="rounded-2xl border border-white/10 bg-surface p-4 space-y-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <span
+            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${
+              online
+                ? 'bg-accent/15 text-accent'
+                : 'bg-accent-hot/15 text-accent-hot'
+            }`}
+          >
+            {online ? (
+              <Wifi aria-hidden className="h-3 w-3" />
+            ) : (
+              <WifiOff aria-hidden className="h-3 w-3" />
+            )}
+            {online ? 'Online' : 'Offline'}
+          </span>
+          {pack && (
+            <span className="text-xs text-muted">
+              Pack, {pack.tickets.length} tickets · saved{' '}
+              {new Date(pack.generatedAt).toLocaleTimeString()}
+            </span>
+          )}
+          {pending.length > 0 && (
+            <span className="inline-flex items-center rounded-full bg-white/5 px-3 py-1 text-xs text-muted">
+              {pending.length} pending sync
+            </span>
+          )}
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={downloadPack}
+            disabled={downloading || !online}
+            className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs hover:bg-white/10 disabled:opacity-50"
+          >
+            <Download aria-hidden className="h-3.5 w-3.5" />
+            {downloading ? 'Downloading...' : pack ? 'Refresh pack' : 'Download pack'}
+          </button>
+          <label
+            className={`inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs ${
+              pack ? 'cursor-pointer hover:bg-white/10' : 'cursor-not-allowed opacity-50'
+            }`}
+            title={pack ? 'Use the local pack instead of the network' : 'Download a pack first'}
+          >
+            <input
+              type="checkbox"
+              className="h-3 w-3 accent-accent"
+              checked={offlineMode}
+              disabled={!pack}
+              onChange={(e) => setOfflineMode(e.target.checked)}
+            />
+            Offline mode
+          </label>
+          {pending.length > 0 && (
+            <button
+              type="button"
+              onClick={syncPending}
+              disabled={syncing || !online}
+              className="inline-flex items-center gap-1.5 rounded-full bg-accent px-3 py-1.5 text-xs text-white hover:bg-accent-hot disabled:opacity-50"
+            >
+              <RefreshCcw
+                aria-hidden
+                className={`h-3.5 w-3.5 ${syncing ? 'animate-spin' : ''}`}
+              />
+              {syncing ? 'Syncing...' : `Sync ${pending.length}`}
+            </button>
+          )}
+        </div>
+        {toolbarMessage && (
+          <p className="text-xs text-muted" role="status">
+            {toolbarMessage}
+          </p>
+        )}
+      </div>
+
       <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-bg aspect-[3/4] md:aspect-video">
         <video
           ref={videoRef}

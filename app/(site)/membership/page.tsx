@@ -96,6 +96,10 @@ export default async function MembershipPage() {
                 <p className="font-display text-3xl">{formatPriceMinor(plan.priceMinor, plan.currency)}</p>
                 <p className="text-xs uppercase tracking-[0.22em] text-muted mt-1">
                   every {plan.intervalDays} {plan.intervalDays === 1 ? 'day' : 'days'}
+                  <span className="normal-case tracking-normal text-muted/80">
+                    {' '}
+                    · ~$30/month
+                  </span>
                 </p>
               </div>
 

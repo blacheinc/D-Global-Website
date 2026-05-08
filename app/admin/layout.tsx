@@ -30,9 +30,7 @@ const NAV: ReadonlyArray<AdminNavItem> = [
   { href: '/admin/bookings', label: 'Bookings' },
   { href: '/admin/artist-bookings', label: 'Artist bookings' },
   { href: '/admin/orders', label: 'Orders' },
-  // Memberships nav entry hidden while the feature is paused; the page
-  // itself still works at /admin/memberships for direct access.
-  // { href: '/admin/memberships', label: 'Memberships' },
+  { href: '/admin/memberships', label: 'Memberships' },
   { href: '/admin/push', label: 'Push' },
 ];
 
