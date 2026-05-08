@@ -258,12 +258,36 @@ export function Scanner({ token, eventTitle }: { token: string; eventTitle: stri
     return () => clearInterval(id);
   }, []);
 
+  // Debounced near-real-time sync. Each new pending entry resets a
+  // 1s timer; the timer firing kicks off syncPending. Rapid back-to-
+  // back scans coalesce into a single POST instead of stacking. While
+  // online + offline-mode toggled on, this gives the gate-crew device
+  // an effectively instant sync (1s after the last scan), without
+  // racing the React commit cycle of setPending.
+  useEffect(() => {
+    if (!online || syncing || pending.length === 0) return;
+    const id = setTimeout(() => {
+      void syncPendingRef.current();
+    }, 1000);
+    return () => clearTimeout(id);
+  }, [online, syncing, pending.length]);
+
   // Index pack by qrToken for O(1) lookup at scan time. Recomputed
   // when the pack changes (rare, only on download).
   const packByQr = useMemo(() => {
     const m = new Map<string, OfflineTicket>();
     if (pack) for (const t of pack.tickets) m.set(t.qrToken, t);
     return m;
+  }, [pack]);
+
+  // Sum of physical units across the pack. The pack stores one entry
+  // per OrderItem (a group purchase of 4 tickets is 1 entry with
+  // quantity=4), so tickets.length under-counts the actual door
+  // throughput. Surface the quantity-aware total in the toolbar so
+  // the gate-crew display matches the venue's expected admit count.
+  const packTotalUnits = useMemo(() => {
+    if (!pack) return 0;
+    return pack.tickets.reduce((sum, t) => sum + t.quantity, 0);
   }, [pack]);
 
   // Persist deltas / pending whenever they change. Cheap, JSON-stringified
@@ -349,6 +373,9 @@ export function Scanner({ token, eventTitle }: { token: string; eventTitle: stri
             quantity: ticket.quantity,
           },
         });
+        // Per-scan auto-sync is wired below via a debounced effect on
+        // pending. Triggering directly here would race React's
+        // setPending commit and read a stale queue.
         return;
       }
 
@@ -698,7 +725,11 @@ export function Scanner({ token, eventTitle }: { token: string; eventTitle: stri
           </span>
           {pack && (
             <span className="text-xs text-muted">
-              Pack, {pack.tickets.length} tickets · saved{' '}
+              Pack, {packTotalUnits} ticket{packTotalUnits === 1 ? '' : 's'}
+              {pack.tickets.length !== packTotalUnits ? (
+                <span> ({pack.tickets.length} order{pack.tickets.length === 1 ? '' : 's'})</span>
+              ) : null}
+              {' · saved '}
               {new Date(pack.generatedAt).toLocaleTimeString()}
             </span>
           )}
