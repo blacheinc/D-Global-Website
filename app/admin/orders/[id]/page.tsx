@@ -113,7 +113,23 @@ export default async function AdminOrderDetailPage({
                     {formatPriceMinor(item.unitPriceMinor * item.quantity, order.currency)}
                   </td>
                   <td className="px-4 py-3 text-muted">
-                    {item.scannedAt ? formatEventDateTime(item.scannedAt) : '-'}
+                    {/* scanCount/quantity tells the full picture for
+                        group purchases ("2 of 4 scanned"); single-unit
+                        items collapse to the timestamp only. */}
+                    {item.scanCount > 0 ? (
+                      <>
+                        <div>
+                          {item.scanCount} of {item.quantity}
+                        </div>
+                        {item.scannedAt && (
+                          <div className="text-xs">
+                            {formatEventDateTime(item.scannedAt)}
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      '-'
+                    )}
                   </td>
                 </tr>
               ))}

@@ -34,11 +34,21 @@ const bodySchema = z.object({
 export type ScanResult =
   | {
       ok: true;
+      // True when this scan attempt did NOT consume a unit because all
+      // units on the line item were already admitted. False when this
+      // attempt successfully admitted a fresh unit.
       alreadyScanned: boolean;
       scannedAt: string;
       attendee: string;
       tier: string;
       ticketName: string;
+      // How many physical tickets this OrderItem represents and how
+      // many have been admitted INCLUDING this scan attempt. The
+      // scanner UI uses these to render "Admitted 2 of 4" so gate
+      // crew can tell at a glance whether more of the group are
+      // expected.
+      scanCount: number;
+      quantity: number;
     }
   | {
       ok: false;
@@ -124,6 +134,7 @@ export async function POST(
     select: {
       id: true,
       scannedAt: true,
+      scanCount: true,
       quantity: true,
       ticketType: { select: { name: true, tier: true } },
       order: { select: { status: true, buyerName: true } },
@@ -136,39 +147,56 @@ export async function POST(
     );
   }
 
-  // Flip scannedAt on first scan; reads-then-writes are benign-racy
-  // here (two staff both clearing the same QR in the same second would
-  // both report alreadyScanned=false) but the write is idempotent via
-  // the `{ where: { id, scannedAt: null } }` gate, so only the first
-  // one actually sets the timestamp.
-  const alreadyScanned = item.scannedAt !== null;
-  let effectiveScannedAt = item.scannedAt;
+  // The QR is shared across every unit on this line item (group
+  // purchase: one buyer, N tickets, one QR). Each scan admits a
+  // single unit; we increment scanCount and refuse once it has
+  // reached `quantity`. updateMany with a guard on scanCount makes
+  // the increment atomic against parallel gate-crew scans, count===0
+  // means we lost the race or all units were already used.
+  const now = new Date();
+  let scanCount = item.scanCount;
+  let lastScannedAt = item.scannedAt;
+  let alreadyScanned = item.scanCount >= item.quantity;
+
   if (!alreadyScanned) {
     try {
-      const updated = await db.orderItem.update({
-        where: { id: item.id, scannedAt: null },
-        data: { scannedAt: new Date() },
-        select: { scannedAt: true },
+      const result = await db.orderItem.updateMany({
+        where: { id: item.id, scanCount: { lt: item.quantity } },
+        data: { scanCount: { increment: 1 }, scannedAt: now },
       });
-      effectiveScannedAt = updated.scannedAt;
+      if (result.count === 0) {
+        // Lost the race: another gate crew got the last unit between
+        // our read and our write. Re-read so we report accurate state.
+        alreadyScanned = true;
+        const fresh = await db.orderItem
+          .findUnique({
+            where: { id: item.id },
+            select: { scanCount: true, scannedAt: true },
+          })
+          .catch(() => null);
+        scanCount = fresh?.scanCount ?? item.quantity;
+        lastScannedAt = fresh?.scannedAt ?? lastScannedAt;
+      } else {
+        scanCount = item.scanCount + 1;
+        lastScannedAt = now;
+      }
     } catch (err) {
-      // Concurrent gate scan won the race, treat as already-scanned.
-      captureError('[scan:verify] scannedAt race', err, {
+      captureError('[scan:verify] scan increment failed', err, {
         orderItemId: item.id,
       });
-      const fresh = await db.orderItem
-        .findUnique({ where: { id: item.id }, select: { scannedAt: true } })
-        .catch(() => null);
-      effectiveScannedAt = fresh?.scannedAt ?? new Date();
+      // Best-effort fallback: surface what we know from the read.
+      alreadyScanned = true;
     }
   }
 
   return NextResponse.json<ScanResult>({
     ok: true,
     alreadyScanned,
-    scannedAt: (effectiveScannedAt ?? new Date()).toISOString(),
+    scannedAt: (lastScannedAt ?? now).toISOString(),
     attendee: item.order.buyerName,
     tier: item.ticketType.tier.replace('_', ' '),
     ticketName: item.ticketType.name,
+    scanCount,
+    quantity: item.quantity,
   });
 }

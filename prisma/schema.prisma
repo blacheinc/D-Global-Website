@@ -307,6 +307,14 @@ model OrderItem {
   quantity       Int
   unitPriceMinor Int
   qrToken        String?    @unique
+  // Number of physical units already scanned at the door. The QR token
+  // is shared across all units in this line item (one buyer with a
+  // group of N gets one QR), so the scanner increments this counter
+  // each time the QR is presented and admits up to `quantity` people
+  // before flagging "all units used". Idle at 0 until the first scan.
+  scanCount      Int        @default(0)
+  // Timestamp of the most recent successful scan. Overwritten on each
+  // scan-of-a-still-available unit so admin views show "last admit".
   scannedAt      DateTime?
 
   @@index([orderId])
