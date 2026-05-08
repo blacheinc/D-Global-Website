@@ -375,36 +375,40 @@ export function Scanner({ token, eventTitle }: { token: string; eventTitle: stri
   // dropped (stale pack), the rest get cleared on success. Best-
   // effort, we stay quiet on transient errors so the gate crew can
   // retry from the toolbar.
+  //
+  // Optimistic clear with rollback: we snapshot the queue, clear it
+  // immediately, then restore on rejection. If we cleared only after
+  // a successful response, a fetch that succeeded server-side but
+  // failed to deliver the response would leave the queue intact and
+  // the next sync would re-apply every entry, double-counting
+  // scanCount. The remaining "request applied + response lost"
+  // window is much smaller than "any network error".
   const syncPending = useCallback(async () => {
     if (pending.length === 0) return;
+    const snapshot = pending;
     setSyncing(true);
     setToolbarMessage(null);
+    setPending([]);
+    setDeltas({});
     try {
       const res = await fetch(`/api/scan/${token}/sync`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ scans: pending }),
+        body: JSON.stringify({ scans: snapshot }),
         cache: 'no-store',
       });
       if (!res.ok) {
         const text = await res.text().catch(() => '');
         throw new Error(text || `HTTP ${res.status}`);
       }
-      // Server returns per-entry results; for any orderItemId where
-      // sync landed (admitted or already-full), the server's
-      // canonical scanCount now reflects our local increment. Drop
-      // the delta for those ids and clear the pending entries that
-      // map to them. We accept the entire batch as "processed" so
-      // not-found / wrong-event entries also drop, otherwise a stale
-      // pack could trap the queue forever.
-      setPending([]);
-      // Clear deltas for synced items by re-computing from pack
-      // baseline + remaining pending (which is now []). Simpler:
-      // just clear deltas, they'll be reseeded if the next pack
-      // download finds discrepancies.
-      setDeltas({});
-      setToolbarMessage(`Synced ${pending.length} scan${pending.length === 1 ? '' : 's'}.`);
+      setToolbarMessage(`Synced ${snapshot.length} scan${snapshot.length === 1 ? '' : 's'}.`);
     } catch (err) {
+      // Rollback: prepend the snapshot to whatever the user has
+      // queued in the meantime so no offline scans are dropped.
+      // Deltas can't be reconstructed cleanly here, but the next
+      // pack download's reconciliation logic will rebuild them
+      // from the server snapshot.
+      setPending((current) => [...snapshot, ...current]);
       setToolbarMessage(
         err instanceof Error ? `Sync failed: ${err.message}` : 'Sync failed, try again.',
       );
