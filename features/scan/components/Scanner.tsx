@@ -585,14 +585,15 @@ export function Scanner({ token, eventTitle }: { token: string; eventTitle: stri
       return;
     }
 
-    setPhase({ stage: 'starting' });
-
+    // CRITICAL: getUserMedia must be the first async operation after
+    // the user-gesture click, with NO setState in between. Some Android
+    // Chrome builds drop the user-activation flag the moment React
+    // schedules a state update (which can flush before the await), so
+    // the prompt silently fails to appear. Fire the camera request as
+    // the first thing in the same task as the click; only after the
+    // stream is acquired do we update phase.
     let stream: MediaStream;
     try {
-      // Camera permission prompt fires here, always. Decoder choice is
-      // deferred until after the stream is live so an unsupported
-      // decoder can't silently block the prompt.
-      //
       // Try environment-facing camera first; some Android devices
       // (front-camera-only tablets, devices without back cam) reject
       // even the `ideal` hint with OverconstrainedError, so fall back
@@ -614,23 +615,49 @@ export function Scanner({ token, eventTitle }: { token: string; eventTitle: stri
       }
     } catch (err) {
       if (err instanceof DOMException && err.name === 'NotAllowedError') {
+        // Persistently denied: most Android Chrome users hit this when
+        // they previously tapped Block on the site. The browser short-
+        // circuits subsequent requests with no prompt. Spell out the
+        // recovery so the gate crew can fix it on the device.
         setPhase({
           stage: 'error',
           kind: 'denied',
           message:
-            'Camera access was blocked for this site. Allow camera in your browser settings, then tap Retry.',
+            'Camera permission is blocked for this site. On Chrome / Android: tap the ⋮ menu → Settings → Site settings → Camera → find this site → Allow. Then tap Retry.',
+        });
+      } else if (
+        err instanceof DOMException &&
+        (err.name === 'NotReadableError' || err.name === 'AbortError')
+      ) {
+        // Camera in use by another app, OS denied at hardware level.
+        setPhase({
+          stage: 'error',
+          kind: 'hardware',
+          message:
+            'Camera is busy or unavailable. Close any other app using the camera (WhatsApp video, Camera app) and tap Retry.',
+        });
+      } else if (err instanceof DOMException && err.name === 'SecurityError') {
+        setPhase({
+          stage: 'error',
+          kind: 'insecure',
+          message:
+            'The browser refused camera access for this page. Make sure the URL starts with https:// and try again.',
         });
       } else {
         setPhase({
           stage: 'error',
           kind: 'hardware',
           message:
-            'Couldn’t start the camera. Close other apps that may be using it and try again.',
+            err instanceof Error
+              ? `Couldn’t start the camera (${err.name || 'unknown'}). Close other apps that may be using it and try again.`
+              : 'Couldn’t start the camera. Close other apps that may be using it and try again.',
         });
       }
       return;
     }
 
+    // Stream acquired. NOW update phase + wire up the video.
+    setPhase({ stage: 'starting' });
     streamRef.current = stream;
     const v = videoRef.current;
     if (v) {
