@@ -99,6 +99,15 @@ export default async function AdminOrderDetailPage({
                 <th scope="col" className="px-4 py-3 font-medium">Unit</th>
                 <th scope="col" className="px-4 py-3 font-medium">Subtotal</th>
                 <th scope="col" className="px-4 py-3 font-medium">Scanned</th>
+                {/* Last 12 chars of the signed qrToken (and the
+                    OrderItem id) so ops can compare two orders side
+                    by side and confirm their tickets are distinct,
+                    useful when investigating "why did scanning order
+                    A also mark order B?" reports. The token is
+                    the QR's content, so it's already on the buyer's
+                    PDF, displaying the tail here doesn't change the
+                    secrecy posture. */}
+                <th scope="col" className="px-4 py-3 font-medium">QR token</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
@@ -130,6 +139,16 @@ export default async function AdminOrderDetailPage({
                     ) : (
                       '-'
                     )}
+                  </td>
+                  <td className="px-4 py-3 text-muted text-[11px] font-mono">
+                    {item.qrToken ? (
+                      <div title={item.qrToken}>...{item.qrToken.slice(-12)}</div>
+                    ) : (
+                      <span className="italic">unsigned</span>
+                    )}
+                    <div className="text-[10px] opacity-60" title={item.id}>
+                      item ...{item.id.slice(-8)}
+                    </div>
                   </td>
                 </tr>
               ))}
