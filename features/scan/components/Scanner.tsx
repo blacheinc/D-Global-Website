@@ -558,23 +558,6 @@ export function Scanner({ token, eventTitle }: { token: string; eventTitle: stri
       });
       return;
     }
-    // In-app browsers on Android (WhatsApp / Facebook / Instagram /
-    // TikTok web views) frequently block getUserMedia: either the host
-    // app didn't declare CAMERA permission, or its WebView has the
-    // feature disabled. The prompt never fires and everything looks
-    // broken. Catch this before trying so we can route the user to
-    // their system browser. iOS doesn't have the same issue, in-app
-    // browsers there run through SFSafariViewController / real WKWebView
-    // which inherit the OS camera grant.
-    if (isProblemInAppBrowser()) {
-      setPhase({
-        stage: 'error',
-        kind: 'in-app-browser',
-        message:
-          'Scanners don’t work inside in-app browsers. Open this page in Chrome (tap the ⋮ menu → Open in browser).',
-      });
-      return;
-    }
     if (!navigator.mediaDevices?.getUserMedia) {
       setPhase({
         stage: 'error',
@@ -589,9 +572,12 @@ export function Scanner({ token, eventTitle }: { token: string; eventTitle: stri
     // the user-gesture click, with NO setState in between. Some Android
     // Chrome builds drop the user-activation flag the moment React
     // schedules a state update (which can flush before the await), so
-    // the prompt silently fails to appear. Fire the camera request as
-    // the first thing in the same task as the click; only after the
-    // stream is acquired do we update phase.
+    // the prompt silently fails to appear. We previously also gated on
+    // an isProblemInAppBrowser() pre-check, but a too-aggressive UA
+    // regex would block legitimate browsers (the symptom: tap Start,
+    // nothing happens). Move that check to AFTER getUserMedia fails
+    // with NotAllowedError, so a working browser is never gated on UA
+    // sniffing alone.
     let stream: MediaStream;
     try {
       // Try environment-facing camera first; some Android devices
@@ -615,16 +601,33 @@ export function Scanner({ token, eventTitle }: { token: string; eventTitle: stri
       }
     } catch (err) {
       if (err instanceof DOMException && err.name === 'NotAllowedError') {
-        // Persistently denied: most Android Chrome users hit this when
-        // they previously tapped Block on the site. The browser short-
-        // circuits subsequent requests with no prompt. Spell out the
-        // recovery so the gate crew can fix it on the device.
-        setPhase({
-          stage: 'error',
-          kind: 'denied',
-          message:
-            'Camera permission is blocked for this site. On Chrome / Android: tap the ⋮ menu → Settings → Site settings → Camera → find this site → Allow. Then tap Retry.',
-        });
+        // NotAllowedError can mean two distinct things:
+        //   1. The user (or the OS) explicitly denied camera access for
+        //      this origin and the browser is short-circuiting future
+        //      requests without showing a prompt.
+        //   2. We're inside a WebView/in-app browser (WhatsApp, FB,
+        //      Instagram, TikTok, ...) where the host app didn't
+        //      declare CAMERA permission, so getUserMedia rejects
+        //      synchronously with no chance to recover in-place.
+        // Distinguish by UA: if the UA looks like a known in-app
+        // browser, route to the "Open in Chrome" recovery; otherwise
+        // it's a regular permission deny and we surface the in-browser
+        // settings recipe.
+        if (isProblemInAppBrowser()) {
+          setPhase({
+            stage: 'error',
+            kind: 'in-app-browser',
+            message:
+              'Scanners don’t work inside in-app browsers. Open this page in Chrome (tap the ⋮ menu → Open in browser).',
+          });
+        } else {
+          setPhase({
+            stage: 'error',
+            kind: 'denied',
+            message:
+              'Camera permission is blocked for this site. On Chrome / Android: tap the ⋮ menu → Settings → Site settings → Camera → find this site → Allow. Then tap Retry.',
+          });
+        }
       } else if (
         err instanceof DOMException &&
         (err.name === 'NotReadableError' || err.name === 'AbortError')
@@ -839,7 +842,7 @@ export function Scanner({ token, eventTitle }: { token: string; eventTitle: stri
         )}
 
         {errored && (
-          <div className="absolute inset-0 grid place-items-center bg-bg/95 p-6 text-center">
+          <div className="absolute inset-0 grid place-items-center bg-bg/95 p-6 text-center overflow-y-auto">
             <div className="space-y-4 max-w-sm">
               <div className="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-full bg-accent-hot/15 text-accent-hot">
                 <X aria-hidden className="h-5 w-5" />
@@ -852,15 +855,19 @@ export function Scanner({ token, eventTitle }: { token: string; eventTitle: stri
                 </p>
               )}
               {phase.kind === 'in-app-browser' && <OpenInBrowserHelper />}
-              {(phase.kind === 'denied' || phase.kind === 'hardware') && (
+              {(phase.kind === 'denied' ||
+                phase.kind === 'hardware' ||
+                phase.kind === 'no-decoder' ||
+                phase.kind === 'in-app-browser') && (
                 <button
                   type="button"
                   onClick={start}
                   className="inline-flex items-center gap-2 rounded-full bg-accent px-5 py-2 text-sm font-medium text-white hover:bg-accent-hot"
                 >
-                  <RefreshCw aria-hidden className="h-4 w-4" /> Retry
+                  <RefreshCw aria-hidden className="h-4 w-4" /> Try anyway
                 </button>
               )}
+              <DiagnosticInfo />
             </div>
           </div>
         )}
@@ -887,8 +894,68 @@ export function Scanner({ token, eventTitle }: { token: string; eventTitle: stri
 // Rendered inside the in-app-browser error state. Offers (a) a direct
 // Android intent:// link that forces Chrome to handle it, and (b) a
 // copy-URL button for fallback cases where the intent handler doesn't
-// fire (Android 14+ sometimes blocks unverified intents). On tap of
-// either, the user moves to a real browser where getUserMedia works.
+// Visible diagnostic readout under the error states. When the gate
+// crew can't tell why the camera won't open, expanding this shows the
+// three things that determine whether getUserMedia can possibly work:
+// the URL is HTTPS, the browser exposes mediaDevices, and the
+// permission state. Plus the UA so we can rule out an in-app browser
+// without DevTools access.
+function DiagnosticInfo() {
+  const [open, setOpen] = useState(false);
+  const [info, setInfo] = useState<{
+    secure: boolean;
+    hasApi: boolean;
+    permission: string;
+    ua: string;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
+    const secure = typeof window !== 'undefined' && window.isSecureContext;
+    const hasApi =
+      typeof navigator !== 'undefined' && Boolean(navigator.mediaDevices?.getUserMedia);
+    // Permissions API is best-effort; not every browser supports the
+    // 'camera' descriptor (Firefox notably). Fall back to "unknown".
+    const permP =
+      typeof navigator !== 'undefined' &&
+      'permissions' in navigator &&
+      navigator.permissions?.query
+        ? navigator.permissions
+            .query({ name: 'camera' as PermissionName })
+            .then((r) => r.state)
+            .catch(() => 'unknown')
+        : Promise.resolve('unknown');
+    void permP.then((permission) => {
+      if (!cancelled) setInfo({ secure, hasApi, permission, ua });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
+
+  return (
+    <div className="text-left text-[11px] text-muted">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="inline-flex items-center gap-1 underline hover:text-foreground"
+      >
+        {open ? 'Hide' : 'Why isn’t this working?'}
+      </button>
+      {open && info && (
+        <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap break-all rounded-md bg-elevated/60 p-2 font-mono">
+          {`secureContext: ${info.secure}
+mediaDevices.getUserMedia: ${info.hasApi}
+permission: ${info.permission}
+ua: ${info.ua}`}
+        </pre>
+      )}
+    </div>
+  );
+}
+
 function OpenInBrowserHelper() {
   const [copied, setCopied] = useState(false);
 
